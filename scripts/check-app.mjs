@@ -4,6 +4,7 @@ import {
   FOCUS_AREAS,
   VISIBLE_EQUIPMENT_IDS,
   generateCoachPlan,
+  getLoadRecommendation,
   getNextWorkout,
   getPrescription,
   getWorkoutDuration
@@ -47,7 +48,7 @@ function assertPlanUsesVisibleEquipment(plan, label) {
   }
 }
 
-const plan = generateCoachPlan({
+const focusAssessment = {
   gender: "male",
   age: 28,
   height: 170,
@@ -59,7 +60,9 @@ const plan = generateCoachPlan({
   sessionBudget: 60,
   injury: "none",
   focusAreas: ["chest", "back"]
-});
+};
+
+const plan = generateCoachPlan(focusAssessment);
 
 if (plan.safetyHold || !plan.workouts?.length) {
   throw new Error("Expected a usable training plan.");
@@ -81,10 +84,35 @@ if (!plan.focusAreas?.length || !plan.frequency.pattern.includes("胸部强化")
 
 const workout = getNextWorkout(plan, []);
 const prescription = getPrescription(workout.exercises[1], 1);
+const firstStrengthExercise = workout.exercises.find((exercise) => exercise.type === "strength");
+const starterLoad = getLoadRecommendation(firstStrengthExercise, focusAssessment, [], 1);
 const workoutDuration = getWorkoutDuration(workout, 1);
 
 if (!prescription.sets || !prescription.reps || !prescription.effortText) {
   throw new Error("Expected exercise prescription to include beginner-readable effort guidance.");
+}
+
+if (!starterLoad?.label?.includes("建议") || !starterLoad.label.includes("kg")) {
+  throw new Error(`Expected strength exercise to include a kg-based starting load recommendation, got ${starterLoad?.label}.`);
+}
+
+const historicalLoad = getLoadRecommendation(firstStrengthExercise, focusAssessment, [{
+  id: "log_load_check",
+  workoutId: workout.id,
+  intensityFeedback: "too-easy",
+  exercises: [{
+    exerciseId: firstStrengthExercise.id,
+    name: firstStrengthExercise.name,
+    type: "strength",
+    done: true,
+    weight: "20",
+    reps: "12/12/12",
+    feeling: 2
+  }]
+}], 2);
+
+if (historicalLoad?.source !== "history" || !historicalLoad.detail.includes("上次")) {
+  throw new Error("Expected load recommendation to use historical training records when available.");
 }
 
 if (workoutDuration.max < 50 || workoutDuration.min < 25) {

@@ -1,4 +1,4 @@
-export const COACH_SPEC_VERSION = "mvp-2026-06-05-coach-volume-v1";
+export const COACH_SPEC_VERSION = "mvp-2026-06-05-load-guidance-v1";
 
 export const FOCUS_AREAS = [
   { id: "chest", label: "胸" },
@@ -753,6 +753,177 @@ const WEEK_RULES = [
   }
 ];
 
+const EXPERIENCE_RANK = {
+  beginner: 1,
+  familiar: 2,
+  years: 3,
+  coach: 4
+};
+
+const LOAD_PROFILES = {
+  "chest-press": {
+    region: "upper",
+    unit: "kg",
+    step: 5,
+    min: 10,
+    max: 120,
+    coefficients: { beginner: 0.28, familiar: 0.42, years: 0.55, coach: 0.65 }
+  },
+  "cable-chest-fly": {
+    region: "upper",
+    unit: "kg/侧",
+    step: 2.5,
+    min: 2.5,
+    max: 35,
+    coefficients: { beginner: 0.06, familiar: 0.09, years: 0.13, coach: 0.16 }
+  },
+  "cable-arm-training": {
+    region: "upper",
+    unit: "kg",
+    step: 2.5,
+    min: 5,
+    max: 45,
+    coefficients: { beginner: 0.12, familiar: 0.18, years: 0.24, coach: 0.3 }
+  },
+  "dumbbell-incline-press": {
+    region: "upper",
+    unit: "kg/只",
+    step: 2,
+    min: 4,
+    max: 45,
+    coefficients: { beginner: 0.08, familiar: 0.12, years: 0.17, coach: 0.22 }
+  },
+  "smith-incline-press": {
+    region: "upper",
+    unit: "kg总重",
+    step: 5,
+    min: 15,
+    max: 120,
+    coefficients: { beginner: 0.25, familiar: 0.36, years: 0.5, coach: 0.62 }
+  },
+  "lat-pulldown": {
+    region: "upper",
+    unit: "kg",
+    step: 5,
+    min: 15,
+    max: 110,
+    coefficients: { beginner: 0.32, familiar: 0.45, years: 0.58, coach: 0.7 }
+  },
+  "seated-row": {
+    region: "upper",
+    unit: "kg",
+    step: 5,
+    min: 15,
+    max: 120,
+    coefficients: { beginner: 0.32, familiar: 0.46, years: 0.6, coach: 0.72 }
+  },
+  "assisted-pullup": {
+    region: "upper",
+    unit: "kg助力",
+    step: 5,
+    min: 10,
+    max: 80,
+    kind: "assistance",
+    coefficients: { beginner: 0.58, familiar: 0.45, years: 0.32, coach: 0.22 }
+  },
+  "leg-press": {
+    region: "lower",
+    unit: "kg",
+    step: 10,
+    min: 30,
+    max: 260,
+    coefficients: { beginner: 0.7, familiar: 1.0, years: 1.3, coach: 1.6 }
+  },
+  "leg-extension": {
+    region: "lower",
+    unit: "kg",
+    step: 5,
+    min: 10,
+    max: 90,
+    coefficients: { beginner: 0.22, familiar: 0.32, years: 0.42, coach: 0.5 }
+  },
+  "leg-curl": {
+    region: "lower",
+    unit: "kg",
+    step: 5,
+    min: 10,
+    max: 90,
+    coefficients: { beginner: 0.18, familiar: 0.28, years: 0.38, coach: 0.45 }
+  },
+  "hip-thrust": {
+    region: "lower",
+    unit: "kg",
+    step: 10,
+    min: 20,
+    max: 220,
+    coefficients: { beginner: 0.45, familiar: 0.7, years: 0.95, coach: 1.15 }
+  },
+  "abductor": {
+    region: "lower",
+    unit: "kg",
+    step: 5,
+    min: 10,
+    max: 90,
+    coefficients: { beginner: 0.22, familiar: 0.32, years: 0.42, coach: 0.5 }
+  },
+  "hack-squat": {
+    region: "lower",
+    unit: "kg",
+    step: 10,
+    min: 20,
+    max: 220,
+    coefficients: { beginner: 0.45, familiar: 0.75, years: 1.05, coach: 1.25 }
+  },
+  "smith-box-squat": {
+    region: "lower",
+    unit: "kg总重",
+    step: 5,
+    min: 15,
+    max: 180,
+    coefficients: { beginner: 0.32, familiar: 0.5, years: 0.72, coach: 0.9 }
+  },
+  "shoulder-press": {
+    region: "upper",
+    unit: "kg",
+    step: 5,
+    min: 5,
+    max: 80,
+    coefficients: { beginner: 0.18, familiar: 0.26, years: 0.36, coach: 0.45 }
+  },
+  "rear-delt": {
+    region: "upper",
+    unit: "kg",
+    step: 2.5,
+    min: 5,
+    max: 45,
+    coefficients: { beginner: 0.1, familiar: 0.15, years: 0.2, coach: 0.25 }
+  },
+  "arm-curl-extension": {
+    region: "upper",
+    unit: "kg",
+    step: 2.5,
+    min: 5,
+    max: 55,
+    coefficients: { beginner: 0.12, familiar: 0.18, years: 0.25, coach: 0.32 }
+  },
+  "dumbbell-goblet-squat": {
+    region: "lower",
+    unit: "kg",
+    step: 2,
+    min: 4,
+    max: 40,
+    coefficients: { beginner: 0.12, familiar: 0.18, years: 0.25, coach: 0.32 }
+  },
+  "dumbbell-farmer-carry": {
+    region: "full",
+    unit: "kg/只",
+    step: 2,
+    min: 6,
+    max: 60,
+    coefficients: { beginner: 0.16, familiar: 0.24, years: 0.34, coach: 0.45 }
+  }
+};
+
 export function generateCoachPlan(assessment, logs = []) {
   const metrics = getMetrics(assessment);
   const risk = getRisk(assessment);
@@ -842,6 +1013,20 @@ export function getPrescription(exercise, weekNumber = 1) {
     effort: week.effort,
     effortText: week.effortText
   };
+}
+
+export function getLoadRecommendation(exercise, assessment = {}, logs = [], weekNumber = 1) {
+  if (!exercise || exercise.type !== "strength") return null;
+
+  const profile = getLoadProfile(exercise);
+  if (!profile) return null;
+
+  const history = getLatestExerciseLoad(exercise, logs);
+  if (history) {
+    return getHistoryLoadRecommendation(exercise, profile, history, weekNumber);
+  }
+
+  return getEstimatedLoadRecommendation(exercise, assessment, profile, weekNumber);
 }
 
 export function getWorkoutDuration(workout, weekNumber = 1) {
@@ -943,12 +1128,7 @@ function getTrainingProfile(assessment, metrics, goal, experience) {
   const budget = Number(assessment.sessionBudget || 60);
   const isGain = goal.type.includes("增肌");
   const leanGain = isGain && (metrics.fatLevel === "lean" || metrics.fatLevel === "healthy") && metrics.bmi >= 19 && metrics.bmi < 25;
-  const experienceRank = {
-    beginner: 1,
-    familiar: 2,
-    years: 3,
-    coach: 4
-  }[experience.id] || 1;
+  const experienceRank = EXPERIENCE_RANK[experience.id] || 1;
 
   let volumeTier = "base";
   if (leanGain && budget >= 70 && experienceRank >= 2) {
@@ -1422,6 +1602,198 @@ function parseRestMinutes(text = "") {
   if (minutesMatch) return Number(minutesMatch[1]);
 
   return 1;
+}
+
+function getLoadProfile(exercise) {
+  return LOAD_PROFILES[exercise.id] || LOAD_PROFILES[exercise.loadProfileId];
+}
+
+function getEstimatedLoadRecommendation(exercise, assessment, profile, weekNumber) {
+  const bodyWeight = Number(assessment.weight || 65);
+  const experienceId = getExperience(assessment.trainingExperience).id;
+  const baseCoefficient = profile.coefficients[experienceId] || profile.coefficients.beginner;
+  const value = clampLoad(
+    bodyWeight * baseCoefficient * getLoadSexFactor(profile, assessment.gender) * getLoadAgeFactor(assessment.age) * getLoadGoalFactor(assessment, experienceId) * getWeekLoadFactor(weekNumber),
+    profile
+  );
+  const range = getRoundedLoadRange(value, profile);
+
+  return {
+    source: "estimate",
+    label: `${getLoadPrefix(profile)}${formatLoadRange(range, profile)}`,
+    shortLabel: formatLoadRange(range, profile),
+    inputPlaceholder: formatLoadInputHint(range, profile),
+    detail: `${getLoadPrefix(profile)}${formatLoadRange(range, profile)}；先从下限试 1 组，动作稳再做正式组。`,
+    caution: "以目标次数和动作质量为准，不做极限测试。"
+  };
+}
+
+function getHistoryLoadRecommendation(exercise, profile, history, weekNumber) {
+  const step = getLoadStep(profile, history.value);
+  const target = getRepTarget(exercise.reps);
+  const reps = parseRepNumbers(history.reps);
+  const completedTopReps = reps.length ? reps.every((value) => value >= target.max) : false;
+  const tooHard = history.feeling >= 6 || history.intensityFeedback === "too-hard";
+  const tooEasy = history.feeling <= 2 || history.intensityFeedback === "too-easy" || completedTopReps;
+  let next = history.value;
+  let reason = "上次反馈刚好，这次先维持";
+
+  if (profile.kind === "assistance") {
+    if (tooHard) {
+      next = history.value + step;
+      reason = "上次偏吃力，这次增加助力";
+    } else if (tooEasy) {
+      next = history.value - step;
+      reason = "上次偏轻松，这次减少助力";
+    }
+  } else if (tooHard) {
+    next = history.value - step;
+    reason = "上次偏吃力，这次降一档";
+  } else if (tooEasy) {
+    next = history.value + step;
+    reason = "上次完成度不错，这次加一档";
+  }
+
+  const adjusted = roundToStep(clampLoad(next * getWeekLoadFactorForHistory(weekNumber), profile), profile.step);
+  const formatted = formatSingleLoad(adjusted, profile);
+
+  return {
+    source: "history",
+    label: `${getLoadPrefix(profile)}${formatted}`,
+    shortLabel: formatted,
+    inputPlaceholder: formatLoadNumber(adjusted),
+    detail: `${reason}：参考上次 ${formatSingleLoad(history.value, profile)}。`,
+    caution: profile.kind === "assistance"
+      ? "助力数字越大越轻松，能稳定完成目标次数后再减少助力。"
+      : "如果第一组动作变形，立刻降一档。"
+  };
+}
+
+function getLatestExerciseLoad(exercise, logs = []) {
+  for (let logIndex = logs.length - 1; logIndex >= 0; logIndex -= 1) {
+    const log = logs[logIndex];
+    const match = (log.exercises || []).find((item) =>
+      item.done &&
+      item.type !== "cardio" &&
+      (item.exerciseId === exercise.id || item.name === exercise.name)
+    );
+    const value = parseFirstNumber(match?.weight);
+    if (value !== null) {
+      return {
+        value,
+        reps: match.reps,
+        feeling: Number(match.feeling || legacyPainToFeeling(match.pain)),
+        intensityFeedback: log.intensityFeedback
+      };
+    }
+  }
+  return null;
+}
+
+function getLoadSexFactor(profile, gender) {
+  if (gender !== "female") return 1;
+  if (profile.region === "lower") return 0.78;
+  if (profile.region === "full") return 0.72;
+  return 0.64;
+}
+
+function getLoadAgeFactor(age) {
+  const value = Number(age || 0);
+  if (value >= 55) return 0.82;
+  if (value >= 45) return 0.9;
+  if (value >= 38) return 0.95;
+  return 1;
+}
+
+function getLoadGoalFactor(assessment, experienceId) {
+  const rank = EXPERIENCE_RANK[experienceId] || 1;
+  if (assessment.targetPreference === "gain" && rank >= 2) return 1.05;
+  if (assessment.targetPreference === "fat-loss") return 0.95;
+  return 1;
+}
+
+function getWeekLoadFactor(weekNumber) {
+  const factors = [0.9, 1, 1.05, 0.9];
+  return factors[Math.max(0, Math.min(3, Number(weekNumber || 1) - 1))];
+}
+
+function getWeekLoadFactorForHistory(weekNumber) {
+  return Number(weekNumber) === 4 ? 0.95 : 1;
+}
+
+function getRoundedLoadRange(value, profile) {
+  const spread = profile.kind === "assistance" ? 0.12 : 0.16;
+  const low = roundToStep(clampLoad(value * (1 - spread), profile), profile.step);
+  const high = roundToStep(clampLoad(value * (1 + spread), profile), profile.step);
+  return high <= low
+    ? { low, high: roundToStep(clampLoad(low + profile.step, profile), profile.step) }
+    : { low, high };
+}
+
+function clampLoad(value, profile) {
+  return Math.max(profile.min, Math.min(profile.max, Number(value || profile.min)));
+}
+
+function getLoadStep(profile, value) {
+  if (profile.step) return profile.step;
+  if (value >= 80) return 5;
+  if (value >= 25) return 2.5;
+  return 1;
+}
+
+function roundToStep(value, step = 2.5) {
+  const rounded = Math.round(Number(value || 0) / step) * step;
+  return Number(rounded.toFixed(1));
+}
+
+function getRepTarget(text = "") {
+  const rangeMatch = String(text).match(/(\d+)\s*-\s*(\d+)/);
+  if (rangeMatch) {
+    return {
+      min: Number(rangeMatch[1]),
+      max: Number(rangeMatch[2])
+    };
+  }
+
+  const singleMatch = String(text).match(/(\d+)/);
+  const value = singleMatch ? Number(singleMatch[1]) : 10;
+  return {
+    min: value,
+    max: value
+  };
+}
+
+function parseRepNumbers(value = "") {
+  return String(value).match(/\d+/g)?.map(Number).filter((item) => Number.isFinite(item)) || [];
+}
+
+function parseFirstNumber(value = "") {
+  const match = String(value).match(/\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getLoadPrefix(profile) {
+  return profile.kind === "assistance" ? "建议助力：" : "建议起步：";
+}
+
+function formatLoadRange(range, profile) {
+  if (range.low === range.high) return formatSingleLoad(range.low, profile);
+  return `${formatLoadNumber(range.low)}-${formatLoadNumber(range.high)}${profile.unit}`;
+}
+
+function formatSingleLoad(value, profile) {
+  return `${formatLoadNumber(value)}${profile.unit}`;
+}
+
+function formatLoadInputHint(range, profile) {
+  if (range.low === range.high) return formatLoadNumber(range.low);
+  return `${formatLoadNumber(range.low)}-${formatLoadNumber(range.high)}`;
+}
+
+function formatLoadNumber(value) {
+  return Number(value).toFixed(Number.isInteger(value) ? 0 : 1);
 }
 
 function getRisk(assessment) {

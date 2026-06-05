@@ -6,6 +6,7 @@ import {
   FOCUS_AREAS,
   generateCoachPlan,
   getCurrentWeek,
+  getLoadRecommendation,
   getNextWorkout,
   getPrescription,
   getWorkoutDuration,
@@ -408,7 +409,7 @@ function renderHome(user) {
       <p class="muted">${workout.focus}</p>
       <p class="duration-note">本次预计 ${workoutDuration.label}，${workoutDuration.note}</p>
       <div class="exercise-list compact">
-        ${workout.exercises.map((exercise) => renderExerciseSummary(exercise, week)).join("")}
+        ${workout.exercises.map((exercise) => renderExerciseSummary(exercise, week, user)).join("")}
       </div>
       <button class="primary-button" type="button" data-action="start-training">开始记录本次训练</button>
     </section>
@@ -588,7 +589,7 @@ function renderPlan(user) {
       <p class="eyebrow">动作安排</p>
       <h2>第 ${week} 周训练安排</h2>
       <div class="workout-stack">
-        ${plan.workouts.map((workout) => renderWorkoutCard(workout, week)).join("")}
+        ${plan.workouts.map((workout) => renderWorkoutCard(workout, week, user)).join("")}
       </div>
     </section>
   `;
@@ -609,7 +610,7 @@ function renderLog(user) {
       <p class="muted">${workout.focus}</p>
       <form class="stack" data-training-form>
         <div class="log-list">
-          ${workout.exercises.map((exercise) => renderExerciseLog(exercise, week, trainingDraft)).join("")}
+          ${workout.exercises.map((exercise) => renderExerciseLog(exercise, week, trainingDraft, user)).join("")}
         </div>
         <fieldset>
           <legend>这次整体强度</legend>
@@ -657,7 +658,7 @@ function renderLog(user) {
   `;
 }
 
-function renderWorkoutCard(workout, week) {
+function renderWorkoutCard(workout, week, user) {
   const duration = getWorkoutDuration(workout, week);
   return `
     <article class="workout-card">
@@ -669,7 +670,7 @@ function renderWorkoutCard(workout, week) {
         <span class="pill">预计 ${duration.label}</span>
       </div>
       <div class="exercise-list">
-        ${workout.exercises.map((exercise) => renderExerciseSummary(exercise, week)).join("")}
+        ${workout.exercises.map((exercise) => renderExerciseSummary(exercise, week, user)).join("")}
       </div>
     </article>
   `;
@@ -777,25 +778,28 @@ function renderProfile(user) {
   `;
 }
 
-function renderExerciseSummary(exercise, week) {
+function renderExerciseSummary(exercise, week, user) {
   const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
   const target = getPrescription(exercise, week);
+  const load = getLoadRecommendation(exercise, user?.assessment, user?.logs || [], week);
   const tag = exercise.focusTag ? ` · ${exercise.focusTag}` : "";
   return `
     <article class="exercise-row">
       <div class="thumb ${equipment.imageClass}" aria-hidden="true"></div>
       <div>
         <strong>${exercise.name}</strong>
-        <span>${equipment.name}${tag} · ${target.sets} · ${target.reps} · 用力感 ${target.effort}</span>
-        <span class="effort-help">${target.effortText}</span>
+        <span>${equipment.name}${tag} · ${target.sets} · ${target.reps}</span>
+        ${load ? `<span class="load-help">${load.label}</span>` : ""}
+        <span class="effort-help">用力感 ${target.effort}：${target.effortText}</span>
       </div>
     </article>
   `;
 }
 
-function renderExerciseLog(exercise, week, draft = {}) {
+function renderExerciseLog(exercise, week, draft = {}, user) {
   const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
   const target = getPrescription(exercise, week);
+  const load = getLoadRecommendation(exercise, user?.assessment, user?.logs || [], week);
   const metricFields = exercise.type === "cardio"
     ? `
       <div class="form-grid four">
@@ -821,7 +825,7 @@ function renderExerciseLog(exercise, week, draft = {}) {
       <div class="form-grid two">
         <label>
           重量
-          <input name="weight-${exercise.id}" type="text" inputmode="decimal" placeholder="kg/档位" value="${escapeAttr(draft[`weight-${exercise.id}`] || "")}" />
+          <input name="weight-${exercise.id}" type="text" inputmode="decimal" placeholder="${escapeAttr(load?.inputPlaceholder || "kg/档位")}" value="${escapeAttr(draft[`weight-${exercise.id}`] || "")}" />
         </label>
         <label>
           实际次数
@@ -837,6 +841,7 @@ function renderExerciseLog(exercise, week, draft = {}) {
         <div>
           <strong>${exercise.name}</strong>
           <span>${target.sets} · ${target.reps} · 休息 ${target.rest}</span>
+          ${load ? `<span class="load-help">${load.label}</span>` : ""}
         </div>
         <label class="check-pill">
           <input name="done-${exercise.id}" type="checkbox" ${draft[`done-${exercise.id}`] ? "checked" : ""} />
@@ -844,6 +849,7 @@ function renderExerciseLog(exercise, week, draft = {}) {
         </label>
       </div>
       <p>${exercise.cues.join("；")}</p>
+      ${load ? `<p class="load-note">${load.detail}${load.caution ? ` ${load.caution}` : ""}</p>` : ""}
       ${metricFields}
       <fieldset class="feeling-field">
         <legend>这个动作感觉如何</legend>

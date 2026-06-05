@@ -517,6 +517,20 @@ input[type="range"] {
   color: #38624f;
 }
 
+.load-help {
+  margin-top: 3px;
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.load-note {
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(40, 79, 130, 0.08);
+  color: #1e416f;
+}
+
 .thumb,
 .equipment-visual {
   background-image: url("/public/assets/equipment-contact-sheet.png");
