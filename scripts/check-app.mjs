@@ -249,6 +249,24 @@ if (fourWeeklyPlan.frequency.sessionsPerWeek !== 4 || fourWeeklyPlan.workouts.le
   throw new Error(`Weekly limit 4 should generate 4 distinct training days, got ${fourWeeklyPlan.frequency.sessionsPerWeek} sessions and ${fourWeeklyPlan.workouts.map((item) => item.title).join("/")}.`);
 }
 
+const fourDayFatLossPlan = generateCoachPlan({
+  gender: "male",
+  age: 31,
+  height: 170,
+  weight: 75,
+  bodyFat: 24,
+  trainingExperience: "familiar",
+  targetPreference: "fat-loss",
+  weeklyLimit: "4",
+  sessionBudget: 60,
+  injury: "none",
+  focusAreas: []
+});
+
+if (fourDayFatLossPlan.frequency.sessionsPerWeek !== 4 || fourDayFatLossPlan.workouts.length !== 4) {
+  throw new Error(`Weekly limit 4 should apply beyond gain plans, got ${fourDayFatLossPlan.frequency.sessionsPerWeek} sessions and ${fourDayFatLossPlan.workouts.length} workouts.`);
+}
+
 const targetPreferences = ["auto", "fat-loss", "gain", "shape"];
 const focusCases = [[], ...FOCUS_AREAS.map((area) => [area.id])];
 

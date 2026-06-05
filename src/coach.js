@@ -703,6 +703,22 @@ const WORKOUT_BLUEPRINTS = [
   }
 ];
 
+const EXTRA_BALANCED_WORKOUTS = [
+  {
+    id: "D",
+    title: "全身基础 D",
+    focus: "低冲击心肺和肩背稳定，不堆大重量",
+    exercises: [
+      BASE_EXERCISES.treadmillWarmupShort,
+      BASE_EXERCISES.shoulderPress,
+      BASE_EXERCISES.rearDelt,
+      BASE_EXERCISES.legCurl,
+      BASE_EXERCISES.dumbbellCarry,
+      BASE_EXERCISES.rowingFinish
+    ]
+  }
+];
+
 const FOCUS_EXERCISES = {
   chest: [BASE_EXERCISES.smithInclinePress, BASE_EXERCISES.cableChestFly, BASE_EXERCISES.chestPress],
   shoulders: [BASE_EXERCISES.shoulderPress, BASE_EXERCISES.rearDelt],
@@ -1107,7 +1123,7 @@ function buildWorkouts(goal, focusAreas, experienceId, trainingProfile, sessions
 
   if (!isGain) {
     return tuneWorkoutsForProfile(
-      applyFocusAdjustments(WORKOUT_BLUEPRINTS.slice(0, workoutCount), focusAreas, experienceId),
+      applyFocusAdjustments(getBalancedWorkoutsForCount(workoutCount), focusAreas, experienceId),
       trainingProfile
     );
   }
@@ -1130,6 +1146,10 @@ function getWorkoutCountForFrequency(sessionsPerWeek) {
   if (value <= 2) return 2;
   if (value >= 4) return 4;
   return 3;
+}
+
+function getBalancedWorkoutsForCount(workoutCount) {
+  return [...WORKOUT_BLUEPRINTS, ...EXTRA_BALANCED_WORKOUTS].slice(0, workoutCount);
 }
 
 function getWorkoutAreasForCount(selectedAreas, workoutCount) {
