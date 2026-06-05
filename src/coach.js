@@ -1,4 +1,4 @@
-export const COACH_SPEC_VERSION = "mvp-2026-06-05-load-guidance-v1";
+export const COACH_SPEC_VERSION = "mvp-2026-06-05-frequency-aware-v1";
 
 export const FOCUS_AREAS = [
   { id: "chest", label: "胸" },
@@ -945,12 +945,13 @@ export function generateCoachPlan(assessment, logs = []) {
   const review = summarizeLogs(logs);
   const goal = chooseGoal(assessment, metrics);
   const trainingProfile = getTrainingProfile(assessment, metrics, goal, experience);
+  const frequencyBase = chooseFrequency(assessment, metrics, logs, goal, experience);
   const workouts = fitWorkoutsToSessionBudget(
-    buildWorkouts(goal, focusAreas, experience.id, trainingProfile),
+    buildWorkouts(goal, focusAreas, experience.id, trainingProfile, frequencyBase.sessionsPerWeek),
     assessment.sessionBudget
   );
   const frequency = {
-    ...chooseFrequency(assessment, metrics, logs),
+    ...frequencyBase,
     pattern: describeWorkoutPattern(workouts)
   };
   const duration = chooseDuration(assessment, metrics, goal, workouts, trainingProfile);
@@ -1099,21 +1100,21 @@ export function getMetrics(assessment) {
   };
 }
 
-function buildWorkouts(goal, focusAreas, experienceId, trainingProfile) {
+function buildWorkouts(goal, focusAreas, experienceId, trainingProfile, sessionsPerWeek = 3) {
   const isGain = goal.type.includes("增肌");
+  const workoutCount = getWorkoutCountForFrequency(sessionsPerWeek);
   const selectedAreas = focusAreas.length ? focusAreas : ["chest", "back", "legs"];
 
   if (!isGain) {
     return tuneWorkoutsForProfile(
-      applyFocusAdjustments(WORKOUT_BLUEPRINTS, focusAreas, experienceId),
+      applyFocusAdjustments(WORKOUT_BLUEPRINTS.slice(0, workoutCount), focusAreas, experienceId),
       trainingProfile
     );
   }
 
-  const workouts = selectedAreas.slice(0, 3).map((area) => buildFocusWorkout(area, experienceId, trainingProfile));
-  while (workouts.length < 3) {
-    workouts.push(buildFocusWorkout(getSupportArea(selectedAreas, workouts.length), experienceId, trainingProfile, true));
-  }
+  const selectedSet = new Set(selectedAreas);
+  const workoutAreas = getWorkoutAreasForCount(selectedAreas, workoutCount);
+  const workouts = workoutAreas.map((area) => buildFocusWorkout(area, experienceId, trainingProfile, !selectedSet.has(area)));
 
   return tuneWorkoutsForProfile(
     workouts.map((workout, index) => ({
@@ -1122,6 +1123,32 @@ function buildWorkouts(goal, focusAreas, experienceId, trainingProfile) {
     })),
     trainingProfile
   );
+}
+
+function getWorkoutCountForFrequency(sessionsPerWeek) {
+  const value = Number(sessionsPerWeek || 3);
+  if (value <= 2) return 2;
+  if (value >= 4) return 4;
+  return 3;
+}
+
+function getWorkoutAreasForCount(selectedAreas, workoutCount) {
+  const areas = [];
+  for (const area of selectedAreas) {
+    if (!areas.includes(area)) areas.push(area);
+    if (areas.length >= workoutCount) return areas;
+  }
+
+  while (areas.length < workoutCount) {
+    const support = getSupportArea(areas, areas.length);
+    if (!areas.includes(support)) {
+      areas.push(support);
+      continue;
+    }
+    break;
+  }
+
+  return areas;
 }
 
 function getTrainingProfile(assessment, metrics, goal, experience) {
@@ -1515,20 +1542,54 @@ function chooseGoal(assessment, metrics) {
   };
 }
 
-function chooseFrequency(assessment, metrics, logs) {
-  const cap = assessment.weeklyLimit;
+function chooseFrequency(assessment, metrics, logs, goal, experience) {
+  const cap = normalizeWeeklyLimit(assessment.weeklyLimit);
   const review = summarizeLogs(logs);
-  let sessionsPerWeek = metrics.bmi >= 30 || Number(assessment.age) >= 50 ? 2 : 3;
+  const recoveryRisk = metrics.bmi >= 30 || Number(assessment.age) >= 50;
+  const isGain = goal?.type?.includes("增肌");
+  const experienceRank = EXPERIENCE_RANK[experience?.id] || 1;
+  let sessionsPerWeek = recoveryRisk ? 2 : 3;
 
-  if (cap === "2") sessionsPerWeek = Math.min(sessionsPerWeek, 2);
-  if (cap === "4") sessionsPerWeek = Math.max(sessionsPerWeek, 3);
+  if (cap === "2") {
+    sessionsPerWeek = 2;
+  } else if (cap === "3") {
+    sessionsPerWeek = recoveryRisk ? 2 : 3;
+  } else if (cap === "4") {
+    sessionsPerWeek = recoveryRisk || experienceRank === 1 ? 3 : 4;
+  } else if (isGain && experienceRank >= 3 && !recoveryRisk && Number(assessment.sessionBudget || 0) >= 75) {
+    sessionsPerWeek = 3;
+  }
+
   if (review.status === "overloaded") sessionsPerWeek = Math.max(2, sessionsPerWeek - 1);
 
   return {
     sessionsPerWeek,
-    pattern: sessionsPerWeek <= 2 ? "A/B 交替，全身训练" : "A/B/C 轮换，全身训练",
+    requestedLimit: cap,
+    limitLabel: getWeeklyLimitLabel(cap),
+    pattern: getBaseFrequencyPattern(sessionsPerWeek),
     restDays: "两次力量训练之间尽量间隔 1 天"
   };
+}
+
+function normalizeWeeklyLimit(value = "coach") {
+  const normalized = String(value || "coach");
+  return ["coach", "2", "3", "4"].includes(normalized) ? normalized : "coach";
+}
+
+function getWeeklyLimitLabel(value) {
+  const labels = {
+    coach: "教练安排",
+    2: "最多 2 次",
+    3: "约 3 次",
+    4: "4 次以上"
+  };
+  return labels[value] || labels.coach;
+}
+
+function getBaseFrequencyPattern(sessionsPerWeek) {
+  if (sessionsPerWeek <= 2) return "A/B 交替，每周 2 次";
+  if (sessionsPerWeek >= 4) return "A/B/C/D 轮换，每周 4 次";
+  return "A/B/C 轮换，每周 3 次";
 }
 
 function chooseDuration(assessment, metrics, goal, workouts, trainingProfile) {

@@ -212,6 +212,43 @@ if (roomyWeekThreeMax <= tightWeekThreeMax) {
   throw new Error(`Session budget should change plan capacity, got 45=${tightWeekThreeMax}, 75=${roomyWeekThreeMax}.`);
 }
 
+const twiceWeeklyPlan = generateCoachPlan({
+  gender: "male",
+  age: 31,
+  height: 170,
+  weight: 65,
+  bodyFat: 14,
+  trainingExperience: "familiar",
+  targetPreference: "gain",
+  weeklyLimit: "2",
+  sessionBudget: 75,
+  injury: "none",
+  focusAreas: ["chest", "back"]
+});
+
+if (twiceWeeklyPlan.frequency.sessionsPerWeek !== 2 || twiceWeeklyPlan.workouts.length !== 2) {
+  throw new Error(`Weekly limit 2 should generate exactly 2 training days, got ${twiceWeeklyPlan.frequency.sessionsPerWeek} sessions and ${twiceWeeklyPlan.workouts.length} workouts.`);
+}
+
+const fourWeeklyPlan = generateCoachPlan({
+  gender: "male",
+  age: 31,
+  height: 170,
+  weight: 65,
+  bodyFat: 14,
+  trainingExperience: "years",
+  targetPreference: "gain",
+  weeklyLimit: "4",
+  sessionBudget: 75,
+  injury: "none",
+  focusAreas: ["chest", "back"]
+});
+
+const uniqueFourDayTitles = new Set(fourWeeklyPlan.workouts.map((item) => item.title));
+if (fourWeeklyPlan.frequency.sessionsPerWeek !== 4 || fourWeeklyPlan.workouts.length !== 4 || uniqueFourDayTitles.size !== 4) {
+  throw new Error(`Weekly limit 4 should generate 4 distinct training days, got ${fourWeeklyPlan.frequency.sessionsPerWeek} sessions and ${fourWeeklyPlan.workouts.map((item) => item.title).join("/")}.`);
+}
+
 const targetPreferences = ["auto", "fat-loss", "gain", "shape"];
 const focusCases = [[], ...FOCUS_AREAS.map((area) => [area.id])];
 
