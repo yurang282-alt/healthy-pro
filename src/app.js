@@ -6,11 +6,13 @@ import {
   FOCUS_AREAS,
   generateCoachPlan,
   getCurrentWeek,
+  getLoadRecommendation,
   getNextWorkout,
   getPrescription,
   getWorkoutDuration,
+  validateAssessment,
   VISIBLE_EQUIPMENT_IDS
-} from "./coach.js";
+} from "./coach.js?v=model-v2";
 
 const STORAGE_KEY = "healthy-pro-store-v3";
 const app = document.querySelector("#app");
@@ -18,6 +20,7 @@ const urlParams = new URLSearchParams(window.location.search);
 
 let store = loadStore();
 applyDemoSeed(urlParams);
+migrateStoredPlans();
 let activeView = getInitialView(urlParams);
 let authMode = "login";
 let notice = "";
@@ -61,9 +64,12 @@ app.addEventListener("click", async (event) => {
   if (action === "reset-assessment") {
     const user = getUser();
     if (!user) return;
+    user.drafts = {
+      ...(user.drafts || {}),
+      assessment: user.assessment || user.drafts?.assessment || null
+    };
     user.assessment = null;
     user.plan = null;
-    user.drafts = {};
     saveStore();
     activeView = "home";
     render();
@@ -177,15 +183,28 @@ function handleAssessment(form) {
     injury: data.injury
   };
 
-  if (!assessment.age || !assessment.height || !assessment.weight) {
-    notice = "年龄、身高、体重必须填写。";
+  const validation = validateAssessment(assessment);
+  if (!validation.valid) {
+    const user = getUser();
+    if (user) {
+      user.drafts = {
+        ...(user.drafts || {}),
+        assessment
+      };
+      saveStore();
+    }
+    notice = validation.errors.join("");
     render();
     return;
   }
 
   const user = getUser();
-  user.assessment = assessment;
-  user.plan = generateCoachPlan(assessment, user.logs || []);
+  user.assessment = validation.normalized;
+  user.plan = generateCoachPlan(validation.normalized, user.logs || []);
+  user.drafts = {
+    ...(user.drafts || {}),
+    assessment: null
+  };
   saveStore();
   notice = "";
   activeView = "home";
@@ -378,7 +397,7 @@ function renderHome(user) {
   const logs = user.logs || [];
   const workout = getNextWorkout(plan, logs);
   const week = getCurrentWeek(plan, logs);
-  const workoutDuration = getWorkoutDuration(workout, week);
+  const workoutDuration = getWorkoutDuration(workout, week, plan.weeks);
   const latestBody = getLatest(user.bodyLogs);
   const totalCompleted = logs.reduce((sum, log) => sum + Number(log.completedCount || 0), 0);
   const focusText = getFocusText(plan);
@@ -408,7 +427,7 @@ function renderHome(user) {
       <p class="muted">${workout.focus}</p>
       <p class="duration-note">本次预计 ${workoutDuration.label}，${workoutDuration.note}</p>
       <div class="exercise-list compact">
-        ${workout.exercises.map((exercise) => renderExerciseSummary(exercise, week)).join("")}
+        ${workout.exercises.map((exercise) => renderExerciseSummary(exercise, week, user)).join("")}
       </div>
       <button class="primary-button" type="button" data-action="start-training">开始记录本次训练</button>
     </section>
@@ -433,7 +452,13 @@ function renderHome(user) {
 
 function renderAssessment(user) {
   const email = user.email;
-  const defaultSessionBudget = getDemoSessionBudget(urlParams) || user.assessment?.sessionBudget || 60;
+  const saved = user.assessment || user.drafts?.assessment || {};
+  const selectedExperience = saved.trainingExperience || "beginner";
+  const selectedTarget = saved.targetPreference || "auto";
+  const selectedFocusAreas = new Set(Array.isArray(saved.focusAreas) ? saved.focusAreas : []);
+  const selectedWeeklyLimit = saved.weeklyLimit || "coach";
+  const selectedSessionBudget = Number(saved.sessionBudget || getDemoSessionBudget(urlParams) || 60);
+  const selectedInjury = saved.injury || "none";
   return `
     <section class="section-block first-run">
       <p class="eyebrow">${email}</p>
@@ -443,46 +468,46 @@ function renderAssessment(user) {
         <div class="form-grid two">
           <label>
             年龄
-            <input name="age" type="number" min="14" max="80" inputmode="numeric" required />
+            <input name="age" type="number" min="14" max="80" inputmode="numeric" value="${escapeAttr(saved.age || "")}" required />
           </label>
           <label>
             性别
             <select name="gender" required>
-              <option value="male">男</option>
-              <option value="female">女</option>
-              <option value="other">其他</option>
+              <option value="male" ${saved.gender === "male" || !saved.gender ? "selected" : ""}>男</option>
+              <option value="female" ${saved.gender === "female" ? "selected" : ""}>女</option>
+              <option value="other" ${saved.gender === "other" ? "selected" : ""}>其他</option>
             </select>
           </label>
         </div>
         <div class="form-grid two">
           <label>
             身高 cm
-            <input name="height" type="number" min="120" max="230" inputmode="decimal" required />
+            <input name="height" type="number" min="120" max="230" inputmode="decimal" value="${escapeAttr(saved.height || "")}" required />
           </label>
           <label>
             体重 kg
-            <input name="weight" type="number" min="30" max="250" step="0.1" inputmode="decimal" required />
+            <input name="weight" type="number" min="30" max="250" step="0.1" inputmode="decimal" value="${escapeAttr(saved.weight || "")}" required />
           </label>
         </div>
         <label>
           体脂率 %
-          <input name="bodyFat" type="number" min="3" max="60" step="0.1" inputmode="decimal" placeholder="不知道可不填" />
+          <input name="bodyFat" type="number" min="3" max="60" step="0.1" inputmode="decimal" placeholder="不知道可不填" value="${escapeAttr(saved.bodyFat || "")}" />
         </label>
 
         <fieldset>
           <legend>你对健身的了解程度</legend>
           <div class="choice-grid">
-            ${EXPERIENCE_LEVELS.map((item, index) => radio("trainingExperience", item.id, item.label, index === 0)).join("")}
+            ${EXPERIENCE_LEVELS.map((item) => radio("trainingExperience", item.id, item.label, item.id === selectedExperience)).join("")}
           </div>
         </fieldset>
 
         <fieldset>
           <legend>目标偏好</legend>
           <div class="choice-grid">
-            ${radio("targetPreference", "auto", "让教练判断", true)}
-            ${radio("targetPreference", "fat-loss", "更想减脂")}
-            ${radio("targetPreference", "gain", "更想增肌")}
-            ${radio("targetPreference", "shape", "更想塑形")}
+            ${radio("targetPreference", "auto", "让教练判断", selectedTarget === "auto")}
+            ${radio("targetPreference", "fat-loss", "更想减脂", selectedTarget === "fat-loss")}
+            ${radio("targetPreference", "gain", "更想增肌", selectedTarget === "gain")}
+            ${radio("targetPreference", "shape", "更想塑形", selectedTarget === "shape")}
           </div>
         </fieldset>
 
@@ -490,37 +515,37 @@ function renderAssessment(user) {
           <legend>想重点加强哪里</legend>
           <p class="field-help">可不选；最多选 3 个。教练会在全身基础上多加一点对应动作。</p>
           <div class="choice-grid">
-            ${FOCUS_AREAS.map((item) => checkbox("focusAreas", item.id, item.label)).join("")}
+            ${FOCUS_AREAS.map((item) => checkbox("focusAreas", item.id, item.label, selectedFocusAreas.has(item.id))).join("")}
           </div>
         </fieldset>
 
         <fieldset>
           <legend>每周时间上限</legend>
           <div class="choice-grid">
-            ${radio("weeklyLimit", "coach", "教练安排", true)}
-            ${radio("weeklyLimit", "2", "最多 2 次")}
-            ${radio("weeklyLimit", "3", "约 3 次")}
-            ${radio("weeklyLimit", "4", "4 次以上")}
+            ${radio("weeklyLimit", "coach", "教练安排", selectedWeeklyLimit === "coach")}
+            ${radio("weeklyLimit", "2", "最多 2 次", selectedWeeklyLimit === "2")}
+            ${radio("weeklyLimit", "3", "约 3 次", selectedWeeklyLimit === "3")}
+            ${radio("weeklyLimit", "4", "4 次以上", selectedWeeklyLimit === "4")}
           </div>
         </fieldset>
 
         <fieldset>
           <legend>单次可接受时长</legend>
           <div class="choice-grid three">
-            ${radio("sessionBudget", "45", "45 分钟", defaultSessionBudget === 45)}
-            ${radio("sessionBudget", "60", "60 分钟", defaultSessionBudget === 60)}
-            ${radio("sessionBudget", "75", "75 分钟", defaultSessionBudget === 75)}
+            ${radio("sessionBudget", "45", "45 分钟", selectedSessionBudget === 45)}
+            ${radio("sessionBudget", "60", "60 分钟", selectedSessionBudget === 60)}
+            ${radio("sessionBudget", "75", "75 分钟", selectedSessionBudget === 75)}
           </div>
         </fieldset>
 
         <fieldset>
           <legend>伤病或医生限制</legend>
           <div class="choice-grid">
-            ${radio("injury", "none", "无明显伤病", true)}
-            ${radio("injury", "knee", "膝盖疼痛")}
-            ${radio("injury", "back", "腰背疼痛")}
-            ${radio("injury", "shoulder", "肩颈疼痛")}
-            ${radio("injury", "heart", "心血管限制")}
+            ${radio("injury", "none", "无明显伤病", selectedInjury === "none")}
+            ${radio("injury", "knee", "膝盖疼痛", selectedInjury === "knee")}
+            ${radio("injury", "back", "腰背疼痛", selectedInjury === "back")}
+            ${radio("injury", "shoulder", "肩颈疼痛", selectedInjury === "shoulder")}
+            ${radio("injury", "heart", "心血管限制", selectedInjury === "heart")}
           </div>
         </fieldset>
 
@@ -553,12 +578,16 @@ function renderPlan(user) {
       <p class="eyebrow">计划逻辑</p>
       <h2>${plan.goal.type}</h2>
       <p class="coach-note">${plan.rationale}</p>
+      ${plan.decisionSummary ? `<p class="adjust-explainer">${plan.decisionSummary}</p>` : ""}
       <div class="fact-list">
         <div><span>训练结构</span><strong>${plan.frequency.pattern}</strong></div>
+        <div><span>每周频次</span><strong>${plan.frequency.sessionsPerWeek} 次/周</strong></div>
+        <div><span>时间上限</span><strong>${plan.frequency.limitLabel || "教练安排"}</strong></div>
         <div><span>训练经验</span><strong>${plan.experience?.label || "未填写"}</strong></div>
         <div><span>重点部位</span><strong>${focusText || "全身均衡"}</strong></div>
         <div><span>单次上限</span><strong>来自评估：${plan.duration.budget || user.assessment?.sessionBudget || 60} 分钟</strong></div>
         <div><span>容量判断</span><strong>${getVolumeTierLabel(plan.trainingProfile?.volumeTier)}</strong></div>
+        <div><span>有效组数</span><strong>${formatWeeklySetAnchor(plan.trainingProfile?.weeklySetAnchor)}</strong></div>
         <div><span>恢复安排</span><strong>${plan.frequency.restDays}</strong></div>
         <div><span>时间分配</span><strong>${plan.duration.split}</strong></div>
       </div>
@@ -588,7 +617,7 @@ function renderPlan(user) {
       <p class="eyebrow">动作安排</p>
       <h2>第 ${week} 周训练安排</h2>
       <div class="workout-stack">
-        ${plan.workouts.map((workout) => renderWorkoutCard(workout, week)).join("")}
+        ${plan.workouts.map((workout) => renderWorkoutCard(workout, week, user)).join("")}
       </div>
     </section>
   `;
@@ -609,7 +638,7 @@ function renderLog(user) {
       <p class="muted">${workout.focus}</p>
       <form class="stack" data-training-form>
         <div class="log-list">
-          ${workout.exercises.map((exercise) => renderExerciseLog(exercise, week, trainingDraft)).join("")}
+          ${workout.exercises.map((exercise) => renderExerciseLog(exercise, week, trainingDraft, user)).join("")}
         </div>
         <fieldset>
           <legend>这次整体强度</legend>
@@ -657,8 +686,8 @@ function renderLog(user) {
   `;
 }
 
-function renderWorkoutCard(workout, week) {
-  const duration = getWorkoutDuration(workout, week);
+function renderWorkoutCard(workout, week, user) {
+  const duration = getWorkoutDuration(workout, week, user?.plan?.weeks);
   return `
     <article class="workout-card">
       <div class="workout-card-head">
@@ -669,7 +698,7 @@ function renderWorkoutCard(workout, week) {
         <span class="pill">预计 ${duration.label}</span>
       </div>
       <div class="exercise-list">
-        ${workout.exercises.map((exercise) => renderExerciseSummary(exercise, week)).join("")}
+        ${workout.exercises.map((exercise) => renderExerciseSummary(exercise, week, user)).join("")}
       </div>
     </article>
   `;
@@ -735,7 +764,7 @@ function renderEquipment() {
             <div class="equipment-grid">
               ${items.map((item) => `
                 <article class="equipment-card">
-                  <div class="equipment-visual ${item.imageClass}" role="img" aria-label="${item.name}示意图"></div>
+                  <img class="equipment-visual" src="${escapeAttr(item.imageSrc)}" alt="${escapeAttr(item.name)}示意图" />
                   <div class="equipment-body">
                     <h3>${item.name}</h3>
                     <p>${item.muscles.join(" / ")}</p>
@@ -777,25 +806,28 @@ function renderProfile(user) {
   `;
 }
 
-function renderExerciseSummary(exercise, week) {
+function renderExerciseSummary(exercise, week, user) {
   const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
-  const target = getPrescription(exercise, week);
+  const target = getPrescription(exercise, week, user?.plan?.weeks);
+  const load = getLoadRecommendation(exercise, user?.assessment, user?.logs || [], week);
   const tag = exercise.focusTag ? ` · ${exercise.focusTag}` : "";
   return `
     <article class="exercise-row">
-      <div class="thumb ${equipment.imageClass}" aria-hidden="true"></div>
+      <img class="thumb" src="${escapeAttr(equipment.imageSrc)}" alt="" aria-hidden="true" />
       <div>
         <strong>${exercise.name}</strong>
-        <span>${equipment.name}${tag} · ${target.sets} · ${target.reps} · 用力感 ${target.effort}</span>
-        <span class="effort-help">${target.effortText}</span>
+        <span>${equipment.name}${tag} · ${target.sets} · ${target.reps}</span>
+        ${load ? `<span class="load-help">${load.label}</span>` : ""}
+        <span class="effort-help">用力感 ${target.effort}：${target.effortText}</span>
       </div>
     </article>
   `;
 }
 
-function renderExerciseLog(exercise, week, draft = {}) {
+function renderExerciseLog(exercise, week, draft = {}, user) {
   const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
-  const target = getPrescription(exercise, week);
+  const target = getPrescription(exercise, week, user?.plan?.weeks);
+  const load = getLoadRecommendation(exercise, user?.assessment, user?.logs || [], week);
   const metricFields = exercise.type === "cardio"
     ? `
       <div class="form-grid four">
@@ -821,7 +853,7 @@ function renderExerciseLog(exercise, week, draft = {}) {
       <div class="form-grid two">
         <label>
           重量
-          <input name="weight-${exercise.id}" type="text" inputmode="decimal" placeholder="kg/档位" value="${escapeAttr(draft[`weight-${exercise.id}`] || "")}" />
+          <input name="weight-${exercise.id}" type="text" inputmode="decimal" placeholder="${escapeAttr(load?.inputPlaceholder || "kg/档位")}" value="${escapeAttr(draft[`weight-${exercise.id}`] || "")}" />
         </label>
         <label>
           实际次数
@@ -833,10 +865,11 @@ function renderExerciseLog(exercise, week, draft = {}) {
   return `
     <article class="log-item">
       <div class="log-title">
-        <div class="thumb ${equipment.imageClass}" aria-hidden="true"></div>
+        <img class="thumb" src="${escapeAttr(equipment.imageSrc)}" alt="" aria-hidden="true" />
         <div>
           <strong>${exercise.name}</strong>
           <span>${target.sets} · ${target.reps} · 休息 ${target.rest}</span>
+          ${load ? `<span class="load-help">${load.label}</span>` : ""}
         </div>
         <label class="check-pill">
           <input name="done-${exercise.id}" type="checkbox" ${draft[`done-${exercise.id}`] ? "checked" : ""} />
@@ -844,6 +877,7 @@ function renderExerciseLog(exercise, week, draft = {}) {
         </label>
       </div>
       <p>${exercise.cues.join("；")}</p>
+      ${load ? `<p class="load-note">${load.detail}${load.caution ? ` ${load.caution}` : ""}</p>` : ""}
       ${metricFields}
       <fieldset class="feeling-field">
         <legend>这个动作感觉如何</legend>
@@ -895,10 +929,10 @@ function radio(name, value, label, checked = false) {
   `;
 }
 
-function checkbox(name, value, label) {
+function checkbox(name, value, label, checked = false) {
   return `
     <label class="choice">
-      <input type="checkbox" name="${name}" value="${value}" />
+      <input type="checkbox" name="${name}" value="${value}" ${checked ? "checked" : ""} />
       <span>${label}</span>
     </label>
   `;
@@ -985,6 +1019,11 @@ function getVolumeTierLabel(value) {
   return labels[value] || "基础训练量";
 }
 
+function formatWeeklySetAnchor(anchor) {
+  if (!anchor) return "未计算";
+  return `每肌群 ${anchor.min}-${anchor.max} 组/周`;
+}
+
 function groupEquipmentByCategory(items) {
   const groups = [];
   const indexByCategory = new Map();
@@ -1052,6 +1091,16 @@ function applyDemoSeed(params) {
   store.users.push(demoUser);
   store.sessionUserId = demoUser.id;
   saveStore();
+}
+
+function migrateStoredPlans() {
+  let changed = false;
+  for (const user of store.users || []) {
+    if (!user.assessment || !user.plan || user.plan.version === COACH_SPEC_VERSION) continue;
+    user.plan = generateCoachPlan(user.assessment, user.logs || []);
+    changed = true;
+  }
+  if (changed) saveStore();
 }
 
 function getDemoSessionBudget(params) {
