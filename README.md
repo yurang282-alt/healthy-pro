@@ -39,6 +39,12 @@ http://你的电脑局域网IP:5173
 ## 检查
 
 ```bash
+npm run check
+```
+
+生成 Vercel 静态发布目录：
+
+```bash
 npm run build
 ```
 
@@ -60,4 +66,4 @@ http://127.0.0.1:5173?demo=focus&view=equipment
 
 - Supabase：使用 `docs/supabase-schema.sql` 建表，替换当前 localStorage 数据层。
 - AI 模型：使用 `docs/ai-coach-spec.md` 的输出结构和系统提示词，替换 `src/coach.js` 中的本地规则生成。
-- 部署：静态站点可直接部署到 Vercel；接 Supabase 和模型后再加入环境变量。
+- 部署：`npm run build` 会生成 `dist/`，Vercel 发布该目录；接 Supabase 和模型后再加入环境变量。
