@@ -1,13 +1,15 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import {
   EQUIPMENT,
+  EQUIPMENT_BY_ID,
   FOCUS_AREAS,
   VISIBLE_EQUIPMENT_IDS,
   generateCoachPlan,
   getLoadRecommendation,
   getNextWorkout,
   getPrescription,
-  getWorkoutDuration
+  getWorkoutDuration,
+  validateAssessment
 } from "../src/coach.js";
 
 const requiredFiles = [
@@ -28,11 +30,42 @@ for (const file of requiredFiles) {
   }
 }
 
+const styles = readFileSync("src/styles.css", "utf8");
+
+if (!styles.includes("grid-template-columns: 64px 1fr") || !styles.includes("width: 64px") || !styles.includes("height: 64px")) {
+  throw new Error("Exercise thumbnails should stay square so 4x4 equipment sprites are not cropped or squeezed.");
+}
+
 if (EQUIPMENT.length < VISIBLE_EQUIPMENT_IDS.length || VISIBLE_EQUIPMENT_IDS.length !== 17) {
   throw new Error("Visible equipment library should include 17 image-backed items.");
 }
 
 const visibleEquipment = new Set(VISIBLE_EQUIPMENT_IDS);
+
+for (const equipmentId of visibleEquipment) {
+  const equipment = EQUIPMENT_BY_ID[equipmentId];
+  if (!equipment?.imageSrc || !existsSync(equipment.imageSrc.replace(/^\//, ""))) {
+    throw new Error(`${equipmentId} should have a real image file, got ${equipment?.imageSrc || "none"}.`);
+  }
+}
+
+function assertEquipmentImageMapping() {
+  const equipmentById = Object.fromEntries(EQUIPMENT.map((item) => [item.id, item]));
+  const requiredMappings = {
+    "smith-machine": "visual--smith-machine",
+    "leg-extension-curl": "visual--leg-extension-curl",
+    "hip-thrust": "visual--hip-thrust",
+    "leg-press": "visual--leg-press",
+    "cable-station": "visual--cable-station",
+    "dumbbell-rack": "visual--dumbbell-rack"
+  };
+
+  for (const [equipmentId, expectedClass] of Object.entries(requiredMappings)) {
+    if (equipmentById[equipmentId]?.imageClass !== expectedClass) {
+      throw new Error(`${equipmentId} should use ${expectedClass}, got ${equipmentById[equipmentId]?.imageClass}.`);
+    }
+  }
+}
 
 function assertPlanUsesVisibleEquipment(plan, label) {
   const unsupported = plan.workouts
@@ -46,7 +79,37 @@ function assertPlanUsesVisibleEquipment(plan, label) {
   if (unsupported.length) {
     throw new Error(`${label} references equipment without a visible image: ${JSON.stringify(unsupported)}`);
   }
+
+  const mismatchedStrengthImages = plan.workouts
+    .flatMap((workout) => workout.exercises.map((exercise) => ({
+      workout: workout.title,
+      exercise: exercise.name,
+      equipmentId: exercise.equipmentId,
+      type: exercise.type,
+      imageClass: EQUIPMENT_BY_ID[exercise.equipmentId]?.imageClass,
+      imageSrc: EQUIPMENT_BY_ID[exercise.equipmentId]?.imageSrc
+    })))
+    .filter((item) => item.type === "strength" && item.imageClass === "visual--treadmill");
+
+  if (mismatchedStrengthImages.length) {
+    throw new Error(`${label} maps strength exercises to treadmill imagery: ${JSON.stringify(mismatchedStrengthImages)}`);
+  }
+
+  const missingImages = plan.workouts
+    .flatMap((workout) => workout.exercises.map((exercise) => ({
+      workout: workout.title,
+      exercise: exercise.name,
+      equipmentId: exercise.equipmentId,
+      imageSrc: EQUIPMENT_BY_ID[exercise.equipmentId]?.imageSrc
+    })))
+    .filter((item) => !item.imageSrc || !existsSync(item.imageSrc.replace(/^\//, "")));
+
+  if (missingImages.length) {
+    throw new Error(`${label} references equipment without a real image file: ${JSON.stringify(missingImages)}`);
+  }
 }
+
+assertEquipmentImageMapping();
 
 const focusAssessment = {
   gender: "male",
@@ -115,6 +178,11 @@ if (historicalLoad?.source !== "history" || !historicalLoad.detail.includes("上
   throw new Error("Expected load recommendation to use historical training records when available.");
 }
 
+const historicalLoadValue = Number(String(historicalLoad.shortLabel).match(/\d+(?:\.\d+)?/)?.[0] || 0);
+if (historicalLoadValue > 22) {
+  throw new Error(`Historical load increase should stay within 10%, got ${historicalLoad.shortLabel} from 20kg.`);
+}
+
 if (workoutDuration.max < 50 || workoutDuration.min < 25) {
   throw new Error(`Expected a real lean-gain training dose for a 60-minute cap, got ${workoutDuration.label}.`);
 }
@@ -136,6 +204,42 @@ const blocked = generateCoachPlan({
 
 if (!blocked.safetyHold) {
   throw new Error("Injury boundary should block plan generation in MVP.");
+}
+
+const invalidAssessment = validateAssessment({
+  ...focusAssessment,
+  bodyFat: 2
+});
+
+if (invalidAssessment.valid) {
+  throw new Error("Body fat below the safe input range should be rejected.");
+}
+
+const invalidPlan = generateCoachPlan({
+  ...focusAssessment,
+  weight: 20
+});
+
+if (!invalidPlan.validationHold || !invalidPlan.safetyHold) {
+  throw new Error("Invalid assessment input should not generate a usable plan.");
+}
+
+const muscularLeanPlan = generateCoachPlan({
+  gender: "male",
+  age: 32,
+  height: 170,
+  weight: 85,
+  bodyFat: 14,
+  trainingExperience: "years",
+  targetPreference: "gain",
+  weeklyLimit: "coach",
+  sessionBudget: 75,
+  injury: "none",
+  focusAreas: ["chest", "back"]
+});
+
+if (muscularLeanPlan.goal.type !== "精益增肌期" || muscularLeanPlan.metrics.bodyStatusSource !== "bodyFat") {
+  throw new Error(`Valid low body fat should drive gain judgement before BMI, got ${muscularLeanPlan.goal.type}/${muscularLeanPlan.metrics.bodyStatusSource}.`);
 }
 
 const legsChestPlan = generateCoachPlan({
@@ -177,7 +281,7 @@ if (tightBudgetPlan.duration.budget !== 45 || !tightBudgetPlan.duration.split.in
 }
 
 for (const tightWorkout of tightBudgetPlan.workouts) {
-  const weekThreeDuration = getWorkoutDuration(tightWorkout, 3);
+  const weekThreeDuration = getWorkoutDuration(tightWorkout, 3, tightBudgetPlan.weeks);
   if (weekThreeDuration.max > 45) {
     throw new Error(`45-minute cap should constrain week 3 ${tightWorkout.title}, got ${weekThreeDuration.label}.`);
   }
@@ -205,8 +309,22 @@ if (roomyBudgetPlan.trainingProfile.volumeTier !== "hypertrophy") {
   throw new Error(`Lean gain with a 75-minute cap should enter hypertrophy volume, got ${roomyBudgetPlan.trainingProfile.volumeTier}.`);
 }
 
-const tightWeekThreeMax = Math.max(...tightBudgetPlan.workouts.map((item) => getWorkoutDuration(item, 3).max));
-const roomyWeekThreeMax = Math.max(...roomyBudgetPlan.workouts.map((item) => getWorkoutDuration(item, 3).max));
+if (roomyBudgetPlan.duration.progressionLabel !== "55-75 分钟") {
+  throw new Error(`75-minute hypertrophy plan should use the available session budget, got ${roomyBudgetPlan.duration.progressionLabel}.`);
+}
+
+if (roomyBudgetPlan.weeks[3]?.label !== "减载复盘周") {
+  throw new Error("Experienced lifters should receive a week 4 deload rule.");
+}
+
+const roomyWeekThreeMax = Math.max(...roomyBudgetPlan.workouts.map((item) => getWorkoutDuration(item, 3, roomyBudgetPlan.weeks).max));
+const roomyWeekFourMax = Math.max(...roomyBudgetPlan.workouts.map((item) => getWorkoutDuration(item, 4, roomyBudgetPlan.weeks).max));
+
+if (roomyWeekFourMax >= roomyWeekThreeMax) {
+  throw new Error(`Week 4 deload should reduce duration/volume, got week3=${roomyWeekThreeMax} week4=${roomyWeekFourMax}.`);
+}
+
+const tightWeekThreeMax = Math.max(...tightBudgetPlan.workouts.map((item) => getWorkoutDuration(item, 3, tightBudgetPlan.weeks).max));
 
 if (roomyWeekThreeMax <= tightWeekThreeMax) {
   throw new Error(`Session budget should change plan capacity, got 45=${tightWeekThreeMax}, 75=${roomyWeekThreeMax}.`);
@@ -228,6 +346,26 @@ const twiceWeeklyPlan = generateCoachPlan({
 
 if (twiceWeeklyPlan.frequency.sessionsPerWeek !== 2 || twiceWeeklyPlan.workouts.length !== 2) {
   throw new Error(`Weekly limit 2 should generate exactly 2 training days, got ${twiceWeeklyPlan.frequency.sessionsPerWeek} sessions and ${twiceWeeklyPlan.workouts.length} workouts.`);
+}
+
+const hardTrendPlan = generateCoachPlan({
+  ...twiceWeeklyPlan.validation.normalized,
+  weeklyLimit: "2"
+}, [
+  { intensityFeedback: "too-hard", completedCount: 3, exercises: [{ feeling: 6, done: true }] },
+  { intensityFeedback: "too-hard", completedCount: 3, exercises: [{ feeling: 7, done: true }] }
+]);
+
+if (hardTrendPlan.frequency.sessionsPerWeek !== 2 || hardTrendPlan.review.status !== "overloaded") {
+  throw new Error("Rolling overload trend should lower capacity without breaking the weekly limit of 2.");
+}
+
+const singleHardPlan = generateCoachPlan(focusAssessment, [
+  { intensityFeedback: "too-hard", completedCount: 3, exercises: [{ feeling: 7, done: true }] }
+]);
+
+if (singleHardPlan.review.status === "overloaded") {
+  throw new Error("A single hard workout should not trigger plan-wide overload adjustment.");
 }
 
 const fourWeeklyPlan = generateCoachPlan({

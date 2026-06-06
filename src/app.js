@@ -10,8 +10,9 @@ import {
   getNextWorkout,
   getPrescription,
   getWorkoutDuration,
+  validateAssessment,
   VISIBLE_EQUIPMENT_IDS
-} from "./coach.js";
+} from "./coach.js?v=model-v2";
 
 const STORAGE_KEY = "healthy-pro-store-v3";
 const app = document.querySelector("#app");
@@ -182,15 +183,24 @@ function handleAssessment(form) {
     injury: data.injury
   };
 
-  if (!assessment.age || !assessment.height || !assessment.weight) {
-    notice = "年龄、身高、体重必须填写。";
+  const validation = validateAssessment(assessment);
+  if (!validation.valid) {
+    const user = getUser();
+    if (user) {
+      user.drafts = {
+        ...(user.drafts || {}),
+        assessment
+      };
+      saveStore();
+    }
+    notice = validation.errors.join("");
     render();
     return;
   }
 
   const user = getUser();
-  user.assessment = assessment;
-  user.plan = generateCoachPlan(assessment, user.logs || []);
+  user.assessment = validation.normalized;
+  user.plan = generateCoachPlan(validation.normalized, user.logs || []);
   user.drafts = {
     ...(user.drafts || {}),
     assessment: null
@@ -387,7 +397,7 @@ function renderHome(user) {
   const logs = user.logs || [];
   const workout = getNextWorkout(plan, logs);
   const week = getCurrentWeek(plan, logs);
-  const workoutDuration = getWorkoutDuration(workout, week);
+  const workoutDuration = getWorkoutDuration(workout, week, plan.weeks);
   const latestBody = getLatest(user.bodyLogs);
   const totalCompleted = logs.reduce((sum, log) => sum + Number(log.completedCount || 0), 0);
   const focusText = getFocusText(plan);
@@ -568,6 +578,7 @@ function renderPlan(user) {
       <p class="eyebrow">计划逻辑</p>
       <h2>${plan.goal.type}</h2>
       <p class="coach-note">${plan.rationale}</p>
+      ${plan.decisionSummary ? `<p class="adjust-explainer">${plan.decisionSummary}</p>` : ""}
       <div class="fact-list">
         <div><span>训练结构</span><strong>${plan.frequency.pattern}</strong></div>
         <div><span>每周频次</span><strong>${plan.frequency.sessionsPerWeek} 次/周</strong></div>
@@ -576,6 +587,7 @@ function renderPlan(user) {
         <div><span>重点部位</span><strong>${focusText || "全身均衡"}</strong></div>
         <div><span>单次上限</span><strong>来自评估：${plan.duration.budget || user.assessment?.sessionBudget || 60} 分钟</strong></div>
         <div><span>容量判断</span><strong>${getVolumeTierLabel(plan.trainingProfile?.volumeTier)}</strong></div>
+        <div><span>有效组数</span><strong>${formatWeeklySetAnchor(plan.trainingProfile?.weeklySetAnchor)}</strong></div>
         <div><span>恢复安排</span><strong>${plan.frequency.restDays}</strong></div>
         <div><span>时间分配</span><strong>${plan.duration.split}</strong></div>
       </div>
@@ -675,7 +687,7 @@ function renderLog(user) {
 }
 
 function renderWorkoutCard(workout, week, user) {
-  const duration = getWorkoutDuration(workout, week);
+  const duration = getWorkoutDuration(workout, week, user?.plan?.weeks);
   return `
     <article class="workout-card">
       <div class="workout-card-head">
@@ -752,7 +764,7 @@ function renderEquipment() {
             <div class="equipment-grid">
               ${items.map((item) => `
                 <article class="equipment-card">
-                  <div class="equipment-visual ${item.imageClass}" role="img" aria-label="${item.name}示意图"></div>
+                  <img class="equipment-visual" src="${escapeAttr(item.imageSrc)}" alt="${escapeAttr(item.name)}示意图" />
                   <div class="equipment-body">
                     <h3>${item.name}</h3>
                     <p>${item.muscles.join(" / ")}</p>
@@ -796,12 +808,12 @@ function renderProfile(user) {
 
 function renderExerciseSummary(exercise, week, user) {
   const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
-  const target = getPrescription(exercise, week);
+  const target = getPrescription(exercise, week, user?.plan?.weeks);
   const load = getLoadRecommendation(exercise, user?.assessment, user?.logs || [], week);
   const tag = exercise.focusTag ? ` · ${exercise.focusTag}` : "";
   return `
     <article class="exercise-row">
-      <div class="thumb ${equipment.imageClass}" aria-hidden="true"></div>
+      <img class="thumb" src="${escapeAttr(equipment.imageSrc)}" alt="" aria-hidden="true" />
       <div>
         <strong>${exercise.name}</strong>
         <span>${equipment.name}${tag} · ${target.sets} · ${target.reps}</span>
@@ -814,7 +826,7 @@ function renderExerciseSummary(exercise, week, user) {
 
 function renderExerciseLog(exercise, week, draft = {}, user) {
   const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
-  const target = getPrescription(exercise, week);
+  const target = getPrescription(exercise, week, user?.plan?.weeks);
   const load = getLoadRecommendation(exercise, user?.assessment, user?.logs || [], week);
   const metricFields = exercise.type === "cardio"
     ? `
@@ -853,7 +865,7 @@ function renderExerciseLog(exercise, week, draft = {}, user) {
   return `
     <article class="log-item">
       <div class="log-title">
-        <div class="thumb ${equipment.imageClass}" aria-hidden="true"></div>
+        <img class="thumb" src="${escapeAttr(equipment.imageSrc)}" alt="" aria-hidden="true" />
         <div>
           <strong>${exercise.name}</strong>
           <span>${target.sets} · ${target.reps} · 休息 ${target.rest}</span>
@@ -1005,6 +1017,11 @@ function getVolumeTierLabel(value) {
     hypertrophy: "增肌容量"
   };
   return labels[value] || "基础训练量";
+}
+
+function formatWeeklySetAnchor(anchor) {
+  if (!anchor) return "未计算";
+  return `每肌群 ${anchor.min}-${anchor.max} 组/周`;
 }
 
 function groupEquipmentByCategory(items) {

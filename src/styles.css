@@ -481,10 +481,10 @@ input[type="range"] {
 
 .exercise-row {
   display: grid;
-  grid-template-columns: 56px 1fr;
+  grid-template-columns: 64px 1fr;
   gap: 10px;
   align-items: center;
-  min-height: 64px;
+  min-height: 82px;
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -533,23 +533,27 @@ input[type="range"] {
 
 .thumb,
 .equipment-visual {
-  background-image: url("/public/assets/equipment-contact-sheet.png");
-  background-repeat: no-repeat;
-  background-size: 400% 400%;
+  display: block;
+  object-fit: contain;
+  object-position: center;
   background-color: #f0f2f4;
 }
 
 .thumb {
-  width: 56px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
+  aspect-ratio: 1;
+  flex: 0 0 64px;
   border-radius: 8px;
   border: 1px solid var(--line);
+  padding: 4px;
 }
 
 .equipment-visual {
   width: 100%;
-  aspect-ratio: 1 / 0.72;
+  aspect-ratio: 1;
   border-bottom: 1px solid var(--line);
+  padding: 10px;
 }
 
 .visual--treadmill { background-position: 0% 0%; }
@@ -673,7 +677,7 @@ input[type="range"] {
 
 .log-title {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
 }
@@ -822,7 +826,7 @@ input[type="range"] {
   }
 
   .log-title {
-    grid-template-columns: 48px 1fr;
+    grid-template-columns: 64px 1fr;
   }
 
   .check-pill {
