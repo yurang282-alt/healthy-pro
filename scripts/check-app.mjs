@@ -41,8 +41,12 @@ if (!styles.includes("grid-template-columns: repeat(3, minmax(0, 1fr))") || !sty
   throw new Error("Mobile choice grids should not let hidden inputs create horizontal overflow.");
 }
 
-if (!serviceWorker.includes("healthy-pro-mvp-v9") || !serviceWorker.includes("ignoreSearch: true")) {
+if (!serviceWorker.includes("healthy-pro-mvp-v10") || serviceWorker.includes("ignoreSearch: true")) {
   throw new Error("Service worker should use the current cache version and handle cache-busted app assets.");
+}
+
+if (!serviceWorker.includes("/src/styles.css?v=mobile-overflow-v2") || !serviceWorker.includes("/src/app.js?v=model-v2-mobile-overflow-v2")) {
+  throw new Error("Service worker should cache versioned app shell assets by full URL.");
 }
 
 if (EQUIPMENT.length < VISIBLE_EQUIPMENT_IDS.length || VISIBLE_EQUIPMENT_IDS.length !== 17) {
