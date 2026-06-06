@@ -37,6 +37,10 @@ if (!styles.includes("grid-template-columns: 64px 1fr") || !styles.includes("wid
   throw new Error("Exercise thumbnails should stay square so 4x4 equipment sprites are not cropped or squeezed.");
 }
 
+if (!styles.includes("grid-template-columns: repeat(3, minmax(0, 1fr))") || !styles.includes("width: 1px")) {
+  throw new Error("Mobile choice grids should not let hidden inputs create horizontal overflow.");
+}
+
 if (!serviceWorker.includes("healthy-pro-mvp-v8") || !serviceWorker.includes("ignoreSearch: true")) {
   throw new Error("Service worker should use the current cache version and handle cache-busted app assets.");
 }
