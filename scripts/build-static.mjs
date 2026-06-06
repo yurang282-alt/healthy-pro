@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,5 +12,15 @@ mkdirSync(outputDir, { recursive: true });
 for (const entry of entries) {
   cpSync(join(rootDir, entry), join(outputDir, entry), { recursive: true });
 }
+
+const runtimeConfig = {
+  supabaseUrl: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "",
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ""
+};
+
+writeFileSync(
+  join(outputDir, "src/runtime-config.js"),
+  `export const RUNTIME_CONFIG = ${JSON.stringify(runtimeConfig, null, 2)};\n`
+);
 
 console.log("Built static app in dist/");

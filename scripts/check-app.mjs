@@ -15,7 +15,9 @@ import {
 const requiredFiles = [
   "index.html",
   "src/app.js",
+  "src/cloud.js",
   "src/coach.js",
+  "src/runtime-config.js",
   "src/styles.css",
   "public/manifest.webmanifest",
   "public/assets/equipment-contact-sheet.png",
@@ -41,12 +43,32 @@ if (!styles.includes("grid-template-columns: repeat(3, minmax(0, 1fr))") || !sty
   throw new Error("Mobile choice grids should not let hidden inputs create horizontal overflow.");
 }
 
-if (!serviceWorker.includes("healthy-pro-mvp-v10") || serviceWorker.includes("ignoreSearch: true")) {
+if (!serviceWorker.includes("healthy-pro-mvp-v11") || serviceWorker.includes("ignoreSearch: true")) {
   throw new Error("Service worker should use the current cache version and handle cache-busted app assets.");
 }
 
-if (!serviceWorker.includes("/src/styles.css?v=mobile-overflow-v2") || !serviceWorker.includes("/src/app.js?v=model-v2-mobile-overflow-v2")) {
+if (!serviceWorker.includes("/src/styles.css?v=supabase-pwa-v1") || !serviceWorker.includes("/src/app.js?v=supabase-cloud-v1")) {
   throw new Error("Service worker should cache versioned app shell assets by full URL.");
+}
+
+if (!serviceWorker.includes("/src/cloud.js?v=supabase-v1") || !serviceWorker.includes("/src/runtime-config.js?v=supabase-v1")) {
+  throw new Error("Service worker should cache cloud data modules for the PWA shell.");
+}
+
+const appSource = readFileSync("src/app.js", "utf8");
+const cloudSource = readFileSync("src/cloud.js", "utf8");
+const buildSource = readFileSync("scripts/build-static.mjs", "utf8");
+
+if (!appSource.includes("signInCloud") || !appSource.includes("renderStatusBanners") || !appSource.includes("beforeinstallprompt")) {
+  throw new Error("App should include Supabase auth hooks, sync status, and PWA install handling.");
+}
+
+if (!cloudSource.includes("/auth/v1") || !cloudSource.includes("/token?grant_type=password") || !cloudSource.includes("/rest/v1")) {
+  throw new Error("Cloud data layer should use Supabase Auth and REST APIs.");
+}
+
+if (!buildSource.includes("SUPABASE_URL") || !buildSource.includes("runtime-config.js")) {
+  throw new Error("Static build should generate runtime Supabase config from environment variables.");
 }
 
 if (EQUIPMENT.length < VISIBLE_EQUIPMENT_IDS.length || VISIBLE_EQUIPMENT_IDS.length !== 17) {

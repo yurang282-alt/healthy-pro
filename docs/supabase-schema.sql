@@ -1,6 +1,8 @@
 -- Healthy Pro MVP Supabase schema
 -- Auth uses Supabase Auth email + password. App rows are linked to auth.users.id.
 
+create extension if not exists pgcrypto;
+
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
@@ -63,18 +65,49 @@ alter table public.plans enable row level security;
 alter table public.training_logs enable row level security;
 alter table public.body_logs enable row level security;
 
+grant select, insert, update, delete on public.profiles to authenticated;
+grant select, insert, update, delete on public.assessments to authenticated;
+grant select, insert, update, delete on public.plans to authenticated;
+grant select, insert, update, delete on public.training_logs to authenticated;
+grant select, insert, update, delete on public.body_logs to authenticated;
+
+create index if not exists assessments_user_created_idx on public.assessments (user_id, created_at desc);
+create index if not exists plans_user_created_idx on public.plans (user_id, created_at desc);
+create index if not exists training_logs_user_created_idx on public.training_logs (user_id, created_at desc);
+create index if not exists body_logs_user_created_idx on public.body_logs (user_id, created_at desc);
+
+drop policy if exists "Users can read own profile" on public.profiles;
+drop policy if exists "Users can insert own profile" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
+drop policy if exists "Users can manage own assessments" on public.assessments;
+drop policy if exists "Users can manage own plans" on public.plans;
+drop policy if exists "Users can manage own training logs" on public.training_logs;
+drop policy if exists "Users can manage own body logs" on public.body_logs;
+
 create policy "Users can read own profile" on public.profiles
-  for select using (auth.uid() = id);
+  for select to authenticated
+  using ((select auth.uid()) is not null and (select auth.uid()) = id);
 create policy "Users can insert own profile" on public.profiles
-  for insert with check (auth.uid() = id);
+  for insert to authenticated
+  with check ((select auth.uid()) is not null and (select auth.uid()) = id);
 create policy "Users can update own profile" on public.profiles
-  for update using (auth.uid() = id);
+  for update to authenticated
+  using ((select auth.uid()) is not null and (select auth.uid()) = id)
+  with check ((select auth.uid()) is not null and (select auth.uid()) = id);
 
 create policy "Users can manage own assessments" on public.assessments
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all to authenticated
+  using ((select auth.uid()) is not null and (select auth.uid()) = user_id)
+  with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
 create policy "Users can manage own plans" on public.plans
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all to authenticated
+  using ((select auth.uid()) is not null and (select auth.uid()) = user_id)
+  with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
 create policy "Users can manage own training logs" on public.training_logs
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all to authenticated
+  using ((select auth.uid()) is not null and (select auth.uid()) = user_id)
+  with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
 create policy "Users can manage own body logs" on public.body_logs
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all to authenticated
+  using ((select auth.uid()) is not null and (select auth.uid()) = user_id)
+  with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);

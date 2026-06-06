@@ -1,10 +1,12 @@
-const CACHE_NAME = "healthy-pro-mvp-v10";
+const CACHE_NAME = "healthy-pro-mvp-v11";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
-  "/src/app.js?v=model-v2-mobile-overflow-v2",
-  "/src/coach.js",
-  "/src/styles.css?v=mobile-overflow-v2",
+  "/src/app.js?v=supabase-cloud-v1",
+  "/src/cloud.js?v=supabase-v1",
+  "/src/coach.js?v=model-v2",
+  "/src/runtime-config.js?v=supabase-v1",
+  "/src/styles.css?v=supabase-pwa-v1",
   "/public/icon.svg",
   "/public/manifest.webmanifest",
   "/public/assets/equipment-contact-sheet.png",
