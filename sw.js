@@ -1,10 +1,10 @@
-const CACHE_NAME = "healthy-pro-mvp-v9";
+const CACHE_NAME = "healthy-pro-mvp-v10";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
-  "/src/app.js",
+  "/src/app.js?v=model-v2-mobile-overflow-v2",
   "/src/coach.js",
-  "/src/styles.css",
+  "/src/styles.css?v=mobile-overflow-v2",
   "/public/icon.svg",
   "/public/manifest.webmanifest",
   "/public/assets/equipment-contact-sheet.png",
@@ -47,5 +47,21 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  event.respondWith(caches.match(event.request, { ignoreSearch: true }).then((cached) => cached || fetch(event.request)));
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
+          return response;
+        })
+        .catch(() => caches.match("/index.html"))
+    );
+    return;
+  }
+
+  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });
