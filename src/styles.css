@@ -246,7 +246,7 @@ input[type="range"] {
 }
 
 .choice-grid.three {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .choice {
@@ -254,8 +254,14 @@ input[type="range"] {
   min-width: 0;
 }
 
-.choice input {
+.choice input,
+.feeling-choice input {
   position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
   opacity: 0;
   pointer-events: none;
 }
@@ -294,12 +300,6 @@ input[type="range"] {
 .feeling-choice {
   display: block;
   min-width: 0;
-}
-
-.feeling-choice input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
 }
 
 .feeling-choice span {
