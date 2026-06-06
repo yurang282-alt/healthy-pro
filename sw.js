@@ -1,4 +1,4 @@
-const CACHE_NAME = "healthy-pro-mvp-v8";
+const CACHE_NAME = "healthy-pro-mvp-v9";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
