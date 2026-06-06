@@ -31,9 +31,14 @@ for (const file of requiredFiles) {
 }
 
 const styles = readFileSync("src/styles.css", "utf8");
+const serviceWorker = readFileSync("sw.js", "utf8");
 
 if (!styles.includes("grid-template-columns: 64px 1fr") || !styles.includes("width: 64px") || !styles.includes("height: 64px")) {
   throw new Error("Exercise thumbnails should stay square so 4x4 equipment sprites are not cropped or squeezed.");
+}
+
+if (!serviceWorker.includes("healthy-pro-mvp-v8") || !serviceWorker.includes("ignoreSearch: true")) {
+  throw new Error("Service worker should use the current cache version and handle cache-busted app assets.");
 }
 
 if (EQUIPMENT.length < VISIBLE_EQUIPMENT_IDS.length || VISIBLE_EQUIPMENT_IDS.length !== 17) {
@@ -46,6 +51,9 @@ for (const equipmentId of visibleEquipment) {
   const equipment = EQUIPMENT_BY_ID[equipmentId];
   if (!equipment?.imageSrc || !existsSync(equipment.imageSrc.replace(/^\//, ""))) {
     throw new Error(`${equipmentId} should have a real image file, got ${equipment?.imageSrc || "none"}.`);
+  }
+  if (!serviceWorker.includes(equipment.imageSrc)) {
+    throw new Error(`${equipmentId} image should be included in the service worker cache.`);
   }
 }
 
