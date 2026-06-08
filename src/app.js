@@ -26,7 +26,7 @@ import {
   signInCloud,
   signOutCloud,
   signUpCloud
-} from "./cloud.js?v=supabase-v1";
+} from "./cloud.js?v=profile-cleanup-v1";
 
 const STORAGE_KEY = "healthy-pro-store-v3";
 const INSTALL_DISMISSED_KEY = "healthy-pro-install-dismissed-v1";
