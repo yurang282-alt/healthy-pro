@@ -1,13 +1,13 @@
-const CACHE_NAME = "healthy-pro-mvp-v12";
+const CACHE_NAME = "healthy-pro-mvp-__HEALTHY_PRO_BUILD_VERSION__";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
-  "/src/app.js?v=profile-cleanup-v1",
-  "/src/cloud.js?v=profile-cleanup-v1",
-  "/src/coach.js?v=model-v2",
-  "/src/runtime-config.js?v=supabase-v1",
-  "/src/styles.css?v=supabase-pwa-v1",
-  "/public/icon.svg",
+  "/src/app.js?v=__HEALTHY_PRO_BUILD_VERSION__",
+  "/src/cloud.js?v=__HEALTHY_PRO_BUILD_VERSION__",
+  "/src/coach.js?v=__HEALTHY_PRO_BUILD_VERSION__",
+  "/src/runtime-config.js?v=__HEALTHY_PRO_BUILD_VERSION__",
+  "/src/styles.css?v=__HEALTHY_PRO_BUILD_VERSION__",
+  "/public/icon.svg?v=__HEALTHY_PRO_BUILD_VERSION__",
   "/public/manifest.webmanifest",
   "/public/assets/equipment-contact-sheet.png",
   "/public/assets/smith-machine.png",

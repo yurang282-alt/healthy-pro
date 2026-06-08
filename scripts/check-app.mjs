@@ -33,7 +33,13 @@ for (const file of requiredFiles) {
 }
 
 const styles = readFileSync("src/styles.css", "utf8");
+const indexSource = readFileSync("index.html", "utf8");
+const manifestSource = readFileSync("public/manifest.webmanifest", "utf8");
 const serviceWorker = readFileSync("sw.js", "utf8");
+const appSource = readFileSync("src/app.js", "utf8");
+const cloudSource = readFileSync("src/cloud.js", "utf8");
+const buildSource = readFileSync("scripts/build-static.mjs", "utf8");
+const buildVersionPlaceholder = "__HEALTHY_PRO_BUILD_VERSION__";
 
 if (!styles.includes("grid-template-columns: 64px 1fr") || !styles.includes("width: 64px") || !styles.includes("height: 64px")) {
   throw new Error("Exercise thumbnails should stay square so 4x4 equipment sprites are not cropped or squeezed.");
@@ -43,21 +49,44 @@ if (!styles.includes("grid-template-columns: repeat(3, minmax(0, 1fr))") || !sty
   throw new Error("Mobile choice grids should not let hidden inputs create horizontal overflow.");
 }
 
-if (!serviceWorker.includes("healthy-pro-mvp-v12") || serviceWorker.includes("ignoreSearch: true")) {
-  throw new Error("Service worker should use the current cache version and handle cache-busted app assets.");
+if (!buildSource.includes("createBuildVersion") || !buildSource.includes("replaceBuildVersion")) {
+  throw new Error("Static build should automatically generate and inject a build version.");
 }
 
-if (!serviceWorker.includes("/src/styles.css?v=supabase-pwa-v1") || !serviceWorker.includes("/src/app.js?v=profile-cleanup-v1")) {
+if (!serviceWorker.includes(`healthy-pro-mvp-${buildVersionPlaceholder}`) || serviceWorker.includes("ignoreSearch: true")) {
+  throw new Error("Service worker should use the automatic cache version and handle cache-busted app assets.");
+}
+
+if (
+  !indexSource.includes(`/src/styles.css?v=${buildVersionPlaceholder}`) ||
+  !indexSource.includes(`/src/app.js?v=${buildVersionPlaceholder}`) ||
+  !indexSource.includes(`/public/icon.svg?v=${buildVersionPlaceholder}`)
+) {
+  throw new Error("Index should load app shell assets with the automatic build version.");
+}
+
+if (!manifestSource.includes(`/public/icon.svg?v=${buildVersionPlaceholder}`)) {
+  throw new Error("Web app manifest should reference the icon with the automatic build version.");
+}
+
+if (
+  !serviceWorker.includes(`/src/styles.css?v=${buildVersionPlaceholder}`) ||
+  !serviceWorker.includes(`/src/app.js?v=${buildVersionPlaceholder}`) ||
+  !serviceWorker.includes(`/src/cloud.js?v=${buildVersionPlaceholder}`) ||
+  !serviceWorker.includes(`/src/coach.js?v=${buildVersionPlaceholder}`) ||
+  !serviceWorker.includes(`/src/runtime-config.js?v=${buildVersionPlaceholder}`) ||
+  !serviceWorker.includes(`/public/icon.svg?v=${buildVersionPlaceholder}`)
+) {
   throw new Error("Service worker should cache versioned app shell assets by full URL.");
 }
 
-if (!serviceWorker.includes("/src/cloud.js?v=profile-cleanup-v1") || !serviceWorker.includes("/src/runtime-config.js?v=supabase-v1")) {
-  throw new Error("Service worker should cache cloud data modules for the PWA shell.");
+if (!appSource.includes(`./coach.js?v=${buildVersionPlaceholder}`) || !appSource.includes(`./cloud.js?v=${buildVersionPlaceholder}`)) {
+  throw new Error("App imports should use the automatic build version.");
 }
 
-const appSource = readFileSync("src/app.js", "utf8");
-const cloudSource = readFileSync("src/cloud.js", "utf8");
-const buildSource = readFileSync("scripts/build-static.mjs", "utf8");
+if (!cloudSource.includes(`./runtime-config.js?v=${buildVersionPlaceholder}`)) {
+  throw new Error("Cloud config import should use the automatic build version.");
+}
 
 if (!appSource.includes("signInCloud") || !appSource.includes("renderStatusBanners") || !appSource.includes("beforeinstallprompt")) {
   throw new Error("App should include Supabase auth hooks, sync status, and PWA install handling.");
