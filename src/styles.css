@@ -368,6 +368,10 @@ input[type="range"] {
   white-space: nowrap;
 }
 
+.small-button.subtle {
+  color: var(--muted);
+}
+
 .link-button {
   width: 100%;
   color: var(--blue);
@@ -384,6 +388,64 @@ input[type="range"] {
   color: #6d3e08;
   font-size: 14px;
   line-height: 1.45;
+}
+
+.status-stack {
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px 0;
+}
+
+.sync-banner,
+.install-banner {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.sync-banner strong,
+.install-banner strong {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.sync-banner.synced {
+  border-color: rgba(34, 122, 90, 0.28);
+  background: rgba(34, 122, 90, 0.08);
+}
+
+.sync-banner.syncing {
+  border-color: rgba(40, 79, 130, 0.28);
+  background: rgba(40, 79, 130, 0.08);
+}
+
+.sync-banner.offline,
+.sync-banner.error {
+  border-color: rgba(178, 59, 69, 0.24);
+  background: rgba(178, 59, 69, 0.08);
+}
+
+.sync-banner.local {
+  border-color: rgba(179, 107, 22, 0.24);
+  background: rgba(179, 107, 22, 0.08);
+}
+
+.install-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.banner-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
 }
 
 .metric-grid,
@@ -832,5 +894,14 @@ input[type="range"] {
   .check-pill {
     grid-column: 1 / -1;
     justify-content: center;
+  }
+
+  .install-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .banner-actions .small-button {
+    flex: 1;
   }
 }

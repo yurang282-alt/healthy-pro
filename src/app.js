@@ -13,21 +13,41 @@ import {
   validateAssessment,
   VISIBLE_EQUIPMENT_IDS
 } from "./coach.js?v=model-v2";
+import {
+  clearCloudSession,
+  getActiveCloudSession,
+  getCloudConfigStatus,
+  isCloudConfigured,
+  loadCloudUser,
+  saveCloudAssessment,
+  saveCloudBodyLog,
+  saveCloudPlan,
+  saveCloudTrainingLog,
+  signInCloud,
+  signOutCloud,
+  signUpCloud
+} from "./cloud.js?v=supabase-v1";
 
 const STORAGE_KEY = "healthy-pro-store-v3";
+const INSTALL_DISMISSED_KEY = "healthy-pro-install-dismissed-v1";
 const app = document.querySelector("#app");
 const urlParams = new URLSearchParams(window.location.search);
+const isDemoMode = urlParams.get("demo") === "focus";
 
 let store = loadStore();
-applyDemoSeed(urlParams);
-migrateStoredPlans();
 let activeView = getInitialView(urlParams);
 let authMode = "login";
 let notice = "";
 let selectedPlanWeek = getInitialWeek(urlParams);
+let appReady = false;
+let networkOnline = navigator.onLine;
+let installPromptEvent = null;
+let installPromptDismissed = localStorage.getItem(INSTALL_DISMISSED_KEY) === "1";
+let syncState = createInitialSyncState();
 
-render();
-registerServiceWorker();
+app.innerHTML = renderLoading();
+bootstrapApp();
+setupPwaEvents();
 
 app.addEventListener("click", async (event) => {
   const action = event.target.closest("[data-action]")?.dataset.action;
@@ -50,10 +70,26 @@ app.addEventListener("click", async (event) => {
   }
 
   if (action === "logout") {
-    store.sessionUserId = null;
+    if (useCloudMode()) {
+      await signOutCloud();
+      store.cloudUser = null;
+    } else {
+      store.sessionUserId = null;
+    }
     saveStore();
+    syncState = createInitialSyncState();
     activeView = "home";
     render();
+  }
+
+  if (action === "install-app") {
+    await promptInstallApp();
+  }
+
+  if (action === "dismiss-install") {
+    installPromptDismissed = true;
+    localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
+    render({ keepScroll: true });
   }
 
   if (action === "start-training") {
@@ -70,6 +106,8 @@ app.addEventListener("click", async (event) => {
     };
     user.assessment = null;
     user.plan = null;
+    user.assessmentRowId = null;
+    user.planRowId = null;
     saveStore();
     activeView = "home";
     render();
@@ -78,8 +116,21 @@ app.addEventListener("click", async (event) => {
   if (action === "adjust-plan") {
     const user = getUser();
     if (!user?.assessment) return;
+    if (useCloudMode() && !ensureCloudCanWrite()) return;
     user.plan = generateCoachPlan(user.assessment, user.logs || []);
     user.drafts = { ...(user.drafts || {}), training: {} };
+    if (useCloudMode()) {
+      try {
+        setSyncState("syncing", "正在保存新计划...");
+        await persistCloudPlan(user);
+        setSyncState("synced", "新计划已保存到云端。");
+      } catch (error) {
+        notice = getFriendlyCloudError(error);
+        setSyncState("error", "计划保存失败。");
+        render();
+        return;
+      }
+    }
     saveStore();
     selectedPlanWeek = getCurrentWeek(user.plan, user.logs || []);
     notice = "已根据最近训练的完成情况、动作感觉和整体强弱反馈重新调整计划。";
@@ -97,20 +148,102 @@ app.addEventListener("submit", async (event) => {
   }
 
   if (form.matches("[data-assessment-form]")) {
-    handleAssessment(form);
+    await handleAssessment(form);
   }
 
   if (form.matches("[data-training-form]")) {
-    handleTrainingLog(form);
+    await handleTrainingLog(form);
   }
 
   if (form.matches("[data-body-form]")) {
-    handleBodyLog(form);
+    await handleBodyLog(form);
   }
 });
 
 app.addEventListener("input", handleDraftChange);
 app.addEventListener("change", handleDraftChange);
+
+async function bootstrapApp() {
+  applyDemoSeed(urlParams);
+  migrateStoredPlans();
+
+  if (useCloudMode()) {
+    try {
+      setSyncState("syncing", "正在恢复云端会话...");
+      const session = await getActiveCloudSession();
+      if (session) {
+        await refreshCloudUser();
+        setSyncState("synced", "云端数据已同步。");
+      } else {
+        store.cloudUser = null;
+        setSyncState("idle", "请登录云端账号。");
+      }
+    } catch (error) {
+      if (store.cloudUser && isNetworkError(error)) {
+        setSyncState("offline", "网络不可用，正在显示最近一次云端数据。");
+      } else {
+        clearCloudSession();
+        store.cloudUser = null;
+        setSyncState("error", "云端会话已失效，请重新登录。");
+        notice = getFriendlyCloudError(error);
+      }
+    }
+  }
+
+  appReady = true;
+  saveStore();
+  render();
+  registerServiceWorker();
+}
+
+async function refreshCloudUser() {
+  const cloudUser = await loadCloudUser();
+  const localDrafts = store.cloudDrafts?.[cloudUser.id] || store.cloudUser?.drafts || {};
+  cloudUser.drafts = localDrafts;
+  store.cloudUser = cloudUser;
+
+  if (cloudUser.assessment && (!cloudUser.plan || cloudUser.plan.version !== COACH_SPEC_VERSION)) {
+    cloudUser.plan = generateCoachPlan(cloudUser.assessment, cloudUser.logs || []);
+    await persistCloudPlan(cloudUser);
+  }
+
+  saveStore();
+  return cloudUser;
+}
+
+async function persistCloudPlan(user) {
+  const planRow = await saveCloudPlan(user.assessmentRowId, user.plan);
+  user.planRowId = planRow.id;
+  return planRow;
+}
+
+function useCloudMode() {
+  return isCloudConfigured() && !isDemoMode;
+}
+
+function ensureCloudCanWrite() {
+  if (!useCloudMode()) return true;
+  if (!networkOnline) {
+    notice = "当前离线，可以查看已加载数据；保存到云端需要恢复网络。";
+    setSyncState("offline", "离线，暂不能保存。");
+    render();
+    return false;
+  }
+  return true;
+}
+
+function setSyncState(status, message) {
+  syncState = { status, message, updatedAt: new Date().toISOString() };
+}
+
+function createInitialSyncState() {
+  const configStatus = getCloudConfigStatus();
+  if (!configStatus.ready || isDemoMode) {
+    return { status: "local", message: isDemoMode ? "演示模式，本机临时数据。" : "本地模式，未连接 Supabase。" };
+  }
+  if (!networkOnline) return { status: "offline", message: "离线，可查看已缓存数据。" };
+  return { status: "idle", message: "准备连接云端。" };
+}
 
 async function handleAuth(form) {
   const formData = new FormData(form);
@@ -120,6 +253,11 @@ async function handleAuth(form) {
   if (!email.includes("@") || password.length < 6) {
     notice = "请输入有效邮箱，密码至少 6 位。";
     render();
+    return;
+  }
+
+  if (useCloudMode()) {
+    await handleCloudAuth(email, password);
     return;
   }
 
@@ -166,7 +304,40 @@ async function handleAuth(form) {
   render();
 }
 
-function handleAssessment(form) {
+async function handleCloudAuth(email, password) {
+  if (!networkOnline) {
+    notice = "当前离线，云端账号需要联网登录。";
+    render();
+    return;
+  }
+
+  try {
+    setSyncState("syncing", authMode === "register" ? "正在创建云端账号..." : "正在登录云端账号...");
+    if (authMode === "register") {
+      const result = await signUpCloud(email, password);
+      if (!result.session) {
+        notice = "账号已创建。如果 Supabase 开启了邮箱确认，请先确认邮件；如果想免验证码，请在 Supabase Auth 设置里关闭邮箱确认。";
+        setSyncState("idle", "等待账号确认。");
+        render();
+        return;
+      }
+    } else {
+      await signInCloud(email, password);
+    }
+
+    await refreshCloudUser();
+    notice = "";
+    activeView = "home";
+    setSyncState("synced", "云端数据已同步。");
+    render();
+  } catch (error) {
+    notice = getFriendlyCloudError(error);
+    setSyncState("error", "云端登录失败。");
+    render();
+  }
+}
+
+async function handleAssessment(form) {
   const formData = new FormData(form);
   const data = Object.fromEntries(formData.entries());
   const assessment = {
@@ -199,21 +370,40 @@ function handleAssessment(form) {
   }
 
   const user = getUser();
+  if (useCloudMode() && !ensureCloudCanWrite()) return;
+
   user.assessment = validation.normalized;
   user.plan = generateCoachPlan(validation.normalized, user.logs || []);
   user.drafts = {
     ...(user.drafts || {}),
     assessment: null
   };
+
+  if (useCloudMode()) {
+    try {
+      setSyncState("syncing", "正在保存评估和计划...");
+      const assessmentRow = await saveCloudAssessment(user.assessment);
+      user.assessmentRowId = assessmentRow.id;
+      await persistCloudPlan(user);
+      setSyncState("synced", "评估和计划已保存到云端。");
+    } catch (error) {
+      notice = getFriendlyCloudError(error);
+      setSyncState("error", "评估保存失败。");
+      render();
+      return;
+    }
+  }
+
   saveStore();
   notice = "";
   activeView = "home";
   render();
 }
 
-function handleTrainingLog(form) {
+async function handleTrainingLog(form) {
   const user = getUser();
   if (!user?.plan || user.plan.safetyHold) return;
+  if (useCloudMode() && !ensureCloudCanWrite()) return;
 
   const formData = new FormData(form);
   const workout = getNextWorkout(user.plan, user.logs || []);
@@ -253,7 +443,7 @@ function handleTrainingLog(form) {
   }
 
   user.logs = user.logs || [];
-  user.logs.push({
+  const logRecord = {
     id: createId("log"),
     createdAt: new Date().toISOString(),
     workoutId: workout.id,
@@ -263,7 +453,23 @@ function handleTrainingLog(form) {
     exercises,
     intensityFeedback: String(formData.get("intensityFeedback") || "right"),
     note: String(formData.get("note") || "").trim()
-  });
+  };
+
+  if (useCloudMode()) {
+    try {
+      setSyncState("syncing", "正在保存训练记录...");
+      const savedLog = await saveCloudTrainingLog(user.planRowId, logRecord);
+      user.logs.push(savedLog);
+      setSyncState("synced", "训练记录已保存到云端。");
+    } catch (error) {
+      notice = getFriendlyCloudError(error);
+      setSyncState("error", "训练记录保存失败。");
+      render();
+      return;
+    }
+  } else {
+    user.logs.push(logRecord);
+  }
 
   clearTrainingDraft(user, workout, week);
 
@@ -273,9 +479,10 @@ function handleTrainingLog(form) {
   render();
 }
 
-function handleBodyLog(form) {
+async function handleBodyLog(form) {
   const user = getUser();
   if (!user) return;
+  if (useCloudMode() && !ensureCloudCanWrite()) return;
   const formData = new FormData(form);
   const record = {
     id: createId("body"),
@@ -293,7 +500,23 @@ function handleBodyLog(form) {
   }
 
   user.bodyLogs = user.bodyLogs || [];
-  user.bodyLogs.push(record);
+
+  if (useCloudMode()) {
+    try {
+      setSyncState("syncing", "正在保存身体记录...");
+      const savedRecord = await saveCloudBodyLog(record);
+      user.bodyLogs.push(savedRecord);
+      setSyncState("synced", "身体记录已保存到云端。");
+    } catch (error) {
+      notice = getFriendlyCloudError(error);
+      setSyncState("error", "身体记录保存失败。");
+      render();
+      return;
+    }
+  } else {
+    user.bodyLogs.push(record);
+  }
+
   user.drafts = user.drafts || {};
   user.drafts.body = null;
   saveStore();
@@ -320,10 +543,22 @@ function handleDraftChange(event) {
     user.drafts.body = readFormDraft(form);
   }
 
+  if (useCloudMode()) {
+    store.cloudDrafts = {
+      ...(store.cloudDrafts || {}),
+      [user.id]: user.drafts
+    };
+  }
+
   saveStore();
 }
 
 function render(options = {}) {
+  if (!appReady) {
+    app.innerHTML = renderLoading();
+    return;
+  }
+
   const user = getUser();
   if (!user) {
     app.innerHTML = renderAuth();
@@ -342,6 +577,7 @@ function render(options = {}) {
         <button class="ghost-button" type="button" data-action="logout">退出</button>
       </header>
       ${notice ? `<div class="notice">${notice}</div>` : ""}
+      ${renderStatusBanners(user)}
       <main class="screen">
         ${needsAssessment ? renderAssessment(user) : renderActiveView(user)}
       </main>
@@ -351,17 +587,37 @@ function render(options = {}) {
   if (!options.keepScroll) resetScroll();
 }
 
+function renderLoading() {
+  return `
+    <main class="auth-screen">
+      <section class="auth-panel">
+        <p class="eyebrow">Healthy Pro</p>
+        <h1>正在准备你的私教数据</h1>
+        <p class="auth-copy">正在检查账号状态和本地缓存。</p>
+      </section>
+    </main>
+  `;
+}
+
 function resetScroll() {
   requestAnimationFrame(() => window.scrollTo(0, 0));
 }
 
 function renderAuth() {
+  const configStatus = getCloudConfigStatus();
+  const cloudCopy = useCloudMode()
+    ? "账号和训练数据会保存到云端，换手机或浏览器也能继续用。"
+    : "当前还没有配置 Supabase，暂时使用本地模式。";
   return `
     <main class="auth-screen">
       <section class="auth-panel">
         <p class="eyebrow">Healthy Pro</p>
         <h1>你的第一位健身房私教</h1>
-        <p class="auth-copy">输入基础信息后，系统会按你的身体数据、训练经验和目标给出训练安排。</p>
+        <p class="auth-copy">输入基础信息后，系统会按你的身体数据、训练经验和目标给出训练安排。${cloudCopy}</p>
+        <div class="sync-banner ${useCloudMode() ? "synced" : "local"}">
+          <strong>${configStatus.label}</strong>
+          <span>${syncState.message}</span>
+        </div>
         ${notice ? `<div class="notice">${notice}</div>` : ""}
         <form class="stack" data-auth-form>
           <label>
@@ -380,6 +636,38 @@ function renderAuth() {
       </section>
     </main>
   `;
+}
+
+function renderStatusBanners(user) {
+  const items = [];
+  const configStatus = getCloudConfigStatus();
+  const dataMode = useCloudMode() ? configStatus.label : "本地模式";
+  const statusClass = !networkOnline ? "offline" : syncState.status;
+  const statusText = !networkOnline ? "当前离线，可以查看已加载数据；保存需要联网。" : syncState.message;
+
+  items.push(`
+    <div class="sync-banner ${statusClass}">
+      <strong>${dataMode}</strong>
+      <span>${statusText}</span>
+    </div>
+  `);
+
+  if (shouldShowInstallPrompt(user)) {
+    items.push(`
+      <div class="install-banner">
+        <div>
+          <strong>添加到手机桌面</strong>
+          <span>像 App 一样打开 Healthy Pro。</span>
+        </div>
+        <div class="banner-actions">
+          <button class="small-button" type="button" data-action="install-app">安装</button>
+          <button class="small-button subtle" type="button" data-action="dismiss-install">稍后</button>
+        </div>
+      </div>
+    `);
+  }
+
+  return `<div class="status-stack">${items.join("")}</div>`;
 }
 
 function renderActiveView(user) {
@@ -790,13 +1078,16 @@ function renderEquipment() {
 function renderProfile(user) {
   const latestLog = getLatest(user.logs);
   const latestBody = getLatest(user.bodyLogs);
+  const configStatus = getCloudConfigStatus();
 
   return `
     <section class="section-block">
       <p class="eyebrow">账号</p>
       <h2>${user.email}</h2>
       <div class="fact-list">
-        <div><span>数据模式</span><strong>本地 MVP</strong></div>
+        <div><span>数据模式</span><strong>${useCloudMode() ? configStatus.label : "本地模式"}</strong></div>
+        <div><span>同步状态</span><strong>${networkOnline ? syncState.message : "离线"}</strong></div>
+        <div><span>手机安装</span><strong>${isStandaloneApp() ? "已安装" : "可添加到主屏幕"}</strong></div>
         <div><span>AI 约束版本</span><strong>${COACH_SPEC_VERSION}</strong></div>
         <div><span>最近训练</span><strong>${latestLog ? formatDate(latestLog.createdAt) : "未记录"}</strong></div>
         <div><span>最近身体记录</span><strong>${latestBody ? formatDate(latestBody.createdAt) : "未记录"}</strong></div>
@@ -981,6 +1272,66 @@ function readFormDraft(form) {
   return draft;
 }
 
+function setupPwaEvents() {
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    installPromptEvent = event;
+    if (!installPromptDismissed && appReady) render({ keepScroll: true });
+  });
+
+  window.addEventListener("appinstalled", () => {
+    installPromptEvent = null;
+    installPromptDismissed = true;
+    localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
+    render({ keepScroll: true });
+  });
+
+  window.addEventListener("online", async () => {
+    networkOnline = true;
+    if (useCloudMode() && getUser()) {
+      try {
+        setSyncState("syncing", "正在恢复云端同步...");
+        await refreshCloudUser();
+        setSyncState("synced", "云端数据已同步。");
+      } catch {
+        setSyncState("error", "恢复同步失败，请稍后重试。");
+      }
+    } else {
+      syncState = createInitialSyncState();
+    }
+    render({ keepScroll: true });
+  });
+
+  window.addEventListener("offline", () => {
+    networkOnline = false;
+    setSyncState("offline", "离线，可查看已加载数据。");
+    render({ keepScroll: true });
+  });
+}
+
+async function promptInstallApp() {
+  if (!installPromptEvent) {
+    notice = "当前浏览器没有提供一键安装按钮，可以用浏览器菜单添加到主屏幕。";
+    render({ keepScroll: true });
+    return;
+  }
+
+  installPromptEvent.prompt();
+  await installPromptEvent.userChoice;
+  installPromptEvent = null;
+  installPromptDismissed = true;
+  localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
+  render({ keepScroll: true });
+}
+
+function shouldShowInstallPrompt(user) {
+  return Boolean(user && installPromptEvent && !installPromptDismissed && !isStandaloneApp());
+}
+
+function isStandaloneApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
 function getTrainingDraft(user, workout, week) {
   if (!user || !workout) return {};
   const key = getTrainingDraftKey(user, workout, week);
@@ -1109,17 +1460,26 @@ function getDemoSessionBudget(params) {
 }
 
 function getUser() {
+  if (useCloudMode()) return store.cloudUser || null;
   return store.users.find((user) => user.id === store.sessionUserId) || null;
 }
 
 function loadStore() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (parsed?.users) return parsed;
+    if (parsed?.users) {
+      return {
+        users: [],
+        sessionUserId: null,
+        cloudUser: null,
+        cloudDrafts: {},
+        ...parsed
+      };
+    }
   } catch {
-    return { users: [], sessionUserId: null };
+    return { users: [], sessionUserId: null, cloudUser: null, cloudDrafts: {} };
   }
-  return { users: [], sessionUserId: null };
+  return { users: [], sessionUserId: null, cloudUser: null, cloudDrafts: {} };
 }
 
 function saveStore() {
@@ -1149,6 +1509,21 @@ function formatDate(value) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function getFriendlyCloudError(error) {
+  const message = String(error?.message || error || "云端请求失败。");
+  if (message.includes("Invalid login credentials")) return "邮箱或密码不匹配。";
+  if (message.includes("Email not confirmed")) return "这个账号还没有完成邮箱确认。若你想免确认登录，请在 Supabase Auth 设置里关闭邮箱确认。";
+  if (message.includes("User already registered") || message.includes("already registered")) return "这个邮箱已经注册，直接登录就行。";
+  if (message.includes("Failed to fetch") || message.includes("NetworkError")) return "网络连接失败，请确认手机能访问 Supabase。";
+  if (message.includes("JWT") || message.includes("token")) return "登录状态已过期，请重新登录。";
+  return message;
+}
+
+function isNetworkError(error) {
+  const message = String(error?.message || error || "");
+  return !networkOnline || message.includes("Failed to fetch") || message.includes("NetworkError");
 }
 
 function escapeHtml(value) {
