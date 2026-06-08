@@ -43,15 +43,15 @@ if (!styles.includes("grid-template-columns: repeat(3, minmax(0, 1fr))") || !sty
   throw new Error("Mobile choice grids should not let hidden inputs create horizontal overflow.");
 }
 
-if (!serviceWorker.includes("healthy-pro-mvp-v11") || serviceWorker.includes("ignoreSearch: true")) {
+if (!serviceWorker.includes("healthy-pro-mvp-v12") || serviceWorker.includes("ignoreSearch: true")) {
   throw new Error("Service worker should use the current cache version and handle cache-busted app assets.");
 }
 
-if (!serviceWorker.includes("/src/styles.css?v=supabase-pwa-v1") || !serviceWorker.includes("/src/app.js?v=supabase-cloud-v1")) {
+if (!serviceWorker.includes("/src/styles.css?v=supabase-pwa-v1") || !serviceWorker.includes("/src/app.js?v=profile-cleanup-v1")) {
   throw new Error("Service worker should cache versioned app shell assets by full URL.");
 }
 
-if (!serviceWorker.includes("/src/cloud.js?v=supabase-v1") || !serviceWorker.includes("/src/runtime-config.js?v=supabase-v1")) {
+if (!serviceWorker.includes("/src/cloud.js?v=profile-cleanup-v1") || !serviceWorker.includes("/src/runtime-config.js?v=supabase-v1")) {
   throw new Error("Service worker should cache cloud data modules for the PWA shell.");
 }
 

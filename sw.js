@@ -1,9 +1,9 @@
-const CACHE_NAME = "healthy-pro-mvp-v11";
+const CACHE_NAME = "healthy-pro-mvp-v12";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
-  "/src/app.js?v=supabase-cloud-v1",
-  "/src/cloud.js?v=supabase-v1",
+  "/src/app.js?v=profile-cleanup-v1",
+  "/src/cloud.js?v=profile-cleanup-v1",
   "/src/coach.js?v=model-v2",
   "/src/runtime-config.js?v=supabase-v1",
   "/src/styles.css?v=supabase-pwa-v1",
