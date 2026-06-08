@@ -12,7 +12,7 @@ import {
   getWorkoutDuration,
   validateAssessment,
   VISIBLE_EQUIPMENT_IDS
-} from "./coach.js?v=model-v2";
+} from "./coach.js?v=__HEALTHY_PRO_BUILD_VERSION__";
 import {
   clearCloudSession,
   getActiveCloudSession,
@@ -26,7 +26,7 @@ import {
   signInCloud,
   signOutCloud,
   signUpCloud
-} from "./cloud.js?v=profile-cleanup-v1";
+} from "./cloud.js?v=__HEALTHY_PRO_BUILD_VERSION__";
 
 const STORAGE_KEY = "healthy-pro-store-v3";
 const INSTALL_DISMISSED_KEY = "healthy-pro-install-dismissed-v1";

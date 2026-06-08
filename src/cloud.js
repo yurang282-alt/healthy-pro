@@ -1,4 +1,4 @@
-import { RUNTIME_CONFIG } from "./runtime-config.js?v=supabase-v1";
+import { RUNTIME_CONFIG } from "./runtime-config.js?v=__HEALTHY_PRO_BUILD_VERSION__";
 
 const CLOUD_SESSION_KEY = "healthy-pro-cloud-session-v1";
 

@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Healthy Pro">
-  <rect width="128" height="128" rx="26" fill="#111827"/>
-  <path d="M32 74h12V54H32v20Zm52 0h12V54H84v20ZM48 68h32v-8H48v8Zm-28 2h8V58h-8v12Zm80 0h8V58h-8v12Z" fill="#f9fafb"/>
-  <path d="M37 92c7-12 16-18 27-18s20 6 27 18" fill="none" stroke="#5dd6a5" stroke-width="8" stroke-linecap="round"/>
+  <rect width="128" height="128" rx="28" fill="#101820"/>
+  <circle cx="64" cy="64" r="43" fill="#16382d"/>
+  <path d="M30 57h10v-9h12v9h24v-9h12v9h10v14H88v9H76v-9H52v9H40v-9H30V57Z" fill="#f8fafc"/>
+  <path d="M43 84c6 10 14 15 21 15s15-5 21-15" fill="none" stroke="#66e3ad" stroke-width="8" stroke-linecap="round"/>
 </svg>
