@@ -92,6 +92,10 @@ if (!appSource.includes("signInCloud") || !appSource.includes("renderStatusBanne
   throw new Error("App should include Supabase auth hooks, sync status, and PWA install handling.");
 }
 
+if (!appSource.includes("renderWeeklyTrainingTrend") || !appSource.includes("renderLeaderboardPreview") || !appSource.includes("getProfileInsights")) {
+  throw new Error("Profile page should show record insights, trends, and a reserved leaderboard surface.");
+}
+
 if (!cloudSource.includes("/auth/v1") || !cloudSource.includes("/token?grant_type=password") || !cloudSource.includes("/rest/v1")) {
   throw new Error("Cloud data layer should use Supabase Auth and REST APIs.");
 }
