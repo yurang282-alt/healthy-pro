@@ -13,8 +13,8 @@ export function isCloudConfigured() {
 
 export function getCloudConfigStatus() {
   return isCloudConfigured()
-    ? { ready: true, label: "云端 Supabase" }
-    : { ready: false, label: "本地模式", detail: "还没有配置 Supabase URL 和 anon key。" };
+    ? { ready: true, label: "云端保存" }
+    : { ready: false, label: "本地模式", detail: "还没有连接云端保存服务。" };
 }
 
 export function getStoredCloudSession() {
@@ -314,6 +314,6 @@ function cleanUrl(value) {
 
 function assertCloudConfigured() {
   if (!isCloudConfigured()) {
-    throw new Error("Supabase 还没有配置。");
+    throw new Error("云端保存还没有配置。");
   }
 }

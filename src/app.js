@@ -239,7 +239,7 @@ function setSyncState(status, message) {
 function createInitialSyncState() {
   const configStatus = getCloudConfigStatus();
   if (!configStatus.ready || isDemoMode) {
-    return { status: "local", message: isDemoMode ? "演示模式，本机临时数据。" : "本地模式，未连接 Supabase。" };
+    return { status: "local", message: isDemoMode ? "演示模式，本机临时数据。" : "本地模式，未连接云端保存。" };
   }
   if (!networkOnline) return { status: "offline", message: "离线，可查看已缓存数据。" };
   return { status: "idle", message: "准备连接云端。" };
@@ -316,7 +316,7 @@ async function handleCloudAuth(email, password) {
     if (authMode === "register") {
       const result = await signUpCloud(email, password);
       if (!result.session) {
-        notice = "账号已创建。如果 Supabase 开启了邮箱确认，请先确认邮件；如果想免验证码，请在 Supabase Auth 设置里关闭邮箱确认。";
+        notice = "账号已创建。如果当前要求邮箱确认，请先确认邮件；如果想免确认，可以在账号服务设置里关闭邮箱确认。";
         setSyncState("idle", "等待账号确认。");
         render();
         return;
@@ -607,7 +607,7 @@ function renderAuth() {
   const configStatus = getCloudConfigStatus();
   const cloudCopy = useCloudMode()
     ? "账号和训练数据会保存到云端，换手机或浏览器也能继续用。"
-    : "当前还没有配置 Supabase，暂时使用本地模式。";
+    : "当前还没有连接云端保存，暂时使用本地模式。";
   return `
     <main class="auth-screen">
       <section class="auth-panel">
@@ -1078,17 +1078,12 @@ function renderEquipment() {
 function renderProfile(user) {
   const latestLog = getLatest(user.logs);
   const latestBody = getLatest(user.bodyLogs);
-  const configStatus = getCloudConfigStatus();
 
   return `
     <section class="section-block">
       <p class="eyebrow">账号</p>
       <h2>${user.email}</h2>
       <div class="fact-list">
-        <div><span>数据模式</span><strong>${useCloudMode() ? configStatus.label : "本地模式"}</strong></div>
-        <div><span>同步状态</span><strong>${networkOnline ? syncState.message : "离线"}</strong></div>
-        <div><span>手机安装</span><strong>${isStandaloneApp() ? "已安装" : "可添加到主屏幕"}</strong></div>
-        <div><span>AI 约束版本</span><strong>${COACH_SPEC_VERSION}</strong></div>
         <div><span>最近训练</span><strong>${latestLog ? formatDate(latestLog.createdAt) : "未记录"}</strong></div>
         <div><span>最近身体记录</span><strong>${latestBody ? formatDate(latestBody.createdAt) : "未记录"}</strong></div>
       </div>
@@ -1514,9 +1509,9 @@ function formatDate(value) {
 function getFriendlyCloudError(error) {
   const message = String(error?.message || error || "云端请求失败。");
   if (message.includes("Invalid login credentials")) return "邮箱或密码不匹配。";
-  if (message.includes("Email not confirmed")) return "这个账号还没有完成邮箱确认。若你想免确认登录，请在 Supabase Auth 设置里关闭邮箱确认。";
+  if (message.includes("Email not confirmed")) return "这个账号还没有完成邮箱确认。若你想免确认登录，可以在账号服务设置里关闭邮箱确认。";
   if (message.includes("User already registered") || message.includes("already registered")) return "这个邮箱已经注册，直接登录就行。";
-  if (message.includes("Failed to fetch") || message.includes("NetworkError")) return "网络连接失败，请确认手机能访问 Supabase。";
+  if (message.includes("Failed to fetch") || message.includes("NetworkError")) return "网络连接失败，请确认手机能访问云端保存服务。";
   if (message.includes("JWT") || message.includes("token")) return "登录状态已过期，请重新登录。";
   return message;
 }
