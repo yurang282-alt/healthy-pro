@@ -10,6 +10,7 @@ import {
   getNextWorkout,
   getPrescription,
   getWorkoutDuration,
+  PLAN_EXERCISES,
   validateAssessment,
   VISIBLE_EQUIPMENT_IDS
 } from "./coach.js?v=__HEALTHY_PRO_BUILD_VERSION__";
@@ -97,6 +98,57 @@ app.addEventListener("click", async (event) => {
     render();
   }
 
+  if (action === "edit-plan") {
+    const user = getUser();
+    if (!user?.plan || user.plan.safetyHold) return;
+    initializePlanEditorDraft(user);
+    saveStore();
+    activeView = "plan-edit";
+    render();
+  }
+
+  if (action === "cancel-plan-edit") {
+    const user = getUser();
+    if (user?.drafts) delete user.drafts.planEditor;
+    saveStore();
+    activeView = "plan";
+    render();
+  }
+
+  if (action === "add-plan-exercise") {
+    const user = getUser();
+    const form = event.target.closest("[data-plan-editor-form]");
+    if (!user || !form) return;
+    syncPlanEditorDraftFromForm(user, form);
+    const workoutId = event.target.closest("[data-workout-id]")?.dataset.workoutId;
+    addExerciseToPlanDraft(user, workoutId, form);
+    saveStore();
+    render({ keepScroll: true });
+  }
+
+  if (action === "remove-plan-exercise") {
+    const user = getUser();
+    const form = event.target.closest("[data-plan-editor-form]");
+    if (!user || !form) return;
+    syncPlanEditorDraftFromForm(user, form);
+    const button = event.target.closest("[data-workout-id][data-exercise-index]");
+    removeExerciseFromPlanDraft(user, button?.dataset.workoutId, Number(button?.dataset.exerciseIndex));
+    saveStore();
+    render({ keepScroll: true });
+  }
+
+  if (action === "toggle-previous-plan") {
+    const user = getUser();
+    user.drafts = user.drafts || {};
+    user.drafts.showPreviousPlan = !user.drafts.showPreviousPlan;
+    saveStore();
+    render({ keepScroll: true });
+  }
+
+  if (action === "restore-original-plan") {
+    await restoreOriginalCoachPlan();
+  }
+
   if (action === "reset-assessment") {
     const user = getUser();
     if (!user) return;
@@ -157,6 +209,10 @@ app.addEventListener("submit", async (event) => {
 
   if (form.matches("[data-body-form]")) {
     await handleBodyLog(form);
+  }
+
+  if (form.matches("[data-plan-editor-form]")) {
+    await handlePlanEditor(form);
   }
 });
 
@@ -525,12 +581,64 @@ async function handleBodyLog(form) {
   render();
 }
 
+async function handlePlanEditor(form) {
+  const user = getUser();
+  if (!user?.plan || user.plan.safetyHold) return;
+  if (useCloudMode() && !ensureCloudCanWrite()) return;
+
+  syncPlanEditorDraftFromForm(user, form);
+  const draft = getPlanEditorDraft(user);
+  const previousPlan = createPlanHistorySnapshot(user.plan);
+  const originalCoachPlan = getOriginalCoachPlan(user.plan) || previousPlan;
+  const customPlan = buildCustomPlanFromDraft(user, draft, previousPlan, originalCoachPlan);
+
+  user.plan = customPlan;
+  user.drafts = {
+    ...(user.drafts || {}),
+    training: {},
+    planEditor: null,
+    showPreviousPlan: false
+  };
+
+  if (useCloudMode()) {
+    try {
+      setSyncState("syncing", "正在保存自定义计划...");
+      await persistCloudPlan(user);
+      setSyncState("synced", "自定义计划已保存到云端。");
+    } catch (error) {
+      notice = getFriendlyCloudError(error);
+      setSyncState("error", "自定义计划保存失败。");
+      render();
+      return;
+    }
+  }
+
+  saveStore();
+  selectedPlanWeek = getCurrentWeek(user.plan, user.logs || []);
+  notice = "自定义计划已保存。教练建议已更新，你可以按当前计划执行。";
+  activeView = "plan";
+  render();
+}
+
 function handleDraftChange(event) {
-  const form = event.target.closest?.("[data-training-form], [data-body-form]");
+  const form = event.target.closest?.("[data-training-form], [data-body-form], [data-plan-editor-form]");
   const user = getUser();
   if (!form || !user) return;
 
   user.drafts = user.drafts || {};
+
+  if (form.matches("[data-plan-editor-form]")) {
+    syncPlanEditorDraftFromForm(user, form);
+    if (event.target.name?.startsWith("exercise-")) {
+      render({ keepScroll: true });
+      return;
+    }
+    if (event.target.name === "customFrequency") {
+      resizePlanDraftWorkouts(user.drafts.planEditor, Number(event.target.value || 3));
+      render({ keepScroll: true });
+      return;
+    }
+  }
 
   if (form.matches("[data-training-form]") && user.plan && !user.plan.safetyHold) {
     const workout = getNextWorkout(user.plan, user.logs || []);
@@ -674,6 +782,7 @@ function renderActiveView(user) {
   if (user.plan?.safetyHold) return renderSafetyHold(user);
 
   if (activeView === "plan") return renderPlan(user);
+  if (activeView === "plan-edit") return renderPlanEditor(user);
   if (activeView === "log") return renderLog(user);
   if (activeView === "equipment") return renderEquipment();
   if (activeView === "profile") return renderProfile(user);
@@ -860,13 +969,15 @@ function renderPlan(user) {
   const currentWeek = getCurrentWeek(plan, logs);
   const week = selectedPlanWeek || currentWeek;
   const focusText = getFocusText(plan);
+  const previousPlan = getPreviousPlan(plan);
 
   return `
     <section class="section-block">
       <p class="eyebrow">计划逻辑</p>
       <h2>${plan.goal.type}</h2>
       <p class="coach-note">${plan.rationale}</p>
-      ${plan.decisionSummary ? `<p class="adjust-explainer">${plan.decisionSummary}</p>` : ""}
+      ${plan.decisionSummary && !plan.customization?.review ? `<p class="adjust-explainer">${plan.decisionSummary}</p>` : ""}
+      ${renderPlanReview(plan)}
       <div class="fact-list">
         <div><span>训练结构</span><strong>${plan.frequency.pattern}</strong></div>
         <div><span>每周频次</span><strong>${plan.frequency.sessionsPerWeek} 次/周</strong></div>
@@ -879,7 +990,14 @@ function renderPlan(user) {
         <div><span>恢复安排</span><strong>${plan.frequency.restDays}</strong></div>
         <div><span>时间分配</span><strong>${plan.duration.split}</strong></div>
       </div>
+      <div class="button-row">
+        <button class="secondary-button" type="button" data-action="edit-plan">编辑计划</button>
+        ${canRestoreOriginalPlan(plan) ? `<button class="small-button" type="button" data-action="restore-original-plan">恢复 AI 计划</button>` : ""}
+        ${previousPlan ? `<button class="small-button" type="button" data-action="toggle-previous-plan">${user.drafts?.showPreviousPlan ? "收起上一版" : "查看上一版"}</button>` : ""}
+      </div>
     </section>
+
+    ${user.drafts?.showPreviousPlan && previousPlan ? renderPreviousPlan(previousPlan) : ""}
 
     <section class="section-block">
       <div class="section-head">
@@ -908,6 +1026,109 @@ function renderPlan(user) {
         ${plan.workouts.map((workout) => renderWorkoutCard(workout, week, user)).join("")}
       </div>
     </section>
+  `;
+}
+
+function renderPlanEditor(user) {
+  const draft = getPlanEditorDraft(user);
+  const review = reviewCustomPlanDraft(user, draft);
+
+  return `
+    <form class="stack" data-plan-editor-form>
+      <section class="section-block">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">自定义计划</p>
+            <h2>基于 AI 计划微调</h2>
+          </div>
+          <button class="small-button subtle" type="button" data-action="cancel-plan-edit">取消</button>
+        </div>
+        <p class="muted">只能从现有动作库替换或增加动作。保存后会生成新版本，原始 AI 计划仍可恢复。</p>
+        ${renderPlanReview({ customization: { review } })}
+        <label>
+          每周训练频次
+          <select name="customFrequency">
+            ${[2, 3, 4].map((count) => `<option value="${count}" ${Number(draft.frequency?.sessionsPerWeek || draft.workouts.length) === count ? "selected" : ""}>每周 ${count} 次</option>`).join("")}
+          </select>
+        </label>
+      </section>
+
+      ${draft.workouts.map((workout, workoutIndex) => renderPlanEditorWorkout(workout, workoutIndex)).join("")}
+
+      <section class="section-block">
+        <button class="primary-button" type="submit">保存为当前执行计划</button>
+        <button class="link-button" type="button" data-action="cancel-plan-edit">放弃修改</button>
+      </section>
+    </form>
+  `;
+}
+
+function renderPlanEditorWorkout(workout, workoutIndex) {
+  return `
+    <section class="section-block plan-editor-workout" data-workout-id="${escapeAttr(workout.id)}">
+      <p class="eyebrow">训练日 ${workoutIndex + 1}</p>
+      <label>
+        训练日主题
+        <input name="workoutTitle-${escapeAttr(workout.id)}" value="${escapeAttr(workout.title)}" maxlength="18" />
+      </label>
+      <label>
+        本日重点说明
+        <textarea name="workoutFocus-${escapeAttr(workout.id)}" rows="2" maxlength="80">${escapeHtml(workout.focus || "")}</textarea>
+      </label>
+      <div class="plan-edit-list">
+        ${workout.exercises.map((exercise, exerciseIndex) => renderPlanEditorExercise(workout, exercise, exerciseIndex)).join("")}
+      </div>
+      <div class="add-exercise-row">
+        <label>
+          增加动作
+          <select name="addExercise-${escapeAttr(workout.id)}">
+            ${renderExerciseOptions("")}
+          </select>
+        </label>
+        <button class="small-button" type="button" data-action="add-plan-exercise">增加</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderPlanEditorExercise(workout, exercise, exerciseIndex) {
+  const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
+  const id = `${workout.id}-${exerciseIndex}`;
+  const targetFields = exercise.type === "cardio"
+    ? `
+      <label>
+        目标时长
+        <input name="target-${escapeAttr(id)}" value="${escapeAttr(exercise.target || exercise.reps || "")}" maxlength="20" />
+      </label>
+    `
+    : `
+      <label>
+        组数
+        <input name="sets-${escapeAttr(id)}" type="number" min="1" max="6" step="1" inputmode="numeric" value="${Number(exercise.baseSets || 1)}" />
+      </label>
+      <label>
+        次数
+        <input name="reps-${escapeAttr(id)}" value="${escapeAttr(exercise.reps || "10-12 次")}" maxlength="20" />
+      </label>
+    `;
+
+  return `
+    <article class="plan-edit-exercise" data-workout-id="${escapeAttr(workout.id)}" data-exercise-index="${exerciseIndex}">
+      <img class="thumb" src="${escapeAttr(equipment?.imageSrc || "/public/assets/equipment/dumbbell-rack.png")}" alt="" aria-hidden="true" />
+      <div class="plan-edit-fields">
+        <label>
+          动作
+          <select name="exercise-${escapeAttr(id)}">
+            ${renderExerciseOptions(getBaseExerciseId(exercise))}
+          </select>
+        </label>
+        <div class="form-grid two">
+          ${targetFields}
+        </div>
+        <p class="field-help">${equipment?.name || "训练器械"} · ${exercise.type === "cardio" ? "有氧/热身" : "力量动作"}</p>
+      </div>
+      <button class="small-button subtle" type="button" data-action="remove-plan-exercise" data-workout-id="${escapeAttr(workout.id)}" data-exercise-index="${exerciseIndex}">删除</button>
+    </article>
   `;
 }
 
@@ -1031,6 +1252,57 @@ function renderTrainingHistory(logs = []) {
         `
         : `<p class="empty-note">还没有历史训练。保存一次训练后，会按时间倒序显示在这里。</p>`}
     </section>
+  `;
+}
+
+function renderPlanReview(plan) {
+  const review = plan.customization?.review;
+  if (!review) return "";
+  const warnings = review.warnings || [];
+  const suggestions = review.suggestions || [];
+  const positives = review.positives || [];
+  const items = [...warnings, ...suggestions, ...positives].slice(0, 5);
+
+  return `
+    <div class="plan-review ${warnings.length ? "warning" : "ok"}">
+      <strong>教练建议</strong>
+      <p>${escapeHtml(review.summary || "这个计划可以执行，按记录继续观察。")}</p>
+      ${items.length ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+    </div>
+  `;
+}
+
+function renderPreviousPlan(plan) {
+  return `
+    <section class="section-block">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">上一版计划</p>
+          <h2>${plan.customization?.label || formatDate(plan.createdAt || new Date())}</h2>
+        </div>
+        <span class="pill">${plan.frequency?.sessionsPerWeek || plan.workouts?.length || 0} 次/周</span>
+      </div>
+      <div class="workout-stack compact">
+        ${(plan.workouts || []).map((workout) => `
+          <article class="history-card">
+            <strong>${escapeHtml(workout.title)}</strong>
+            <p>${escapeHtml(workout.focus || "")}</p>
+            <p>${(workout.exercises || []).map((exercise) => escapeHtml(exercise.name)).join("、")}</p>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderExerciseOptions(selectedId) {
+  return `
+    <option value="">选择动作</option>
+    ${PLAN_EXERCISES.map((exercise) => {
+      const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
+      const label = `${exercise.name} · ${equipment?.name || "器械"}`;
+      return `<option value="${escapeAttr(exercise.id)}" ${exercise.id === selectedId ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    }).join("")}
   `;
 }
 
@@ -1184,8 +1456,8 @@ function renderNav() {
 
   return `
     <nav class="bottom-nav" aria-label="主导航">
-      ${items.map(([view, label]) => `
-        <button class="${activeView === view ? "active" : ""}" type="button" data-action="nav" data-view="${view}">
+        ${items.map(([view, label]) => `
+        <button class="${activeView === view || (activeView === "plan-edit" && view === "plan") ? "active" : ""}" type="button" data-action="nav" data-view="${view}">
           ${label}
         </button>
       `).join("")}
@@ -1199,6 +1471,7 @@ function getHeaderTitle(user, needsAssessment) {
   const titles = {
     home: "今日训练",
     plan: "训练计划",
+    "plan-edit": "编辑计划",
     log: "训练记录",
     equipment: "器械图示",
     profile: "我的数据"
@@ -1245,6 +1518,422 @@ function renderFeelingChoices(name, selected = 3) {
       `).join("")}
     </div>
   `;
+}
+
+function initializePlanEditorDraft(user) {
+  user.drafts = user.drafts || {};
+  user.drafts.planEditor = createEditablePlanDraft(user.plan);
+}
+
+function getPlanEditorDraft(user) {
+  user.drafts = user.drafts || {};
+  if (!user.drafts.planEditor || user.drafts.planEditor.planId !== user.plan?.id) {
+    initializePlanEditorDraft(user);
+  }
+  return user.drafts.planEditor;
+}
+
+function createEditablePlanDraft(plan) {
+  const workouts = (plan.workouts || []).map((workout, index) => ({
+    id: workout.id || `workout-${index + 1}`,
+    title: workout.title || `训练日 ${index + 1}`,
+    focus: workout.focus || "围绕当前目标安排训练",
+    exercises: normalizeExerciseInstances(workout.exercises || [])
+  }));
+
+  return {
+    planId: plan.id,
+    frequency: {
+      sessionsPerWeek: Math.max(2, Math.min(4, Number(plan.frequency?.sessionsPerWeek || workouts.length || 3)))
+    },
+    workouts
+  };
+}
+
+function syncPlanEditorDraftFromForm(user, form) {
+  const draft = getPlanEditorDraft(user);
+  draft.frequency = {
+    ...(draft.frequency || {}),
+    sessionsPerWeek: Math.max(2, Math.min(4, Number(form.elements.customFrequency?.value || draft.workouts.length || 3)))
+  };
+
+  draft.workouts = draft.workouts.map((workout) => {
+    const title = String(form.elements[`workoutTitle-${workout.id}`]?.value || workout.title || "").trim() || workout.title;
+    const focus = String(form.elements[`workoutFocus-${workout.id}`]?.value || workout.focus || "").trim() || workout.focus;
+    const exercises = workout.exercises.map((exercise, index) => {
+      const fieldId = `${workout.id}-${index}`;
+      const selectedId = form.elements[`exercise-${fieldId}`]?.value || getBaseExerciseId(exercise);
+      const baseExercise = createExerciseFromLibrary(selectedId) || { ...exercise };
+      const nextExercise = {
+        ...baseExercise,
+        sourceExerciseId: getBaseExerciseId(baseExercise)
+      };
+
+      if (nextExercise.type === "cardio") {
+        nextExercise.target = String(form.elements[`target-${fieldId}`]?.value || nextExercise.target || "").trim() || nextExercise.target;
+      } else {
+        nextExercise.baseSets = Math.max(1, Math.min(6, Number(form.elements[`sets-${fieldId}`]?.value || nextExercise.baseSets || 1)));
+        nextExercise.reps = String(form.elements[`reps-${fieldId}`]?.value || nextExercise.reps || "").trim() || nextExercise.reps;
+      }
+
+      return nextExercise;
+    });
+
+    return {
+      ...workout,
+      title,
+      focus,
+      exercises: normalizeExerciseInstances(exercises)
+    };
+  });
+
+  resizePlanDraftWorkouts(draft, draft.frequency.sessionsPerWeek);
+}
+
+function addExerciseToPlanDraft(user, workoutId, form) {
+  const draft = getPlanEditorDraft(user);
+  const workout = draft.workouts.find((item) => item.id === workoutId);
+  if (!workout) return;
+  const selectedId = form.elements[`addExercise-${workoutId}`]?.value;
+  const exercise = createExerciseFromLibrary(selectedId);
+  if (!exercise) {
+    notice = "先选择一个要增加的动作。";
+    return;
+  }
+  workout.exercises = normalizeExerciseInstances([...(workout.exercises || []), exercise]);
+  notice = "";
+}
+
+function removeExerciseFromPlanDraft(user, workoutId, exerciseIndex) {
+  const draft = getPlanEditorDraft(user);
+  const workout = draft.workouts.find((item) => item.id === workoutId);
+  if (!workout || !Number.isInteger(exerciseIndex)) return;
+  if ((workout.exercises || []).length <= 1) {
+    notice = "每个训练日至少保留一个动作。";
+    return;
+  }
+  workout.exercises = workout.exercises.filter((_, index) => index !== exerciseIndex);
+  notice = "";
+}
+
+function resizePlanDraftWorkouts(draft, requestedCount) {
+  const count = Math.max(2, Math.min(4, Number(requestedCount || 3)));
+  draft.frequency = { ...(draft.frequency || {}), sessionsPerWeek: count };
+  draft.workouts = draft.workouts || [];
+
+  while (draft.workouts.length < count) {
+    const source = draft.workouts[draft.workouts.length % Math.max(1, draft.workouts.length)] || createFallbackWorkoutDraft();
+    const nextIndex = draft.workouts.length + 1;
+    draft.workouts.push({
+      ...cloneData(source),
+      id: createId("custom_workout"),
+      title: `自定义训练日 ${nextIndex}`,
+      focus: "从已有训练日复制而来，请确认主题、动作和恢复安排。"
+    });
+  }
+
+  if (draft.workouts.length > count) {
+    draft.workouts = draft.workouts.slice(0, count);
+  }
+}
+
+function createFallbackWorkoutDraft() {
+  return {
+    id: createId("custom_workout"),
+    title: "自定义训练日",
+    focus: "从动作库添加动作，保存前查看教练建议。",
+    exercises: normalizeExerciseInstances([createExerciseFromLibrary("treadmill-warmup-short") || PLAN_EXERCISES[0]])
+  };
+}
+
+function buildCustomPlanFromDraft(user, draft, previousPlan, originalCoachPlan) {
+  const plan = cloneData(user.plan);
+  const workouts = draft.workouts.map((workout) => ({
+    ...workout,
+    exercises: normalizeExerciseInstances(workout.exercises || [])
+  }));
+  const review = reviewCustomPlanDraft(user, { ...draft, workouts });
+  const history = [previousPlan, ...getPlanHistory(user.plan)].filter(Boolean).slice(0, 5);
+  const sessionsPerWeek = Math.max(2, Math.min(4, Number(draft.frequency?.sessionsPerWeek || workouts.length || 3)));
+  const duration = getCustomPlanDuration(workouts, plan.weeks, user.assessment);
+
+  return {
+    ...plan,
+    id: createId("plan"),
+    createdAt: new Date().toISOString(),
+    workouts,
+    frequency: {
+      ...(plan.frequency || {}),
+      sessionsPerWeek,
+      pattern: workouts.map((workout) => workout.title).join(" / "),
+      restDays: sessionsPerWeek >= 4 ? "连续两天训练后至少安排 1 天轻松或休息" : "两次力量训练之间尽量间隔 1 天"
+    },
+    duration: {
+      ...(plan.duration || {}),
+      ...duration
+    },
+    rationale: `${trimSentence(plan.goal?.priority || "基于当前目标继续训练")}。你已在教练计划基础上做了自定义调整，执行前重点看下方教练建议。`,
+    decisionSummary: review.summary,
+    customization: {
+      mode: "custom",
+      updatedAt: new Date().toISOString(),
+      label: `自定义计划 · ${formatDate(new Date())}`,
+      originalCoachPlan,
+      previousPlans: history,
+      review
+    }
+  };
+}
+
+async function restoreOriginalCoachPlan() {
+  const user = getUser();
+  if (!user?.plan) return;
+  const original = getOriginalCoachPlan(user.plan);
+  if (!original) {
+    notice = "当前计划已经是 AI 原始计划。";
+    render({ keepScroll: true });
+    return;
+  }
+  if (useCloudMode() && !ensureCloudCanWrite()) return;
+
+  const previousPlan = createPlanHistorySnapshot(user.plan);
+  const restoredPlan = {
+    ...cloneData(original),
+    id: createId("plan"),
+    createdAt: new Date().toISOString(),
+    customization: {
+      mode: "coach-restored",
+      updatedAt: new Date().toISOString(),
+      label: `恢复 AI 计划 · ${formatDate(new Date())}`,
+      originalCoachPlan: cloneData(original),
+      previousPlans: [previousPlan, ...getPlanHistory(user.plan)].filter(Boolean).slice(0, 5),
+      review: {
+        level: "ok",
+        summary: "已恢复到 AI 原始计划。建议先按这个版本完成 1-2 次训练，再根据记录微调。",
+        warnings: [],
+        suggestions: ["如果你要继续自定义，可以再次进入编辑计划。"],
+        positives: ["原始计划仍然保留了基础评估里的目标、频次和单次时长。"]
+      }
+    }
+  };
+
+  user.plan = restoredPlan;
+  user.drafts = { ...(user.drafts || {}), training: {}, planEditor: null, showPreviousPlan: false };
+
+  if (useCloudMode()) {
+    try {
+      setSyncState("syncing", "正在恢复 AI 计划...");
+      await persistCloudPlan(user);
+      setSyncState("synced", "AI 计划已恢复到云端。");
+    } catch (error) {
+      notice = getFriendlyCloudError(error);
+      setSyncState("error", "恢复计划失败。");
+      render();
+      return;
+    }
+  }
+
+  saveStore();
+  notice = "已恢复 AI 原始计划。";
+  activeView = "plan";
+  render();
+}
+
+function reviewCustomPlanDraft(user, draft) {
+  const warnings = [];
+  const suggestions = [];
+  const positives = [];
+  const budget = Number(user.assessment?.sessionBudget || draft.duration?.budget || 60);
+  const maxFrequency = getAssessmentFrequencyCap(user.assessment);
+  const workouts = draft.workouts || [];
+  const areaSets = {};
+  let totalCardio = 0;
+  let totalStrength = 0;
+
+  if (workouts.length > maxFrequency) {
+    warnings.push(`你评估里选择的每周上限更接近 ${maxFrequency} 次，现在改成 ${workouts.length} 次，注意恢复。`);
+  }
+
+  workouts.forEach((workout, index) => {
+    const duration = getWorkoutDuration(workout, 2, user.plan?.weeks);
+    const strengthExercises = (workout.exercises || []).filter((exercise) => exercise.type !== "cardio");
+    const cardioExercises = (workout.exercises || []).filter((exercise) => exercise.type === "cardio");
+    totalCardio += cardioExercises.length;
+    totalStrength += strengthExercises.length;
+
+    if (duration.max > budget) {
+      warnings.push(`${workout.title || `训练日 ${index + 1}`} 预计 ${duration.label}，可能超过你单次 ${budget} 分钟上限。`);
+    }
+    if (strengthExercises.length > 6) {
+      warnings.push(`${workout.title || `训练日 ${index + 1}`} 力量动作偏多，手机记录和实际训练都容易拖长。`);
+    }
+    if (!cardioExercises.length || workout.exercises?.[0]?.type !== "cardio") {
+      suggestions.push(`${workout.title || `训练日 ${index + 1}`} 建议保留 5-8 分钟热身，尤其是下肢或大重量动作前。`);
+    }
+
+    const seen = new Set();
+    for (const exercise of workout.exercises || []) {
+      const baseId = getBaseExerciseId(exercise);
+      if (seen.has(baseId)) {
+        suggestions.push(`${workout.title || `训练日 ${index + 1}`} 里重复出现了「${exercise.name}」，确认不是误加。`);
+      }
+      seen.add(baseId);
+
+      if (exercise.type !== "cardio") {
+        const area = getExerciseArea(exercise);
+        const sets = Number(exercise.baseSets || 1);
+        areaSets[area] = (areaSets[area] || 0) + sets;
+      }
+    }
+  });
+
+  for (const [area, sets] of Object.entries(areaSets)) {
+    if (sets >= 18) {
+      warnings.push(`${area} 每周约 ${sets} 组，已经接近高容量，新手或恢复一般时容易过量。`);
+    }
+    if (sets <= 2 && workouts.length >= 3 && ["胸", "背", "腿"].includes(area)) {
+      suggestions.push(`${area} 训练量偏少，如果这是重点部位，可以加 1 个动作或 1-2 组。`);
+    }
+  }
+
+  for (let index = 1; index < workouts.length; index += 1) {
+    const previousArea = getWorkoutMainArea(workouts[index - 1]);
+    const currentArea = getWorkoutMainArea(workouts[index]);
+    if (previousArea && previousArea === currentArea && currentArea !== "心肺") {
+      suggestions.push(`连续两个训练日都偏向${currentArea}，中间最好至少休息 1 天或换部位。`);
+    }
+  }
+
+  if (user.assessment?.targetPreference === "gain" && totalCardio > totalStrength) {
+    suggestions.push("你的目标偏增肌，但有氧动作比例偏高，建议有氧主要保留热身或短收尾。");
+  }
+
+  if (!warnings.length && !suggestions.length) {
+    positives.push("训练频次、单次时长和动作数量看起来都比较稳。");
+  }
+  if (workouts.length === Number(user.plan?.frequency?.sessionsPerWeek || workouts.length)) {
+    positives.push("每周频次和当前计划结构一致，执行成本较低。");
+  }
+
+  return {
+    level: warnings.length ? "warning" : "ok",
+    summary: warnings.length
+      ? "可以保存，但建议先处理下面的风险点，或训练时降低重量和组数。"
+      : "这个自定义计划整体可以执行，先用训练记录观察 1-2 周。",
+    warnings,
+    suggestions: [...new Set(suggestions)].slice(0, 5),
+    positives: positives.slice(0, 3)
+  };
+}
+
+function getCustomPlanDuration(workouts, weekRules, assessment) {
+  const durations = workouts.map((workout) => getWorkoutDuration(workout, 2, weekRules));
+  const min = Math.min(...durations.map((duration) => duration.min));
+  const max = Math.max(...durations.map((duration) => duration.max));
+  const label = `${Math.round(min / 5) * 5}-${Math.round(max / 5) * 5} 分钟`;
+  return {
+    label,
+    budget: Number(assessment?.sessionBudget || 60),
+    split: `自定义计划预计每次 ${label}，已计入热身、组间休息和换器械时间。`
+  };
+}
+
+function getAssessmentFrequencyCap(assessment = {}) {
+  const value = assessment.weeklyLimit;
+  if (value === "2") return 2;
+  if (value === "3") return 3;
+  if (value === "4") return 4;
+  return 4;
+}
+
+function getPlanHistory(plan) {
+  return Array.isArray(plan?.customization?.previousPlans) ? plan.customization.previousPlans : [];
+}
+
+function getPreviousPlan(plan) {
+  return getPlanHistory(plan)[0] || null;
+}
+
+function getOriginalCoachPlan(plan) {
+  return plan?.customization?.originalCoachPlan ? cloneData(plan.customization.originalCoachPlan) : null;
+}
+
+function canRestoreOriginalPlan(plan) {
+  return Boolean(getOriginalCoachPlan(plan) && plan.customization?.mode !== "coach-restored");
+}
+
+function createPlanHistorySnapshot(plan) {
+  const snapshot = cloneData(plan);
+  if (snapshot.customization) {
+    snapshot.customization = {
+      mode: snapshot.customization.mode,
+      updatedAt: snapshot.customization.updatedAt,
+      label: snapshot.customization.label,
+      review: snapshot.customization.review
+    };
+  }
+  return snapshot;
+}
+
+function normalizeExerciseInstances(exercises = []) {
+  const counts = {};
+  return exercises.map((exercise) => {
+    const sourceExerciseId = getBaseExerciseId(exercise);
+    const count = counts[sourceExerciseId] || 0;
+    counts[sourceExerciseId] = count + 1;
+    return {
+      ...exercise,
+      sourceExerciseId,
+      loadProfileId: sourceExerciseId,
+      id: count ? `${sourceExerciseId}-custom-${count + 1}` : sourceExerciseId
+    };
+  });
+}
+
+function createExerciseFromLibrary(exerciseId) {
+  const exercise = PLAN_EXERCISES.find((item) => item.id === exerciseId);
+  if (!exercise) return null;
+  return {
+    ...cloneData(exercise),
+    sourceExerciseId: exercise.id
+  };
+}
+
+function getBaseExerciseId(exercise) {
+  if (!exercise) return "";
+  if (PLAN_EXERCISES.some((item) => item.id === exercise.sourceExerciseId)) return exercise.sourceExerciseId;
+  if (PLAN_EXERCISES.some((item) => item.id === exercise.id)) return exercise.id;
+  const match = PLAN_EXERCISES.find((item) => item.name === exercise.name && item.equipmentId === exercise.equipmentId);
+  return match?.id || exercise.id || "";
+}
+
+function getExerciseArea(exercise) {
+  const text = `${exercise.name || ""} ${(EQUIPMENT_BY_ID[exercise.equipmentId]?.muscles || []).join(" ")}`;
+  if (/胸|推胸/.test(text)) return "胸";
+  if (/背|下拉|划船|引体/.test(text)) return "背";
+  if (/腿|蹬腿|深蹲|股四头/.test(text)) return "腿";
+  if (/臀|髋/.test(text)) return "臀";
+  if (/肩|后肩|推举/.test(text)) return "肩";
+  if (/二头|三头|手臂/.test(text)) return "手臂";
+  if (/核心|卷腹|农夫走/.test(text)) return "核心";
+  return "全身";
+}
+
+function getWorkoutMainArea(workout) {
+  const counts = {};
+  for (const exercise of workout.exercises || []) {
+    const area = exercise.type === "cardio" ? "心肺" : getExerciseArea(exercise);
+    counts[area] = (counts[area] || 0) + Number(exercise.baseSets || 1);
+  }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+}
+
+function cloneData(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function trimSentence(value) {
+  return String(value || "").trim().replace(/[。；;，,.\s]+$/, "");
 }
 
 function readFormDraft(form) {
@@ -1478,6 +2167,12 @@ function loadStore() {
 }
 
 function saveStore() {
+  if (store.cloudUser?.id) {
+    store.cloudDrafts = {
+      ...(store.cloudDrafts || {}),
+      [store.cloudUser.id]: store.cloudUser.drafts || {}
+    };
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
