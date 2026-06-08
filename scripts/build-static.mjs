@@ -15,6 +15,12 @@ for (const entry of entries) {
 
 const runtimeConfig = {
   supabaseUrl: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "",
+  supabaseKey:
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    "",
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ""
 };
 

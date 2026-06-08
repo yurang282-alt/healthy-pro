@@ -4,11 +4,11 @@ const CLOUD_SESSION_KEY = "healthy-pro-cloud-session-v1";
 
 const config = {
   supabaseUrl: cleanUrl(RUNTIME_CONFIG.supabaseUrl),
-  supabaseAnonKey: String(RUNTIME_CONFIG.supabaseAnonKey || "").trim()
+  supabaseKey: String(RUNTIME_CONFIG.supabaseKey || RUNTIME_CONFIG.supabaseAnonKey || "").trim()
 };
 
 export function isCloudConfigured() {
-  return Boolean(config.supabaseUrl && config.supabaseAnonKey);
+  return Boolean(config.supabaseUrl && config.supabaseKey);
 }
 
 export function getCloudConfigStatus() {
@@ -228,8 +228,8 @@ async function requireSession() {
 
 function getHeaders(session) {
   return {
-    apikey: config.supabaseAnonKey,
-    Authorization: session ? `Bearer ${session.accessToken}` : `Bearer ${config.supabaseAnonKey}`,
+    apikey: config.supabaseKey,
+    ...(session ? { Authorization: `Bearer ${session.accessToken}` } : {}),
     "Content-Type": "application/json"
   };
 }

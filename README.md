@@ -53,7 +53,7 @@ npm run build
 
 ```bash
 SUPABASE_URL=
-SUPABASE_ANON_KEY=
+SUPABASE_PUBLISHABLE_KEY=
 ```
 
 ## 快速演示
@@ -78,7 +78,7 @@ http://127.0.0.1:5173?demo=focus&view=equipment
 
 ```text
 SUPABASE_URL
-SUPABASE_ANON_KEY
+SUPABASE_PUBLISHABLE_KEY
 ```
 
 4. 重新部署 Vercel。配置缺失时 App 会退回本地模式，方便开发预览。
