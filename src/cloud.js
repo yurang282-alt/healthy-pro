@@ -101,6 +101,131 @@ export async function loadCloudUser() {
   };
 }
 
+export async function loadCloudSocial() {
+  const session = await requireSession();
+  try {
+    const friendProfile = await ensureFriendProfile(session);
+    const friendships = await loadFriendships(session.user.id);
+    const friendIds = [...new Set(friendships.map((row) => row.requester_id === session.user.id ? row.addressee_id : row.requester_id))];
+    const friendProfiles = await loadFriendProfiles(friendIds);
+    const profileById = Object.fromEntries([friendProfile, ...friendProfiles].filter(Boolean).map((profile) => [profile.user_id, profile]));
+
+    return {
+      schemaReady: true,
+      friendProfile: fromFriendProfileRow(friendProfile),
+      friendships: friendships.map((row) => fromFriendshipRow(row, session.user.id, profileById)),
+      leaderboard: buildLeaderboard(friendProfile, friendProfiles, friendships, session.user.id)
+    };
+  } catch (error) {
+    if (isMissingSocialSchema(error)) {
+      return {
+        schemaReady: false,
+        message: "好友功能需要先更新 Supabase 表结构。"
+      };
+    }
+    throw error;
+  }
+}
+
+export async function saveCloudFriendProfile(settings) {
+  const session = await requireSession();
+  await ensureFriendProfile(session);
+  const body = {
+    nickname: settings.nickname,
+    share_leaderboard: Boolean(settings.shareLeaderboard),
+    share_weekly_summary: Boolean(settings.shareWeeklySummary),
+    updated_at: new Date().toISOString()
+  };
+  if (settings.summary) Object.assign(body, toFriendSummaryRow(settings.summary));
+
+  const rows = await restRequest(`/friend_profiles?user_id=eq.${session.user.id}`, {
+    method: "PATCH",
+    body,
+    prefer: "return=representation"
+  });
+  return fromFriendProfileRow(rows[0]);
+}
+
+export async function saveCloudFriendSummary(summary) {
+  const session = await requireSession();
+  try {
+    await ensureFriendProfile(session);
+    await restRequest(`/friend_profiles?user_id=eq.${session.user.id}`, {
+      method: "PATCH",
+      body: {
+        ...toFriendSummaryRow(summary),
+        updated_at: new Date().toISOString()
+      }
+    });
+    return true;
+  } catch (error) {
+    if (isMissingSocialSchema(error)) return false;
+    throw error;
+  }
+}
+
+export async function addCloudFriend(friendCode) {
+  const session = await requireSession();
+  const code = normalizeFriendCode(friendCode);
+  if (!code) throw new Error("请输入好友码。");
+  await ensureFriendProfile(session);
+  const matches = await restRequest(`/friend_profiles?select=*&friend_code=eq.${code}&limit=1`);
+  const target = matches[0];
+  if (!target) throw new Error("没有找到这个好友码。");
+  if (target.user_id === session.user.id) throw new Error("不能添加自己。");
+
+  try {
+    const rows = await restRequest("/friendships", {
+      method: "POST",
+      body: {
+        requester_id: session.user.id,
+        addressee_id: target.user_id,
+        status: "pending"
+      },
+      prefer: "return=representation"
+    });
+    return rows[0];
+  } catch (error) {
+    if (String(error?.message || "").includes("duplicate")) throw new Error("你们已经有好友关系或待确认请求。");
+    throw error;
+  }
+}
+
+export async function respondCloudFriendship(friendshipId, status) {
+  const cleanStatus = status === "accepted" ? "accepted" : "declined";
+  const rows = await restRequest(`/friendships?id=eq.${friendshipId}`, {
+    method: "PATCH",
+    body: {
+      status: cleanStatus,
+      updated_at: new Date().toISOString()
+    },
+    prefer: "return=representation"
+  });
+  return rows[0];
+}
+
+export async function deleteCloudFriendship(friendshipId) {
+  await restRequest(`/friendships?id=eq.${friendshipId}`, {
+    method: "DELETE"
+  });
+}
+
+export async function saveCloudFeedback(feedback) {
+  const session = await requireSession();
+  const rows = await restRequest("/feedback", {
+    method: "POST",
+    body: {
+      user_id: session.user.id,
+      rating: feedback.rating,
+      category: feedback.category,
+      page: feedback.page || null,
+      message: feedback.message
+    },
+    prefer: "return=representation"
+  });
+  return rows[0];
+}
+
 export async function saveCloudAssessment(assessment) {
   const session = await requireSession();
   const rows = await restRequest("/assessments", {
@@ -186,6 +311,31 @@ async function ensureProfile(session) {
     },
     prefer: "resolution=merge-duplicates"
   });
+}
+
+async function ensureFriendProfile(session) {
+  const existing = await restRequest(`/friend_profiles?select=*&user_id=eq.${session.user.id}&limit=1`);
+  if (existing[0]) return existing[0];
+
+  const rows = await restRequest("/friend_profiles", {
+    method: "POST",
+    body: {
+      user_id: session.user.id,
+      nickname: getDefaultNickname(session.user.email),
+      friend_code: createFriendCode()
+    },
+    prefer: "return=representation"
+  });
+  return rows[0];
+}
+
+async function loadFriendships(userId) {
+  return restRequest(`/friendships?select=*&or=(requester_id.eq.${userId},addressee_id.eq.${userId})&order=created_at.desc`);
+}
+
+async function loadFriendProfiles(userIds) {
+  if (!userIds.length) return [];
+  return restRequest(`/friend_profiles?select=*&user_id=in.(${userIds.join(",")})`);
 }
 
 async function authRequest(path, body) {
@@ -306,6 +456,102 @@ function fromBodyLogRow(row) {
     sleep: row.sleep_hours === null ? null : Number(row.sleep_hours),
     note: row.note || ""
   };
+}
+
+function fromFriendProfileRow(row) {
+  return {
+    userId: row.user_id,
+    nickname: row.nickname,
+    friendCode: row.friend_code,
+    shareLeaderboard: Boolean(row.share_leaderboard),
+    shareWeeklySummary: Boolean(row.share_weekly_summary),
+    currentWeekCount: Number(row.current_week_count || 0),
+    currentWeekCompleted: Number(row.current_week_completed || 0),
+    currentWeekCompletionRate: Number(row.current_week_completion_rate || 0),
+    streakWeeks: Number(row.streak_weeks || 0),
+    latestTrainingAt: row.latest_training_at || null,
+    updatedAt: row.updated_at || row.created_at
+  };
+}
+
+function fromFriendshipRow(row, currentUserId, profileById = {}) {
+  const friendId = row.requester_id === currentUserId ? row.addressee_id : row.requester_id;
+  const profile = profileById[friendId] || {};
+  return {
+    id: row.id,
+    status: row.status,
+    requesterId: row.requester_id,
+    addresseeId: row.addressee_id,
+    friendId,
+    direction: row.requester_id === currentUserId ? "outgoing" : "incoming",
+    nickname: profile.nickname || "训练伙伴",
+    friendCode: profile.friend_code || "",
+    shareLeaderboard: Boolean(profile.share_leaderboard),
+    shareWeeklySummary: Boolean(profile.share_weekly_summary),
+    currentWeekCount: Number(profile.current_week_count || 0),
+    currentWeekCompletionRate: Number(profile.current_week_completion_rate || 0),
+    streakWeeks: Number(profile.streak_weeks || 0),
+    createdAt: row.created_at
+  };
+}
+
+function buildLeaderboard(ownProfile, friendProfiles, friendships, currentUserId) {
+  const acceptedIds = new Set(friendships
+    .filter((row) => row.status === "accepted")
+    .map((row) => row.requester_id === currentUserId ? row.addressee_id : row.requester_id));
+  return [ownProfile, ...friendProfiles]
+    .filter((profile) => profile && (profile.user_id === currentUserId || acceptedIds.has(profile.user_id)))
+    .filter((profile) => profile.share_leaderboard || profile.user_id === currentUserId)
+    .map((profile) => ({
+      userId: profile.user_id,
+      nickname: profile.nickname,
+      isSelf: profile.user_id === currentUserId,
+      currentWeekCount: Number(profile.current_week_count || 0),
+      currentWeekCompletionRate: Number(profile.current_week_completion_rate || 0),
+      streakWeeks: Number(profile.streak_weeks || 0),
+      latestTrainingAt: profile.latest_training_at || null,
+      shareLeaderboard: Boolean(profile.share_leaderboard)
+    }))
+    .sort((a, b) =>
+      b.currentWeekCompletionRate - a.currentWeekCompletionRate ||
+      b.currentWeekCount - a.currentWeekCount ||
+      b.streakWeeks - a.streakWeeks
+    );
+}
+
+function toFriendSummaryRow(summary = {}) {
+  return {
+    current_week_count: Number(summary.currentWeekCount || 0),
+    current_week_completed: Number(summary.currentWeekCompleted || 0),
+    current_week_completion_rate: Number(summary.currentWeekCompletionRate || 0),
+    streak_weeks: Number(summary.streakWeeks || 0),
+    latest_training_at: summary.latestTrainingAt || null
+  };
+}
+
+function createFriendCode() {
+  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+}
+
+function normalizeFriendCode(value) {
+  return String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function getDefaultNickname(email) {
+  const prefix = String(email || "").split("@")[0] || "训练伙伴";
+  return prefix.slice(0, 12);
+}
+
+function isMissingSocialSchema(error) {
+  const message = String(error?.message || error || "");
+  return message.includes("friend_profiles") ||
+    message.includes("friendships") ||
+    message.includes("feedback") ||
+    message.includes("schema cache") ||
+    message.includes("relation") && message.includes("does not exist");
 }
 
 function cleanUrl(value) {

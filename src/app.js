@@ -15,13 +15,20 @@ import {
   VISIBLE_EQUIPMENT_IDS
 } from "./coach.js?v=__HEALTHY_PRO_BUILD_VERSION__";
 import {
+  addCloudFriend,
   clearCloudSession,
+  deleteCloudFriendship,
   getActiveCloudSession,
   getCloudConfigStatus,
   isCloudConfigured,
+  loadCloudSocial,
   loadCloudUser,
+  respondCloudFriendship,
   saveCloudAssessment,
   saveCloudBodyLog,
+  saveCloudFeedback,
+  saveCloudFriendProfile,
+  saveCloudFriendSummary,
   saveCloudPlan,
   saveCloudTrainingLog,
   signInCloud,
@@ -153,6 +160,14 @@ app.addEventListener("click", async (event) => {
     await restorePreviousPlan();
   }
 
+  if (action === "friend-accept" || action === "friend-decline") {
+    await handleFriendResponse(event, action === "friend-accept" ? "accepted" : "declined");
+  }
+
+  if (action === "friend-remove") {
+    await handleFriendRemove(event);
+  }
+
   if (action === "reset-assessment") {
     const user = getUser();
     if (!user) return;
@@ -218,6 +233,18 @@ app.addEventListener("submit", async (event) => {
   if (form.matches("[data-plan-editor-form]")) {
     await handlePlanEditor(form);
   }
+
+  if (form.matches("[data-social-profile-form]")) {
+    await handleSocialProfile(form);
+  }
+
+  if (form.matches("[data-add-friend-form]")) {
+    await handleAddFriend(form);
+  }
+
+  if (form.matches("[data-feedback-form]")) {
+    await handleFeedback(form);
+  }
 });
 
 app.addEventListener("input", handleDraftChange);
@@ -267,6 +294,7 @@ async function refreshCloudUser() {
     await persistCloudPlan(cloudUser);
   }
 
+  await syncCloudSocial(cloudUser);
   saveStore();
   return cloudUser;
 }
@@ -275,6 +303,19 @@ async function persistCloudPlan(user) {
   const planRow = await saveCloudPlan(user.assessmentRowId, user.plan);
   user.planRowId = planRow.id;
   return planRow;
+}
+
+async function syncCloudSocial(user) {
+  if (!useCloudMode() || !user) return;
+  try {
+    await saveCloudFriendSummary(getFriendSummary(user));
+    user.social = await loadCloudSocial();
+  } catch (error) {
+    user.social = {
+      schemaReady: false,
+      message: getFriendlyCloudError(error)
+    };
+  }
 }
 
 function useCloudMode() {
@@ -533,6 +574,10 @@ async function handleTrainingLog(form) {
 
   clearTrainingDraft(user, workout, week);
 
+  if (useCloudMode()) {
+    await syncCloudSocial(user);
+  }
+
   saveStore();
   notice = "训练已记录。";
   activeView = "home";
@@ -622,6 +667,148 @@ async function handlePlanEditor(form) {
   notice = "自定义计划已保存。教练建议已更新，你可以按当前计划执行。";
   activeView = "plan";
   render();
+}
+
+async function handleSocialProfile(form) {
+  const user = getUser();
+  if (!user) return;
+  if (!useCloudMode()) {
+    notice = "好友排行需要云端账号。请用线上云端账号登录后再设置。";
+    render({ keepScroll: true });
+    return;
+  }
+  if (!ensureCloudCanWrite()) return;
+
+  const formData = new FormData(form);
+  const nickname = String(formData.get("nickname") || "").trim().slice(0, 16);
+  if (!nickname) {
+    notice = "昵称不能为空。";
+    render({ keepScroll: true });
+    return;
+  }
+
+  try {
+    setSyncState("syncing", "正在保存好友设置...");
+    await saveCloudFriendProfile({
+      nickname,
+      shareLeaderboard: formData.get("shareLeaderboard") === "on",
+      shareWeeklySummary: formData.get("shareWeeklySummary") === "on",
+      summary: getFriendSummary(user)
+    });
+    user.social = await loadCloudSocial();
+    setSyncState("synced", "好友设置已保存。");
+    saveStore();
+    notice = "好友设置已保存。";
+    render({ keepScroll: true });
+  } catch (error) {
+    notice = getFriendlyCloudError(error);
+    setSyncState("error", "好友设置保存失败。");
+    render({ keepScroll: true });
+  }
+}
+
+async function handleAddFriend(form) {
+  const user = getUser();
+  if (!user) return;
+  if (!useCloudMode()) {
+    notice = "添加好友需要云端账号。";
+    render({ keepScroll: true });
+    return;
+  }
+  if (!ensureCloudCanWrite()) return;
+
+  const code = String(new FormData(form).get("friendCode") || "").trim();
+  try {
+    setSyncState("syncing", "正在发送好友请求...");
+    await addCloudFriend(code);
+    user.social = await loadCloudSocial();
+    setSyncState("synced", "好友请求已发送。");
+    saveStore();
+    notice = "好友请求已发送，等待对方确认。";
+    render({ keepScroll: true });
+  } catch (error) {
+    notice = getFriendlyCloudError(error);
+    setSyncState("error", "好友请求失败。");
+    render({ keepScroll: true });
+  }
+}
+
+async function handleFriendResponse(event, status) {
+  const user = getUser();
+  const friendshipId = event.target.closest("[data-friendship-id]")?.dataset.friendshipId;
+  if (!user || !friendshipId || !useCloudMode()) return;
+  if (!ensureCloudCanWrite()) return;
+
+  try {
+    setSyncState("syncing", status === "accepted" ? "正在确认好友..." : "正在拒绝请求...");
+    await respondCloudFriendship(friendshipId, status);
+    user.social = await loadCloudSocial();
+    setSyncState("synced", status === "accepted" ? "好友已确认。" : "好友请求已拒绝。");
+    saveStore();
+    notice = status === "accepted" ? "好友已确认。" : "已拒绝这个好友请求。";
+    render({ keepScroll: true });
+  } catch (error) {
+    notice = getFriendlyCloudError(error);
+    setSyncState("error", "好友操作失败。");
+    render({ keepScroll: true });
+  }
+}
+
+async function handleFriendRemove(event) {
+  const user = getUser();
+  const friendshipId = event.target.closest("[data-friendship-id]")?.dataset.friendshipId;
+  if (!user || !friendshipId || !useCloudMode()) return;
+  if (!ensureCloudCanWrite()) return;
+
+  try {
+    setSyncState("syncing", "正在移除好友...");
+    await deleteCloudFriendship(friendshipId);
+    user.social = await loadCloudSocial();
+    setSyncState("synced", "好友已移除。");
+    saveStore();
+    notice = "好友已移除。";
+    render({ keepScroll: true });
+  } catch (error) {
+    notice = getFriendlyCloudError(error);
+    setSyncState("error", "移除好友失败。");
+    render({ keepScroll: true });
+  }
+}
+
+async function handleFeedback(form) {
+  const user = getUser();
+  if (!user) return;
+  if (!useCloudMode()) {
+    notice = "反馈需要云端账号，这样我才能在后台看到。";
+    render({ keepScroll: true });
+    return;
+  }
+  if (!ensureCloudCanWrite()) return;
+
+  const formData = new FormData(form);
+  const message = String(formData.get("feedbackMessage") || "").trim();
+  if (message.length < 2) {
+    notice = "反馈内容至少写 2 个字。";
+    render({ keepScroll: true });
+    return;
+  }
+
+  try {
+    setSyncState("syncing", "正在提交反馈...");
+    await saveCloudFeedback({
+      rating: Number(formData.get("feedbackRating") || 5),
+      category: String(formData.get("feedbackCategory") || "other"),
+      page: activeView,
+      message
+    });
+    setSyncState("synced", "反馈已提交。");
+    notice = "反馈已提交，我会在后台看到。";
+    render({ keepScroll: true });
+  } catch (error) {
+    notice = getFriendlyCloudError(error);
+    setSyncState("error", "反馈提交失败。");
+    render({ keepScroll: true });
+  }
 }
 
 function handleDraftChange(event) {
@@ -1420,7 +1607,9 @@ function renderProfile(user) {
       </div>
     </section>
 
-    ${renderLeaderboardPreview()}
+    ${renderFriendsSection(user, insights)}
+
+    ${renderFeedbackSection()}
 
     <section class="section-block">
       <p class="eyebrow">账号与设置</p>
@@ -1431,6 +1620,199 @@ function renderProfile(user) {
         <div><span>最近身体记录</span><strong>${insights.bodyTrend.latest ? formatDate(insights.bodyTrend.latest.createdAt) : "未记录"}</strong></div>
       </div>
       <button class="secondary-button" type="button" data-action="reset-assessment">重新评估</button>
+    </section>
+  `;
+}
+
+function renderFriendsSection(user, insights) {
+  if (!useCloudMode()) {
+    return `
+      <section class="section-block">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">好友排行</p>
+            <h2>云端账号可用</h2>
+          </div>
+          <span class="pill muted-pill">未开启</span>
+        </div>
+        <p class="empty-note">好友、昵称和排行需要云端账号。朋友体验时请用线上地址注册或登录。</p>
+      </section>
+    `;
+  }
+
+  const social = user.social || {};
+  if (social.schemaReady === false) {
+    return `
+      <section class="section-block">
+        <p class="eyebrow">好友排行</p>
+        <h2>需要更新云端表结构</h2>
+        <p class="empty-note">${escapeHtml(social.message || "请先在 Supabase SQL Editor 执行最新 docs/supabase-schema.sql。")}</p>
+      </section>
+    `;
+  }
+
+  const profile = social.friendProfile || {};
+  const friendships = social.friendships || [];
+  const incoming = friendships.filter((item) => item.status === "pending" && item.direction === "incoming");
+  const outgoing = friendships.filter((item) => item.status === "pending" && item.direction === "outgoing");
+  const accepted = friendships.filter((item) => item.status === "accepted");
+
+  return `
+    <section class="section-block">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">好友排行</p>
+          <h2>本周稳定榜</h2>
+        </div>
+        <span class="pill">${social.leaderboard?.length || 0} 人</span>
+      </div>
+
+      <form class="stack social-settings" data-social-profile-form>
+        <label>
+          昵称
+          <input name="nickname" maxlength="16" value="${escapeAttr(profile.nickname || getDefaultNickname(user.email))}" />
+        </label>
+        <div class="friend-code-card">
+          <span>我的好友码</span>
+          <strong>${escapeHtml(profile.friendCode || "同步后生成")}</strong>
+          <p>发给朋友，对方输入后你确认即可成为好友。</p>
+        </div>
+        <div class="share-grid">
+          <label class="check-card">
+            <input type="checkbox" name="shareLeaderboard" ${profile.shareLeaderboard ? "checked" : ""} />
+            <span>参与好友排行</span>
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="shareWeeklySummary" ${profile.shareWeeklySummary ? "checked" : ""} />
+            <span>共享本周摘要</span>
+          </label>
+        </div>
+        <button class="secondary-button" type="submit">保存昵称和共享设置</button>
+      </form>
+
+      <form class="add-friend-form" data-add-friend-form>
+        <label>
+          添加好友
+          <input name="friendCode" maxlength="12" placeholder="输入好友码" />
+        </label>
+        <button class="small-button" type="submit">发送请求</button>
+      </form>
+
+      ${renderLeaderboard(social.leaderboard || [], profile)}
+      ${renderFriendRequests(incoming, outgoing)}
+      ${renderAcceptedFriends(accepted)}
+      <p class="empty-note">排行只展示完成率、训练次数和连续记录周数，不展示体重、体脂和训练重量。</p>
+    </section>
+  `;
+}
+
+function renderLeaderboard(leaderboard, profile) {
+  if (!leaderboard.length) {
+    return `<p class="empty-note">打开「参与好友排行」并添加好友后，这里会显示本周榜单。</p>`;
+  }
+
+  return `
+    <div class="leaderboard-preview">
+      ${leaderboard.map((item, index) => `
+        <div class="leaderboard-row ${item.isSelf ? "self" : ""}">
+          <span>${index + 1}</span>
+          <div>
+            <strong>${escapeHtml(item.nickname)}${item.isSelf ? " · 我" : ""}</strong>
+            <p>完成率 ${item.currentWeekCompletionRate}% · 本周 ${item.currentWeekCount} 次 · 连续 ${item.streakWeeks} 周</p>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+    ${profile.shareLeaderboard ? "" : `<p class="empty-note">你还没有参与排行。打开共享后，好友才能在榜单看到你的摘要。</p>`}
+  `;
+}
+
+function renderFriendRequests(incoming, outgoing) {
+  if (!incoming.length && !outgoing.length) return "";
+  return `
+    <div class="friend-list">
+      ${incoming.map((item) => `
+        <article class="friend-card" data-friendship-id="${escapeAttr(item.id)}">
+          <div>
+            <strong>${escapeHtml(item.nickname)}</strong>
+            <p>请求添加你为好友</p>
+          </div>
+          <div class="friend-actions">
+            <button class="small-button" type="button" data-action="friend-accept">确认</button>
+            <button class="small-button subtle" type="button" data-action="friend-decline">拒绝</button>
+          </div>
+        </article>
+      `).join("")}
+      ${outgoing.map((item) => `
+        <article class="friend-card">
+          <div>
+            <strong>${escapeHtml(item.nickname)}</strong>
+            <p>等待对方确认</p>
+          </div>
+          <span class="pill muted-pill">待确认</span>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderAcceptedFriends(friends) {
+  if (!friends.length) return `<p class="empty-note">还没有好友。先让朋友发你好友码，或输入朋友的好友码。</p>`;
+  return `
+    <div class="friend-list">
+      ${friends.map((item) => `
+        <article class="friend-card" data-friendship-id="${escapeAttr(item.id)}">
+          <div>
+            <strong>${escapeHtml(item.nickname)}</strong>
+            <p>${item.shareLeaderboard ? `本周 ${item.currentWeekCount} 次 · 完成率 ${item.currentWeekCompletionRate}%` : "对方未参与排行"}</p>
+          </div>
+          <button class="small-button subtle" type="button" data-action="friend-remove">移除</button>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderFeedbackSection() {
+  return `
+    <section class="section-block">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">体验反馈</p>
+          <h2>给我提意见</h2>
+        </div>
+        <span class="pill">测试期</span>
+      </div>
+      <form class="stack" data-feedback-form>
+        <div class="form-grid two">
+          <label>
+            评分
+            <select name="feedbackRating">
+              <option value="5">5 分 · 很顺</option>
+              <option value="4">4 分 · 还不错</option>
+              <option value="3">3 分 · 一般</option>
+              <option value="2">2 分 · 有点卡</option>
+              <option value="1">1 分 · 不好用</option>
+            </select>
+          </label>
+          <label>
+            类型
+            <select name="feedbackCategory">
+              <option value="confusing">看不懂</option>
+              <option value="plan">计划不合理</option>
+              <option value="equipment">器械找不到</option>
+              <option value="ux">页面不好用</option>
+              <option value="other">其他</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          反馈内容
+          <textarea name="feedbackMessage" rows="3" maxlength="500" placeholder="哪里卡住了，或者你希望增加什么"></textarea>
+        </label>
+        <button class="secondary-button" type="submit">提交反馈</button>
+      </form>
+      <p class="empty-note">反馈只有项目维护者在 Supabase 后台查看，好友之间不可见。</p>
     </section>
   `;
 }
@@ -1525,38 +1907,6 @@ function renderIntensityTrend(intensity) {
         }).join("")}
       </div>
     </div>
-  `;
-}
-
-function renderLeaderboardPreview() {
-  const rows = [
-    ["本周完成率", "按计划完成，不鼓励盲目加量"],
-    ["连续记录", "比稳定性，不比极限重量"],
-    ["训练守约", "只展示自己同意公开的数据"]
-  ];
-
-  return `
-    <section class="section-block">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">好友排行</p>
-          <h2>预留入口</h2>
-        </div>
-        <span class="pill muted-pill">未开放</span>
-      </div>
-      <div class="leaderboard-preview">
-        ${rows.map(([title, desc], index) => `
-          <div class="leaderboard-row">
-            <span>${index + 1}</span>
-            <div>
-              <strong>${title}</strong>
-              <p>${desc}</p>
-            </div>
-          </div>
-        `).join("")}
-      </div>
-      <p class="empty-note">好友功能上线前，会先确认昵称、隐私范围和排行口径。</p>
-    </section>
   `;
 }
 
@@ -2325,6 +2675,19 @@ function getProfileInsights(user) {
   };
 }
 
+function getFriendSummary(user) {
+  const logs = sortRecords(user?.logs || []);
+  const insights = getProfileInsights({ ...(user || {}), logs });
+  const latestLog = insights.latestLog;
+  return {
+    currentWeekCount: insights.thisWeekCount,
+    currentWeekCompleted: insights.thisWeekCompleted,
+    currentWeekCompletionRate: insights.weekCompletionRate,
+    streakWeeks: getCurrentTrainingWeekStreak(logs),
+    latestTrainingAt: latestLog?.createdAt || null
+  };
+}
+
 function getProfileCoachMessage({ logs, weekTarget, thisWeekCount, intensity, bodyTrend }) {
   if (!logs.length) {
     return "先完成 1-2 次训练记录，之后这里会给你判断训练频次、强度和身体变化。";
@@ -2510,6 +2873,10 @@ function formatMetric(value) {
   return Number.isInteger(number) ? String(number) : number.toFixed(1).replace(/\.0$/, "");
 }
 
+function getDefaultNickname(email) {
+  return (String(email || "").split("@")[0] || "训练伙伴").slice(0, 12);
+}
+
 function getIntensityLabel(value) {
   const labels = {
     "too-easy": "太弱",
@@ -2683,6 +3050,9 @@ function getFriendlyCloudError(error) {
   if (message.includes("User already registered") || message.includes("already registered")) return "这个邮箱已经注册，直接登录就行。";
   if (message.includes("Failed to fetch") || message.includes("NetworkError")) return "网络连接失败，请确认手机能访问云端保存服务。";
   if (message.includes("JWT") || message.includes("token")) return "登录状态已过期，请重新登录。";
+  if (message.includes("schema cache") || message.includes("friend_profiles") || message.includes("friendships") || message.includes("feedback")) {
+    return "云端表结构还没更新。请先在 Supabase SQL Editor 执行最新 docs/supabase-schema.sql。";
+  }
   return message;
 }
 
