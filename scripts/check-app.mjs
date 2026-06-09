@@ -107,11 +107,22 @@ if (!appSource.includes("data-feedback-form") || !cloudSource.includes("saveClou
   throw new Error("App should include feedback submission and friend management hooks.");
 }
 
+if (!appSource.includes("renderReleaseSection") || !appSource.includes("mark-release-read") || !cloudSource.includes("loadCloudReleases") || !cloudSource.includes("markCloudReleaseRead")) {
+  throw new Error("App should include release announcement display and read-state hooks.");
+}
+
 if (!schemaSource.includes("create table if not exists public.friend_profiles") ||
   !schemaSource.includes("create table if not exists public.friendships") ||
   !schemaSource.includes("create table if not exists public.feedback") ||
   !schemaSource.includes("Users can read friend public summaries")) {
   throw new Error("Supabase schema should include friend profiles, friendships, feedback, and RLS policies.");
+}
+
+if (!schemaSource.includes("create table if not exists public.app_releases") ||
+  !schemaSource.includes("create table if not exists public.user_release_reads") ||
+  !schemaSource.includes("Users can read published releases") ||
+  !schemaSource.includes("Users can insert own release reads")) {
+  throw new Error("Supabase schema should include app releases, release read state, and RLS policies.");
 }
 
 if (!cloudSource.includes("/auth/v1") || !cloudSource.includes("/token?grant_type=password") || !cloudSource.includes("/rest/v1")) {
