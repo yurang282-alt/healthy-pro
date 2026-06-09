@@ -1373,18 +1373,189 @@ function renderEquipment() {
 }
 
 function renderProfile(user) {
-  const latestLog = getLatest(user.logs);
-  const latestBody = getLatest(user.bodyLogs);
+  const insights = getProfileInsights(user);
+
+  return `
+    <section class="section-block profile-overview">
+      <p class="eyebrow">本周状态</p>
+      <h2>${insights.weekTitle}</h2>
+      <div class="profile-progress" aria-label="本周训练完成率">
+        <div class="progress-track">
+          <span class="progress-fill" style="width: ${escapeAttr(insights.weekCompletionRate)}%"></span>
+        </div>
+        <strong>${insights.weekCompletionRate}%</strong>
+      </div>
+      <div class="metric-grid">
+        <div><span>本周训练</span><strong>${insights.thisWeekCount}/${insights.weekTarget || "-"}</strong></div>
+        <div><span>完成动作</span><strong>${insights.thisWeekCompleted}</strong></div>
+        <div><span>最近感觉</span><strong>${insights.intensity.feelingLabel}</strong></div>
+      </div>
+      <p class="coach-note">${insights.coachMessage}</p>
+    </section>
+
+    <section class="section-block">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">趋势分析</p>
+          <h2>最近 4 周</h2>
+        </div>
+        <span class="pill">训练 + 身体</span>
+      </div>
+      ${renderWeeklyTrainingTrend(insights)}
+      ${renderBodyTrend(insights.bodyTrend)}
+      ${renderIntensityTrend(insights.intensity)}
+    </section>
+
+    <section class="section-block">
+      <p class="eyebrow">个人记录</p>
+      <h2>我的训练档案</h2>
+      <div class="record-grid">
+        ${insights.records.map((record) => `
+          <div>
+            <span>${record.label}</span>
+            <strong>${record.value}</strong>
+            <p>${record.note}</p>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+
+    ${renderLeaderboardPreview()}
+
+    <section class="section-block">
+      <p class="eyebrow">账号与设置</p>
+      <h2 class="account-email">${escapeHtml(user.email)}</h2>
+      <div class="fact-list">
+        <div><span>数据模式</span><strong>${useCloudMode() ? "云端 Supabase" : "本地浏览器"}</strong></div>
+        <div><span>最近训练</span><strong>${insights.latestLog ? formatDate(insights.latestLog.createdAt) : "未记录"}</strong></div>
+        <div><span>最近身体记录</span><strong>${insights.bodyTrend.latest ? formatDate(insights.bodyTrend.latest.createdAt) : "未记录"}</strong></div>
+      </div>
+      <button class="secondary-button" type="button" data-action="reset-assessment">重新评估</button>
+    </section>
+  `;
+}
+
+function renderWeeklyTrainingTrend(insights) {
+  const maxCount = Math.max(1, insights.weekTarget || 0, ...insights.weeklyBuckets.map((item) => item.count));
+  return `
+    <div class="trend-block">
+      <div class="trend-title">
+        <strong>训练完成趋势</strong>
+        <span>计划 ${insights.weekTarget || "-"} 次/周</span>
+      </div>
+      <div class="trend-list">
+        ${insights.weeklyBuckets.map((item) => {
+          const width = Math.min(100, Math.round((item.count / maxCount) * 100));
+          return `
+            <div class="trend-row">
+              <div class="trend-meta">
+                <span>${item.label}</span>
+                <strong>${item.count} 次 · ${item.completed} 动作</strong>
+              </div>
+              <div class="trend-track"><span class="trend-fill" style="width: ${escapeAttr(width)}%"></span></div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderBodyTrend(bodyTrend) {
+  if (!bodyTrend.latest) {
+    return `<p class="empty-note">还没有身体记录。保存体重后，这里会显示体重和体脂变化。</p>`;
+  }
+
+  return `
+    <div class="trend-block">
+      <div class="trend-title">
+        <strong>身体记录</strong>
+        <span>${formatDate(bodyTrend.latest.createdAt)}</span>
+      </div>
+      <div class="body-trend-grid">
+        <div>
+          <span>体重</span>
+          <strong>${formatMetric(bodyTrend.latest.weight)}kg</strong>
+          <p>${bodyTrend.weightDelta}</p>
+        </div>
+        <div>
+          <span>体脂</span>
+          <strong>${bodyTrend.latest.bodyFat ? `${formatMetric(bodyTrend.latest.bodyFat)}%` : "未记录"}</strong>
+          <p>${bodyTrend.bodyFatDelta}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderIntensityTrend(intensity) {
+  if (!intensity.recentCount) {
+    return `<p class="empty-note">还没有训练感觉记录。保存训练后，会分析偏轻、刚好或偏强。</p>`;
+  }
+
+  const maxCount = Math.max(1, intensity.tooEasy, intensity.right, intensity.tooHard);
+  const rows = [
+    ["太弱", intensity.tooEasy],
+    ["刚好", intensity.right],
+    ["太强", intensity.tooHard]
+  ];
+
+  return `
+    <div class="trend-block">
+      <div class="trend-title">
+        <strong>强度趋势</strong>
+        <span>近 ${intensity.recentCount} 次训练</span>
+      </div>
+      <div class="intensity-summary">
+        <div><span>平均感觉</span><strong>${intensity.feelingLabel}</strong></div>
+        <div><span>最新反馈</span><strong>${intensity.latestFeedbackLabel}</strong></div>
+      </div>
+      <div class="trend-list">
+        ${rows.map(([label, count]) => {
+          const width = Math.min(100, Math.round((count / maxCount) * 100));
+          return `
+            <div class="trend-row compact">
+              <div class="trend-meta">
+                <span>${label}</span>
+                <strong>${count} 次</strong>
+              </div>
+              <div class="trend-track"><span class="trend-fill soft" style="width: ${escapeAttr(width)}%"></span></div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderLeaderboardPreview() {
+  const rows = [
+    ["本周完成率", "按计划完成，不鼓励盲目加量"],
+    ["连续记录", "比稳定性，不比极限重量"],
+    ["训练守约", "只展示自己同意公开的数据"]
+  ];
 
   return `
     <section class="section-block">
-      <p class="eyebrow">账号</p>
-      <h2>${user.email}</h2>
-      <div class="fact-list">
-        <div><span>最近训练</span><strong>${latestLog ? formatDate(latestLog.createdAt) : "未记录"}</strong></div>
-        <div><span>最近身体记录</span><strong>${latestBody ? formatDate(latestBody.createdAt) : "未记录"}</strong></div>
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">好友排行</p>
+          <h2>预留入口</h2>
+        </div>
+        <span class="pill muted-pill">未开放</span>
       </div>
-      <button class="secondary-button" type="button" data-action="reset-assessment">重新评估</button>
+      <div class="leaderboard-preview">
+        ${rows.map(([title, desc], index) => `
+          <div class="leaderboard-row">
+            <span>${index + 1}</span>
+            <div>
+              <strong>${title}</strong>
+              <p>${desc}</p>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+      <p class="empty-note">好友功能上线前，会先确认昵称、隐私范围和排行口径。</p>
     </section>
   `;
 }
@@ -2115,6 +2286,228 @@ function getTrainingDraftKey(user, workout, week) {
 
 function getFocusText(plan) {
   return (plan.focusAreas || []).map((item) => item?.label).filter(Boolean).join("、");
+}
+
+function getProfileInsights(user) {
+  const logs = sortRecords(user.logs || []);
+  const bodyLogs = sortRecords(user.bodyLogs || []);
+  const latestLog = getLatest(logs);
+  const weekTarget = Number(user.plan?.frequency?.sessionsPerWeek || 0);
+  const now = new Date();
+  const weekStart = getStartOfLocalWeek(now);
+  const thisWeekLogs = logs.filter((log) => {
+    const createdAt = new Date(log.createdAt);
+    return createdAt >= weekStart && createdAt <= now;
+  });
+  const thisWeekCount = thisWeekLogs.length;
+  const thisWeekCompleted = thisWeekLogs.reduce((sum, log) => sum + Number(log.completedCount || 0), 0);
+  const weekCompletionRate = weekTarget ? Math.min(100, Math.round((thisWeekCount / weekTarget) * 100)) : 0;
+  const weeklyBuckets = getRecentWeekBuckets(logs, weekTarget, now);
+  const intensity = getIntensityInsights(logs);
+  const bodyTrend = getBodyTrend(bodyLogs);
+  const records = getProfileRecords(logs, bodyLogs, weeklyBuckets, now);
+  const weekTitle = weekTarget
+    ? `本周完成 ${thisWeekCount}/${weekTarget} 次`
+    : `本周已记录 ${thisWeekCount} 次`;
+
+  return {
+    latestLog,
+    weekTarget,
+    weekTitle,
+    thisWeekCount,
+    thisWeekCompleted,
+    weekCompletionRate,
+    weeklyBuckets,
+    intensity,
+    bodyTrend,
+    records,
+    coachMessage: getProfileCoachMessage({ logs, weekTarget, thisWeekCount, intensity, bodyTrend })
+  };
+}
+
+function getProfileCoachMessage({ logs, weekTarget, thisWeekCount, intensity, bodyTrend }) {
+  if (!logs.length) {
+    return "先完成 1-2 次训练记录，之后这里会给你判断训练频次、强度和身体变化。";
+  }
+
+  if (intensity.tooHard >= 2) {
+    return "近几次训练有偏强信号，下一次先保持重量或少做 1 组，优先保证动作稳定。";
+  }
+
+  if (intensity.tooEasy >= 2) {
+    return "近几次反馈偏轻松，如果动作稳定，可以在计划页重新调整，或下次小幅加重量。";
+  }
+
+  if (weekTarget && thisWeekCount < weekTarget) {
+    return `本周还差 ${weekTarget - thisWeekCount} 次训练，优先完成计划频次，不急着额外加量。`;
+  }
+
+  if (bodyTrend.latest && bodyTrend.previous && Math.abs(bodyTrend.latest.weight - bodyTrend.previous.weight) >= 1.5) {
+    return "最近体重波动较大，先连续记录几天，训练计划不要只根据单次体重调整。";
+  }
+
+  return "当前节奏比较稳定，继续按计划记录训练和身体状态，下一轮调整会更准确。";
+}
+
+function getRecentWeekBuckets(logs, weekTarget, now = new Date()) {
+  const currentStart = getStartOfLocalWeek(now);
+  const labels = ["3周前", "2周前", "上周", "本周"];
+
+  return labels.map((label, index) => {
+    const start = new Date(currentStart);
+    start.setDate(currentStart.getDate() - (3 - index) * 7);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    const weekLogs = logs.filter((log) => {
+      const createdAt = new Date(log.createdAt);
+      return createdAt >= start && createdAt < end;
+    });
+    const completed = weekLogs.reduce((sum, log) => sum + Number(log.completedCount || 0), 0);
+
+    return {
+      label,
+      count: weekLogs.length,
+      completed,
+      rate: weekTarget ? Math.min(100, Math.round((weekLogs.length / weekTarget) * 100)) : 0
+    };
+  });
+}
+
+function getIntensityInsights(logs) {
+  const recent = logs.slice(-6);
+  const feelings = recent
+    .flatMap((log) => log.exercises || [])
+    .filter((exercise) => exercise.done && Number.isFinite(Number(exercise.feeling)))
+    .map((exercise) => Number(exercise.feeling));
+  const averageFeeling = feelings.length
+    ? feelings.reduce((sum, value) => sum + value, 0) / feelings.length
+    : null;
+
+  return {
+    recentCount: recent.length,
+    tooEasy: recent.filter((log) => log.intensityFeedback === "too-easy").length,
+    right: recent.filter((log) => !log.intensityFeedback || log.intensityFeedback === "right").length,
+    tooHard: recent.filter((log) => log.intensityFeedback === "too-hard").length,
+    feelingLabel: getAverageFeelingLabel(averageFeeling),
+    latestFeedbackLabel: getIntensityLabel(getLatest(recent)?.intensityFeedback)
+  };
+}
+
+function getBodyTrend(bodyLogs) {
+  const latest = getLatest(bodyLogs);
+  const previous = bodyLogs.length > 1 ? bodyLogs[bodyLogs.length - 2] : null;
+
+  return {
+    latest,
+    previous,
+    weightDelta: getBodyDeltaText(latest, previous, "weight", "kg"),
+    bodyFatDelta: getBodyDeltaText(latest, previous, "bodyFat", "%")
+  };
+}
+
+function getProfileRecords(logs, bodyLogs, weeklyBuckets, now = new Date()) {
+  const latestBody = getLatest(bodyLogs);
+  const bestWeek = getBestWeeklyLogCount(logs);
+  const totalCompleted = logs.reduce((sum, log) => sum + Number(log.completedCount || 0), 0);
+  const bestWorkout = Math.max(0, ...logs.map((log) => Number(log.completedCount || 0)));
+  const streakWeeks = getCurrentTrainingWeekStreak(logs, now);
+
+  return [
+    {
+      label: "累计训练",
+      value: `${logs.length} 次`,
+      note: `${totalCompleted} 个动作被记录`
+    },
+    {
+      label: "最佳训练周",
+      value: `${bestWeek || weeklyBuckets.at(-1)?.count || 0} 次`,
+      note: "按自然周统计"
+    },
+    {
+      label: "连续训练周",
+      value: `${streakWeeks} 周`,
+      note: "本周有记录才会延续"
+    },
+    {
+      label: "单次完成最多",
+      value: `${bestWorkout} 动作`,
+      note: "只作为执行稳定性参考"
+    },
+    {
+      label: "最近体重",
+      value: latestBody ? `${formatMetric(latestBody.weight)}kg` : "未记录",
+      note: latestBody ? formatDate(latestBody.createdAt) : "去记录页保存体重"
+    },
+    {
+      label: "最近体脂",
+      value: latestBody?.bodyFat ? `${formatMetric(latestBody.bodyFat)}%` : "未记录",
+      note: "可选记录，不按 0 处理"
+    }
+  ];
+}
+
+function getBestWeeklyLogCount(logs) {
+  const counts = new Map();
+  for (const log of logs) {
+    const key = getWeekKey(log.createdAt);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return Math.max(0, ...counts.values());
+}
+
+function getCurrentTrainingWeekStreak(logs, now = new Date()) {
+  const weekKeys = new Set(logs.map((log) => getWeekKey(log.createdAt)));
+  let streak = 0;
+  const cursor = getStartOfLocalWeek(now);
+
+  while (weekKeys.has(getWeekKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 7);
+  }
+
+  return streak;
+}
+
+function getStartOfLocalWeek(value) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  const daysSinceMonday = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - daysSinceMonday);
+  return date;
+}
+
+function getWeekKey(value) {
+  const start = getStartOfLocalWeek(value);
+  return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+}
+
+function sortRecords(records = []) {
+  return [...records].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+}
+
+function getAverageFeelingLabel(value) {
+  if (!Number.isFinite(value)) return "暂无";
+  if (value <= 2.3) return "偏轻松";
+  if (value <= 3.6) return "刚好";
+  if (value <= 4.8) return "有点累";
+  return "偏吃力";
+}
+
+function getBodyDeltaText(latest, previous, key, unit) {
+  const latestValue = Number(latest?.[key]);
+  const previousValue = Number(previous?.[key]);
+  if (!Number.isFinite(latestValue)) return "未记录";
+  if (!Number.isFinite(previousValue)) return "暂无上次对比";
+
+  const delta = latestValue - previousValue;
+  if (Math.abs(delta) < 0.05) return "较上次基本不变";
+  return `较上次 ${delta > 0 ? "+" : ""}${formatMetric(delta)}${unit}`;
+}
+
+function formatMetric(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "-";
+  return Number.isInteger(number) ? String(number) : number.toFixed(1).replace(/\.0$/, "");
 }
 
 function getIntensityLabel(value) {

@@ -97,6 +97,10 @@ if (!appSource.includes("data-plan-editor-form") || !appSource.includes("restore
   throw new Error("App should support custom plan editing, AI plan restore, previous plan restore, and previous plan history.");
 }
 
+if (!appSource.includes("renderWeeklyTrainingTrend") || !appSource.includes("renderLeaderboardPreview") || !appSource.includes("getProfileInsights")) {
+  throw new Error("Profile page should show record insights, trends, and a reserved leaderboard surface.");
+}
+
 if (!cloudSource.includes("/auth/v1") || !cloudSource.includes("/token?grant_type=password") || !cloudSource.includes("/rest/v1")) {
   throw new Error("Cloud data layer should use Supabase Auth and REST APIs.");
 }
