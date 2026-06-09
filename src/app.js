@@ -149,6 +149,10 @@ app.addEventListener("click", async (event) => {
     await restoreOriginalCoachPlan();
   }
 
+  if (action === "restore-previous-plan") {
+    await restorePreviousPlan();
+  }
+
   if (action === "reset-assessment") {
     const user = getUser();
     if (!user) return;
@@ -972,6 +976,8 @@ function renderPlan(user) {
   const previousPlan = getPreviousPlan(plan);
 
   return `
+    ${renderPlanActions(user, previousPlan)}
+
     <section class="section-block">
       <p class="eyebrow">计划逻辑</p>
       <h2>${plan.goal.type}</h2>
@@ -989,11 +995,6 @@ function renderPlan(user) {
         <div><span>有效组数</span><strong>${formatWeeklySetAnchor(plan.trainingProfile?.weeklySetAnchor)}</strong></div>
         <div><span>恢复安排</span><strong>${plan.frequency.restDays}</strong></div>
         <div><span>时间分配</span><strong>${plan.duration.split}</strong></div>
-      </div>
-      <div class="button-row">
-        <button class="secondary-button" type="button" data-action="edit-plan">编辑计划</button>
-        ${canRestoreOriginalPlan(plan) ? `<button class="small-button" type="button" data-action="restore-original-plan">恢复 AI 计划</button>` : ""}
-        ${previousPlan ? `<button class="small-button" type="button" data-action="toggle-previous-plan">${user.drafts?.showPreviousPlan ? "收起上一版" : "查看上一版"}</button>` : ""}
       </div>
     </section>
 
@@ -1024,6 +1025,30 @@ function renderPlan(user) {
       <h2>第 ${week} 周训练安排</h2>
       <div class="workout-stack">
         ${plan.workouts.map((workout) => renderWorkoutCard(workout, week, user)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderPlanActions(user, previousPlan) {
+  const plan = user.plan;
+  const versionLabel = plan.customization?.label || "AI 计划";
+  const hasPrevious = Boolean(previousPlan);
+
+  return `
+    <section class="section-block plan-actions">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">计划操作</p>
+          <h2>当前计划</h2>
+        </div>
+        <span class="pill">${escapeHtml(versionLabel)}</span>
+      </div>
+      <button class="primary-button" type="button" data-action="edit-plan">编辑计划</button>
+      <div class="button-row">
+        ${hasPrevious ? `<button class="small-button" type="button" data-action="restore-previous-plan">恢复上一版</button>` : ""}
+        ${hasPrevious ? `<button class="small-button" type="button" data-action="toggle-previous-plan">${user.drafts?.showPreviousPlan ? "收起上一版" : "查看上一版"}</button>` : ""}
+        ${canRestoreOriginalPlan(plan) ? `<button class="small-button" type="button" data-action="restore-original-plan">恢复 AI 计划</button>` : ""}
       </div>
     </section>
   `;
@@ -1735,6 +1760,63 @@ async function restoreOriginalCoachPlan() {
 
   saveStore();
   notice = "已恢复 AI 原始计划。";
+  activeView = "plan";
+  render();
+}
+
+async function restorePreviousPlan() {
+  const user = getUser();
+  if (!user?.plan) return;
+  const previous = getPreviousPlan(user.plan);
+  if (!previous) {
+    notice = "还没有上一版计划。";
+    render({ keepScroll: true });
+    return;
+  }
+  if (useCloudMode() && !ensureCloudCanWrite()) return;
+
+  const currentSnapshot = createPlanHistorySnapshot(user.plan);
+  const remainingHistory = getPlanHistory(user.plan).slice(1);
+  const originalCoachPlan = getOriginalCoachPlan(user.plan) || getOriginalCoachPlan(previous);
+  const customization = {
+    mode: "previous-restored",
+    updatedAt: new Date().toISOString(),
+    label: `恢复上一版 · ${formatDate(new Date())}`,
+    previousPlans: [currentSnapshot, ...remainingHistory].filter(Boolean).slice(0, 5),
+    review: {
+      level: "ok",
+      summary: "已恢复到上一版计划。建议先按这个版本完成 1 次训练，再决定是否继续微调。",
+      warnings: [],
+      suggestions: ["恢复前的当前版本已放入历史，可以继续查看或再次恢复。"],
+      positives: ["恢复计划不会删除训练记录和身体记录。"]
+    }
+  };
+  if (originalCoachPlan) customization.originalCoachPlan = cloneData(originalCoachPlan);
+
+  user.plan = {
+    ...cloneData(previous),
+    id: createId("plan"),
+    createdAt: new Date().toISOString(),
+    customization
+  };
+  user.drafts = { ...(user.drafts || {}), training: {}, planEditor: null, showPreviousPlan: false };
+
+  if (useCloudMode()) {
+    try {
+      setSyncState("syncing", "正在恢复上一版计划...");
+      await persistCloudPlan(user);
+      setSyncState("synced", "上一版计划已恢复到云端。");
+    } catch (error) {
+      notice = getFriendlyCloudError(error);
+      setSyncState("error", "恢复上一版失败。");
+      render();
+      return;
+    }
+  }
+
+  saveStore();
+  selectedPlanWeek = getCurrentWeek(user.plan, user.logs || []);
+  notice = "已恢复到上一版计划。";
   activeView = "plan";
   render();
 }

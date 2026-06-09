@@ -93,8 +93,8 @@ if (!appSource.includes("signInCloud") || !appSource.includes("renderStatusBanne
   throw new Error("App should include Supabase auth hooks, sync status, and PWA install handling.");
 }
 
-if (!appSource.includes("data-plan-editor-form") || !appSource.includes("restore-original-plan") || !appSource.includes("previousPlans")) {
-  throw new Error("App should support custom plan editing, AI plan restore, and previous plan history.");
+if (!appSource.includes("data-plan-editor-form") || !appSource.includes("restore-original-plan") || !appSource.includes("restore-previous-plan") || !appSource.includes("previousPlans")) {
+  throw new Error("App should support custom plan editing, AI plan restore, previous plan restore, and previous plan history.");
 }
 
 if (!cloudSource.includes("/auth/v1") || !cloudSource.includes("/token?grant_type=password") || !cloudSource.includes("/rest/v1")) {

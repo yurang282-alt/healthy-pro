@@ -387,8 +387,19 @@ input[type="range"] {
 }
 
 .button-row .secondary-button,
+.button-row .primary-button,
 .button-row .small-button {
   width: 100%;
+}
+
+.plan-actions .section-head {
+  align-items: center;
+}
+
+.plan-actions .pill {
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .notice {
