@@ -694,6 +694,11 @@ const BASE_EXERCISES = {
   }
 };
 
+export const PLAN_EXERCISES = Object.values(BASE_EXERCISES).filter((exercise, index, list) =>
+  VISIBLE_EQUIPMENT_IDS.includes(exercise.equipmentId) &&
+  list.findIndex((item) => item.id === exercise.id) === index
+);
+
 const WORKOUT_BLUEPRINTS = [
   {
     id: "A",

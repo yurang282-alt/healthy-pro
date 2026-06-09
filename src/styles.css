@@ -379,6 +379,29 @@ input[type="range"] {
   padding-inline: 0;
 }
 
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.button-row .secondary-button,
+.button-row .primary-button,
+.button-row .small-button {
+  width: 100%;
+}
+
+.plan-actions .section-head {
+  align-items: center;
+}
+
+.plan-actions .pill {
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .notice {
   margin: 10px 14px 0;
   padding: 10px 12px;
@@ -518,6 +541,39 @@ input[type="range"] {
   line-height: 1.45;
 }
 
+.plan-review {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid rgba(34, 122, 90, 0.22);
+  border-radius: 8px;
+  background: rgba(34, 122, 90, 0.08);
+  color: #174a38;
+}
+
+.plan-review.warning {
+  border-color: rgba(179, 107, 22, 0.28);
+  background: rgba(179, 107, 22, 0.1);
+  color: #633c09;
+}
+
+.plan-review strong {
+  font-size: 14px;
+}
+
+.plan-review p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.plan-review ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -645,7 +701,8 @@ input[type="range"] {
 .workout-stack,
 .log-list,
 .history-list,
-.equipment-grid {
+.equipment-grid,
+.plan-edit-list {
   display: grid;
   gap: 10px;
 }
@@ -717,6 +774,45 @@ input[type="range"] {
 
 .history-note {
   color: #18385e;
+}
+
+.workout-stack.compact {
+  margin-top: 10px;
+}
+
+.plan-editor-workout {
+  display: grid;
+  gap: 12px;
+}
+
+.plan-edit-exercise {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.plan-edit-fields {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plan-edit-exercise > .small-button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.add-exercise-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  padding-top: 2px;
 }
 
 .week-item {
@@ -903,5 +999,9 @@ input[type="range"] {
 
   .banner-actions .small-button {
     flex: 1;
+  }
+
+  .add-exercise-row {
+    grid-template-columns: 1fr;
   }
 }

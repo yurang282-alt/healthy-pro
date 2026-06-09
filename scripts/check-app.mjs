@@ -3,6 +3,7 @@ import {
   EQUIPMENT,
   EQUIPMENT_BY_ID,
   FOCUS_AREAS,
+  PLAN_EXERCISES,
   VISIBLE_EQUIPMENT_IDS,
   generateCoachPlan,
   getLoadRecommendation,
@@ -92,6 +93,10 @@ if (!appSource.includes("signInCloud") || !appSource.includes("renderStatusBanne
   throw new Error("App should include Supabase auth hooks, sync status, and PWA install handling.");
 }
 
+if (!appSource.includes("data-plan-editor-form") || !appSource.includes("restore-original-plan") || !appSource.includes("restore-previous-plan") || !appSource.includes("previousPlans")) {
+  throw new Error("App should support custom plan editing, AI plan restore, previous plan restore, and previous plan history.");
+}
+
 if (!cloudSource.includes("/auth/v1") || !cloudSource.includes("/token?grant_type=password") || !cloudSource.includes("/rest/v1")) {
   throw new Error("Cloud data layer should use Supabase Auth and REST APIs.");
 }
@@ -105,6 +110,18 @@ if (EQUIPMENT.length < VISIBLE_EQUIPMENT_IDS.length || VISIBLE_EQUIPMENT_IDS.len
 }
 
 const visibleEquipment = new Set(VISIBLE_EQUIPMENT_IDS);
+
+if (!PLAN_EXERCISES.length) {
+  throw new Error("Custom plan editor should expose a non-empty action library.");
+}
+
+const unsupportedPlanExercises = PLAN_EXERCISES
+  .filter((exercise) => !visibleEquipment.has(exercise.equipmentId))
+  .map((exercise) => `${exercise.name}:${exercise.equipmentId}`);
+
+if (unsupportedPlanExercises.length) {
+  throw new Error(`Custom plan editor should only offer image-backed equipment actions: ${unsupportedPlanExercises.join(", ")}`);
+}
 
 for (const equipmentId of visibleEquipment) {
   const equipment = EQUIPMENT_BY_ID[equipmentId];
