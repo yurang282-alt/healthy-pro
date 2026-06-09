@@ -226,6 +226,48 @@ export async function saveCloudFeedback(feedback) {
   return rows[0];
 }
 
+export async function loadCloudReleases() {
+  const session = await requireSession();
+  try {
+    const [releaseRows, readRows] = await Promise.all([
+      restRequest("/app_releases?select=*&is_published=eq.true&order=published_at.desc&limit=10"),
+      restRequest(`/user_release_reads?select=release_id,read_at&user_id=eq.${session.user.id}`)
+    ]);
+    const readsByReleaseId = Object.fromEntries((readRows || []).map((row) => [row.release_id, row.read_at]));
+    const releases = (releaseRows || []).map((row) => fromReleaseRow(row, readsByReleaseId[row.id]));
+
+    return {
+      schemaReady: true,
+      releases,
+      unreadCount: releases.filter((release) => !release.isRead).length
+    };
+  } catch (error) {
+    if (isMissingReleaseSchema(error)) {
+      return {
+        schemaReady: false,
+        message: "更新公告需要先更新 Supabase 表结构。",
+        releases: [],
+        unreadCount: 0
+      };
+    }
+    throw error;
+  }
+}
+
+export async function markCloudReleaseRead(releaseId) {
+  const session = await requireSession();
+  const rows = await restRequest("/user_release_reads?on_conflict=user_id,release_id", {
+    method: "POST",
+    body: {
+      user_id: session.user.id,
+      release_id: releaseId,
+      read_at: new Date().toISOString()
+    },
+    prefer: "resolution=merge-duplicates,return=representation"
+  });
+  return rows[0];
+}
+
 export async function saveCloudAssessment(assessment) {
   const session = await requireSession();
   const rows = await restRequest("/assessments", {
@@ -529,6 +571,24 @@ function toFriendSummaryRow(summary = {}) {
   };
 }
 
+function fromReleaseRow(row, readAt = null) {
+  const highlights = Array.isArray(row.highlights)
+    ? row.highlights
+    : [];
+  return {
+    id: row.id,
+    version: row.version,
+    title: row.title,
+    summary: row.summary,
+    highlights: highlights.map((item) => String(item)).filter(Boolean).slice(0, 6),
+    details: row.details || "",
+    releaseType: row.release_type || "improvement",
+    publishedAt: row.published_at,
+    readAt,
+    isRead: Boolean(readAt)
+  };
+}
+
 function createFriendCode() {
   const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
   const bytes = new Uint8Array(8);
@@ -550,6 +610,14 @@ function isMissingSocialSchema(error) {
   return message.includes("friend_profiles") ||
     message.includes("friendships") ||
     message.includes("feedback") ||
+    message.includes("schema cache") ||
+    message.includes("relation") && message.includes("does not exist");
+}
+
+function isMissingReleaseSchema(error) {
+  const message = String(error?.message || error || "");
+  return message.includes("app_releases") ||
+    message.includes("user_release_reads") ||
     message.includes("schema cache") ||
     message.includes("relation") && message.includes("does not exist");
 }

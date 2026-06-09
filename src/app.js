@@ -22,7 +22,9 @@ import {
   getCloudConfigStatus,
   isCloudConfigured,
   loadCloudSocial,
+  loadCloudReleases,
   loadCloudUser,
+  markCloudReleaseRead,
   respondCloudFriendship,
   saveCloudAssessment,
   saveCloudBodyLog,
@@ -38,6 +40,22 @@ import {
 
 const STORAGE_KEY = "healthy-pro-store-v3";
 const INSTALL_DISMISSED_KEY = "healthy-pro-install-dismissed-v1";
+const LOCAL_RELEASES = [
+  {
+    id: "local-v0.5.0",
+    version: "v0.5.0",
+    title: "界面和训练流程简化",
+    summary: "首页、计划、记录、器械和我的页重新分层，让训练时更容易知道下一步做什么。",
+    highlights: [
+      "首页聚焦今天训练和开始按钮",
+      "计划页优先展示本周安排，教练解释改为折叠",
+      "记录页改为逐项展开，器械页支持搜索和今日器械"
+    ],
+    details: "这次更新重点不是增加复杂功能，而是把训练流程变得更像一个可以拿在手里的私人教练工具。",
+    releaseType: "improvement",
+    publishedAt: "2026-06-09T00:00:00+08:00"
+  }
+];
 const app = document.querySelector("#app");
 const urlParams = new URLSearchParams(window.location.search);
 const isDemoMode = urlParams.get("demo") === "focus";
@@ -47,6 +65,7 @@ let activeView = getInitialView(urlParams);
 let authMode = "login";
 let notice = "";
 let selectedPlanWeek = getInitialWeek(urlParams);
+let equipmentQuery = "";
 let appReady = false;
 let networkOnline = navigator.onLine;
 let installPromptEvent = null;
@@ -166,6 +185,10 @@ app.addEventListener("click", async (event) => {
 
   if (action === "friend-remove") {
     await handleFriendRemove(event);
+  }
+
+  if (action === "mark-release-read") {
+    await handleReleaseRead(event);
   }
 
   if (action === "reset-assessment") {
@@ -295,6 +318,7 @@ async function refreshCloudUser() {
   }
 
   await syncCloudSocial(cloudUser);
+  await syncCloudReleases(cloudUser);
   saveStore();
   return cloudUser;
 }
@@ -314,6 +338,20 @@ async function syncCloudSocial(user) {
     user.social = {
       schemaReady: false,
       message: getFriendlyCloudError(error)
+    };
+  }
+}
+
+async function syncCloudReleases(user) {
+  if (!useCloudMode() || !user) return;
+  try {
+    user.releases = await loadCloudReleases();
+  } catch (error) {
+    user.releases = {
+      schemaReady: false,
+      message: getFriendlyCloudError(error),
+      releases: [],
+      unreadCount: 0
     };
   }
 }
@@ -811,7 +849,45 @@ async function handleFeedback(form) {
   }
 }
 
+async function handleReleaseRead(event) {
+  const user = getUser();
+  const releaseId = event.target.closest("[data-release-id]")?.dataset.releaseId;
+  if (!user || !releaseId) return;
+
+  if (useCloudMode()) {
+    if (!ensureCloudCanWrite()) return;
+    try {
+      setSyncState("syncing", "正在更新公告已读状态...");
+      await markCloudReleaseRead(releaseId);
+      user.releases = await loadCloudReleases();
+      setSyncState("synced", "公告已标记为已读。");
+      saveStore();
+      notice = "已标记为已读。";
+      render({ keepScroll: true });
+    } catch (error) {
+      notice = getFriendlyCloudError(error);
+      setSyncState("error", "公告已读状态保存失败。");
+      render({ keepScroll: true });
+    }
+    return;
+  }
+
+  store.releaseReads = {
+    ...(store.releaseReads || {}),
+    [releaseId]: new Date().toISOString()
+  };
+  saveStore();
+  notice = "已标记为已读。";
+  render({ keepScroll: true });
+}
+
 function handleDraftChange(event) {
+  if (event.target.matches?.("[data-equipment-search]")) {
+    equipmentQuery = String(event.target.value || "");
+    render({ keepScroll: true });
+    return;
+  }
+
   const form = event.target.closest?.("[data-training-form], [data-body-form], [data-plan-editor-form]");
   const user = getUser();
   if (!form || !user) return;
@@ -873,7 +949,6 @@ function render(options = {}) {
           <p class="eyebrow">Healthy Pro</p>
           <h1>${getHeaderTitle(user, needsAssessment)}</h1>
         </div>
-        <button class="ghost-button" type="button" data-action="logout">退出</button>
       </header>
       ${notice ? `<div class="notice">${notice}</div>` : ""}
       ${renderStatusBanners(user)}
@@ -943,13 +1018,16 @@ function renderStatusBanners(user) {
   const dataMode = useCloudMode() ? configStatus.label : "本地模式";
   const statusClass = !networkOnline ? "offline" : syncState.status;
   const statusText = !networkOnline ? "当前离线，可以查看已加载数据；保存需要联网。" : syncState.message;
+  const shouldShowSyncBanner = !networkOnline || ["syncing", "error", "offline", "local"].includes(syncState.status);
 
-  items.push(`
-    <div class="sync-banner ${statusClass}">
-      <strong>${dataMode}</strong>
-      <span>${statusText}</span>
-    </div>
-  `);
+  if (shouldShowSyncBanner) {
+    items.push(`
+      <div class="sync-banner ${statusClass}">
+        <strong>${dataMode}</strong>
+        <span>${statusText}</span>
+      </div>
+    `);
+  }
 
   if (shouldShowInstallPrompt(user)) {
     items.push(`
@@ -966,7 +1044,7 @@ function renderStatusBanners(user) {
     `);
   }
 
-  return `<div class="status-stack">${items.join("")}</div>`;
+  return items.length ? `<div class="status-stack">${items.join("")}</div>` : "";
 }
 
 function renderActiveView(user) {
@@ -975,7 +1053,11 @@ function renderActiveView(user) {
   if (activeView === "plan") return renderPlan(user);
   if (activeView === "plan-edit") return renderPlanEditor(user);
   if (activeView === "log") return renderLog(user);
-  if (activeView === "equipment") return renderEquipment();
+  if (activeView === "equipment") return renderEquipment(user);
+  if (activeView === "profile-weekly") return renderProfileWeekly(user);
+  if (activeView === "profile-friends") return renderProfileFriends(user);
+  if (activeView === "profile-releases") return renderProfileReleases(user);
+  if (activeView === "profile-settings") return renderProfileSettings(user);
   if (activeView === "profile") return renderProfile(user);
   return renderHome(user);
 }
@@ -989,9 +1071,42 @@ function renderHome(user) {
   const latestBody = getLatest(user.bodyLogs);
   const totalCompleted = logs.reduce((sum, log) => sum + Number(log.completedCount || 0), 0);
   const focusText = getFocusText(plan);
+  const previewExercises = workout.exercises.slice(0, 3);
+  const remainingCount = Math.max(0, workout.exercises.length - previewExercises.length);
 
   return `
-    <section class="coach-hero">
+    <section class="today-hero">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">今天训练</p>
+          <h2>${workout.title}</h2>
+        </div>
+        <span class="pill">第 ${week} 周</span>
+      </div>
+      <p class="muted">${workout.focus}</p>
+      <div class="today-meta">
+        <div><span>预计</span><strong>${workoutDuration.label}</strong></div>
+        <div><span>动作</span><strong>${workout.exercises.length} 个</strong></div>
+        <div><span>本周</span><strong>${logs.length}/${plan.frequency.sessionsPerWeek}</strong></div>
+      </div>
+      <button class="primary-button hero-action" type="button" data-action="start-training">开始训练</button>
+      <button class="link-button compact-link" type="button" data-action="nav" data-view="plan">查看完整计划</button>
+    </section>
+
+    <section class="section-block quiet-section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">今日顺序</p>
+          <h2>先做这几项</h2>
+        </div>
+      </div>
+      <div class="exercise-list compact">
+        ${previewExercises.map((exercise) => renderExerciseSummary(exercise, week, user)).join("")}
+      </div>
+      ${remainingCount ? `<p class="empty-note">后面还有 ${remainingCount} 个动作，开始训练后按顺序完成。</p>` : ""}
+    </section>
+
+    <section class="coach-summary-card">
       <div>
         <p class="eyebrow">教练判断</p>
         <h2>${plan.goal.type}</h2>
@@ -1004,23 +1119,7 @@ function renderHome(user) {
       </div>
     </section>
 
-    <section class="section-block">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">今天</p>
-          <h2>${workout.title}</h2>
-        </div>
-        <span class="pill">第 ${week} 周</span>
-      </div>
-      <p class="muted">${workout.focus}</p>
-      <p class="duration-note">本次预计 ${workoutDuration.label}，${workoutDuration.note}</p>
-      <div class="exercise-list compact">
-        ${workout.exercises.map((exercise) => renderExerciseSummary(exercise, week, user)).join("")}
-      </div>
-      <button class="primary-button" type="button" data-action="start-training">开始记录本次训练</button>
-    </section>
-
-    <section class="section-block">
+    <section class="section-block quiet-section">
       <div class="section-head">
         <div>
           <p class="eyebrow">复盘</p>
@@ -1165,55 +1264,63 @@ function renderPlan(user) {
   return `
     ${renderPlanActions(user, previousPlan)}
 
+    ${user.drafts?.showPreviousPlan && previousPlan ? renderPreviousPlan(previousPlan) : ""}
+
+    <section class="section-block plan-overview-card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">本周安排</p>
+          <h2>第 ${week} 周 · ${plan.weeks[week - 1]?.label || "训练周"}</h2>
+        </div>
+        <button class="small-button" type="button" data-action="adjust-plan">重新调整</button>
+      </div>
+      <div class="plan-brief-grid">
+        <div><span>训练结构</span><strong>${plan.frequency.pattern}</strong></div>
+        <div><span>频次</span><strong>${plan.frequency.sessionsPerWeek} 次/周</strong></div>
+        <div><span>单次上限</span><strong>${plan.duration.budget || user.assessment?.sessionBudget || 60} 分钟</strong></div>
+      </div>
+      <div class="week-strip" aria-label="选择周">
+        ${plan.weeks.map((item) => `
+          <button class="week-chip ${item.week === week ? "active" : ""}" type="button" data-action="select-week" data-week="${item.week}">
+            <span>第 ${item.week} 周${item.week === currentWeek ? " · 当前" : ""}</span>
+            <strong>${item.label}</strong>
+          </button>
+        `).join("")}
+      </div>
+      <p class="adjust-explainer">${plan.weeks[week - 1]?.load || ""}。${plan.weeks[week - 1]?.rule || ""}</p>
+    </section>
+
     <section class="section-block">
-      <p class="eyebrow">计划逻辑</p>
-      <h2>${plan.goal.type}</h2>
+      <p class="eyebrow">动作安排</p>
+      <h2>这一周怎么练</h2>
+      <div class="workout-stack">
+        ${plan.workouts.map((workout, index) => renderWorkoutCard(workout, week, user, index)).join("")}
+      </div>
+    </section>
+
+    <details class="section-block coach-details">
+      <summary>
+        <span>
+          <p class="eyebrow">教练解释</p>
+          <strong>${plan.goal.type}</strong>
+        </span>
+        <b>展开</b>
+      </summary>
       <p class="coach-note">${plan.rationale}</p>
       ${plan.decisionSummary && !plan.customization?.review ? `<p class="adjust-explainer">${plan.decisionSummary}</p>` : ""}
       ${renderPlanReview(plan)}
       <div class="fact-list">
-        <div><span>训练结构</span><strong>${plan.frequency.pattern}</strong></div>
-        <div><span>每周频次</span><strong>${plan.frequency.sessionsPerWeek} 次/周</strong></div>
+        <div><span>目标阶段</span><strong>${plan.goal.type}</strong></div>
         <div><span>时间上限</span><strong>${plan.frequency.limitLabel || "教练安排"}</strong></div>
         <div><span>训练经验</span><strong>${plan.experience?.label || "未填写"}</strong></div>
         <div><span>重点部位</span><strong>${focusText || "全身均衡"}</strong></div>
-        <div><span>单次上限</span><strong>来自评估：${plan.duration.budget || user.assessment?.sessionBudget || 60} 分钟</strong></div>
         <div><span>容量判断</span><strong>${getVolumeTierLabel(plan.trainingProfile?.volumeTier)}</strong></div>
         <div><span>有效组数</span><strong>${formatWeeklySetAnchor(plan.trainingProfile?.weeklySetAnchor)}</strong></div>
         <div><span>恢复安排</span><strong>${plan.frequency.restDays}</strong></div>
         <div><span>时间分配</span><strong>${plan.duration.split}</strong></div>
       </div>
-    </section>
-
-    ${user.drafts?.showPreviousPlan && previousPlan ? renderPreviousPlan(previousPlan) : ""}
-
-    <section class="section-block">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">4 周渐进</p>
-          <h2>预览第 ${week} 周</h2>
-        </div>
-        <button class="small-button" type="button" data-action="adjust-plan">重新调整</button>
-      </div>
-      <p class="adjust-explainer">${plan.adjustmentGuide}</p>
-      <div class="week-list">
-        ${plan.weeks.map((item) => `
-          <button class="week-item ${item.week === week ? "active" : ""}" type="button" data-action="select-week" data-week="${item.week}">
-            <span>第 ${item.week} 周${item.week === currentWeek ? " · 当前" : ""}</span>
-            <strong>${item.label}</strong>
-            <p>${item.load}。${item.rule}</p>
-          </button>
-        `).join("")}
-      </div>
-    </section>
-
-    <section class="section-block">
-      <p class="eyebrow">动作安排</p>
-      <h2>第 ${week} 周训练安排</h2>
-      <div class="workout-stack">
-        ${plan.workouts.map((workout) => renderWorkoutCard(workout, week, user)).join("")}
-      </div>
-    </section>
+      <p class="empty-note">${plan.adjustmentGuide}</p>
+    </details>
   `;
 }
 
@@ -1357,9 +1464,20 @@ function renderLog(user) {
       <p class="eyebrow">训练记录</p>
       <h2>${workout.title}</h2>
       <p class="muted">${workout.focus}</p>
+      <div class="training-session-panel">
+        <div>
+          <span>本次动作</span>
+          <strong>${workout.exercises.length} 个</strong>
+        </div>
+        <div>
+          <span>记录方式</span>
+          <strong>逐项打开</strong>
+        </div>
+      </div>
+      <p class="empty-note">训练时按顺序展开动作：先看提示，再填关键数字，最后选这组感觉。跑步机只填时长/速度/坡度/阻力。</p>
       <form class="stack" data-training-form>
         <div class="log-list">
-          ${workout.exercises.map((exercise) => renderExerciseLog(exercise, week, trainingDraft, user)).join("")}
+          ${workout.exercises.map((exercise, index) => renderExerciseLog(exercise, week, trainingDraft, user, index)).join("")}
         </div>
         <fieldset>
           <legend>这次整体强度</legend>
@@ -1407,21 +1525,21 @@ function renderLog(user) {
   `;
 }
 
-function renderWorkoutCard(workout, week, user) {
+function renderWorkoutCard(workout, week, user, index = 0) {
   const duration = getWorkoutDuration(workout, week, user?.plan?.weeks);
   return `
-    <article class="workout-card">
-      <div class="workout-card-head">
+    <details class="workout-card" ${index === 0 ? "open" : ""}>
+      <summary class="workout-card-head">
         <div>
           <h3>${workout.title}</h3>
           <p>${workout.focus}</p>
         </div>
         <span class="pill">预计 ${duration.label}</span>
-      </div>
+      </summary>
       <div class="exercise-list">
         ${workout.exercises.map((exercise) => renderExerciseSummary(exercise, week, user)).join("")}
       </div>
-    </article>
+    </details>
   `;
 }
 
@@ -1518,59 +1636,123 @@ function renderExerciseOptions(selectedId) {
   `;
 }
 
-function renderEquipment() {
+function renderEquipment(user) {
   const visibleEquipment = EQUIPMENT.filter((item) => VISIBLE_EQUIPMENT_IDS.includes(item.id));
-  const groups = groupEquipmentByCategory(visibleEquipment);
+  const query = equipmentQuery.trim().toLowerCase();
+  const currentItems = getCurrentWorkoutEquipment(user, visibleEquipment);
+  const filteredEquipment = query
+    ? visibleEquipment.filter((item) => equipmentMatchesQuery(item, query))
+    : visibleEquipment;
+  const groups = groupEquipmentByCategory(filteredEquipment);
   return `
     <section class="section-block">
       <p class="eyebrow">器械库</p>
-      <h2>按健身房分区找设备</h2>
-      <p class="muted">先认设备类型，具体型号可能不同；找不到时用同类器械替代。</p>
-      <div class="equipment-zones">
-        ${groups.map(([category, items]) => `
-          <section class="equipment-zone">
+      <h2>先找今天要用的</h2>
+      <p class="muted">器械型号会有差异，先认外形和调节方式；找不到时用同类器械替代。</p>
+      <label class="search-field">
+        搜索器械
+        <input data-equipment-search type="search" value="${escapeAttr(equipmentQuery)}" placeholder="输入胸、背、跑步机、史密斯" />
+      </label>
+      ${currentItems.length && !query
+        ? `
+          <section class="equipment-focus">
             <div class="equipment-group-title">
-              <h3>${category}</h3>
-              <span>${items.length} 类设备</span>
+              <h3>今天会用到</h3>
+              <span>${currentItems.length} 类设备</span>
             </div>
-            <div class="equipment-grid">
-              ${items.map((item) => `
-                <article class="equipment-card">
-                  <img class="equipment-visual" src="${escapeAttr(item.imageSrc)}" alt="${escapeAttr(item.name)}示意图" />
-                  <div class="equipment-body">
-                    <h3>${item.name}</h3>
-                    <p>${item.muscles.join(" / ")}</p>
-                    <div class="mini-list">
-                      <strong>怎么调</strong>
-                      ${item.setup.map((text) => `<span>${text}</span>`).join("")}
-                    </div>
-                    <div class="mini-list warning">
-                      <strong>别这样</strong>
-                      ${item.mistakes.map((text) => `<span>${text}</span>`).join("")}
-                    </div>
-                  </div>
-                </article>
-              `).join("")}
+            <div class="equipment-grid compact">
+              ${currentItems.map((item) => renderEquipmentCard(item, true)).join("")}
             </div>
           </section>
+        `
+        : ""}
+      ${query && !filteredEquipment.length ? `<p class="empty-note">没有找到相关器械。可以试试输入部位，比如「胸」「背」「腿」。</p>` : ""}
+      <div class="equipment-zones">
+        ${groups.map(([category, items]) => `
+          <details class="equipment-zone" ${query || category === "有氧训练区" ? "open" : ""}>
+            <summary class="equipment-group-title">
+              <h3>${category}</h3>
+              <span>${items.length} 类设备</span>
+            </summary>
+            <div class="equipment-grid">
+              ${items.map((item) => renderEquipmentCard(item)).join("")}
+            </div>
+          </details>
         `).join("")}
       </div>
     </section>
   `;
 }
 
+function renderEquipmentCard(item, compact = false) {
+  return `
+    <article class="equipment-card ${compact ? "compact" : ""}">
+      <img class="equipment-visual" src="${escapeAttr(item.imageSrc)}" alt="${escapeAttr(item.name)}示意图" />
+      <div class="equipment-body">
+        <h3>${item.name}</h3>
+        <p>${item.muscles.join(" / ")}</p>
+        <div class="mini-list">
+          <strong>怎么调</strong>
+          ${item.setup.slice(0, compact ? 2 : item.setup.length).map((text) => `<span>${text}</span>`).join("")}
+        </div>
+        ${compact ? "" : `
+          <div class="mini-list warning">
+            <strong>别这样</strong>
+            ${item.mistakes.map((text) => `<span>${text}</span>`).join("")}
+          </div>
+        `}
+      </div>
+    </article>
+  `;
+}
+
+function getCurrentWorkoutEquipment(user, visibleEquipment) {
+  if (!user?.plan || user.plan.safetyHold) return [];
+  const workout = getNextWorkout(user.plan, user.logs || []);
+  const ids = new Set((workout.exercises || []).map((exercise) => exercise.equipmentId));
+  return visibleEquipment.filter((item) => ids.has(item.id));
+}
+
+function equipmentMatchesQuery(item, query) {
+  const source = [
+    item.name,
+    item.category,
+    ...(item.muscles || []),
+    ...(item.setup || []),
+    ...(item.mistakes || [])
+  ].join(" ").toLowerCase();
+  return source.includes(query);
+}
+
 function renderProfile(user) {
   const insights = getProfileInsights(user);
+  const plan = user.plan;
+  const releaseState = getReleaseState(user);
+  const socialSummary = getSocialSummary(user);
 
   return `
-    <section class="section-block profile-overview">
-      <p class="eyebrow">本周状态</p>
-      <h2>${insights.weekTitle}</h2>
+    <section class="profile-identity section-block">
+      <p class="eyebrow">基础信息</p>
+      <h2 class="account-email">${escapeHtml(user.email)}</h2>
+      <div class="profile-chip-row">
+        <span>${plan.goal.type}</span>
+        <span>${plan.frequency.sessionsPerWeek} 次/周</span>
+        <span>${useCloudMode() ? "云端数据" : "本地数据"}</span>
+      </div>
+    </section>
+
+    <section class="section-block profile-overview profile-summary-card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">周报</p>
+          <h2>${insights.weekTitle}</h2>
+        </div>
+        <span class="pill">${insights.weekCompletionRate}%</span>
+      </div>
       <div class="profile-progress" aria-label="本周训练完成率">
         <div class="progress-track">
           <span class="progress-fill" style="width: ${escapeAttr(insights.weekCompletionRate)}%"></span>
         </div>
-        <strong>${insights.weekCompletionRate}%</strong>
       </div>
       <div class="metric-grid">
         <div><span>本周训练</span><strong>${insights.thisWeekCount}/${insights.weekTarget || "-"}</strong></div>
@@ -1580,22 +1762,83 @@ function renderProfile(user) {
       <p class="coach-note">${insights.coachMessage}</p>
     </section>
 
-    <section class="section-block">
+    <section class="section-block profile-hub">
+      <p class="eyebrow">更多</p>
+      <h2>选择你要看的内容</h2>
+      <div class="profile-entry-list">
+        ${renderProfileEntry({
+          view: "profile-weekly",
+          eyebrow: "周报",
+          title: "周报与趋势",
+          summary: `本周 ${insights.thisWeekCount}/${insights.weekTarget || "-"} 次 · ${insights.intensity.feelingLabel}`
+        })}
+        ${renderProfileEntry({
+          view: "profile-friends",
+          eyebrow: "好友",
+          title: "好友与排行",
+          summary: socialSummary
+        })}
+        ${renderProfileEntry({
+          view: "profile-releases",
+          eyebrow: "更新",
+          title: "更新公告",
+          summary: releaseState.unreadCount ? `${releaseState.unreadCount} 条未读` : "查看最近版本变化"
+        })}
+        ${renderProfileEntry({
+          view: "profile-settings",
+          eyebrow: "设置",
+          title: "设置与反馈",
+          summary: "账号、重新评估、退出登录"
+        })}
+      </div>
+    </section>
+  `;
+}
+
+function renderProfileEntry({ view, eyebrow, title, summary }) {
+  return `
+    <button class="profile-entry-card" type="button" data-action="nav" data-view="${escapeAttr(view)}">
+      <span>${escapeHtml(eyebrow)}</span>
+      <strong>${escapeHtml(title)}</strong>
+      <p>${escapeHtml(summary)}</p>
+    </button>
+  `;
+}
+
+function renderProfileWeekly(user) {
+  const insights = getProfileInsights(user);
+  return `
+    ${renderProfileSubHeader("周报与趋势", "训练、身体和感觉变化", "profile")}
+    <section class="section-block profile-overview">
       <div class="section-head">
         <div>
-          <p class="eyebrow">趋势分析</p>
-          <h2>最近 4 周</h2>
+          <p class="eyebrow">周报</p>
+          <h2>${insights.weekTitle}</h2>
         </div>
-        <span class="pill">训练 + 身体</span>
+        <span class="pill">${insights.weekCompletionRate}%</span>
       </div>
+      <div class="profile-progress" aria-label="本周训练完成率">
+        <div class="progress-track">
+          <span class="progress-fill" style="width: ${escapeAttr(insights.weekCompletionRate)}%"></span>
+        </div>
+      </div>
+      <div class="metric-grid">
+        <div><span>本周训练</span><strong>${insights.thisWeekCount}/${insights.weekTarget || "-"}</strong></div>
+        <div><span>完成动作</span><strong>${insights.thisWeekCompleted}</strong></div>
+        <div><span>最近感觉</span><strong>${insights.intensity.feelingLabel}</strong></div>
+      </div>
+      <p class="coach-note">${insights.coachMessage}</p>
+    </section>
+    <section class="section-block">
+      <p class="eyebrow">趋势</p>
+      <h2>最近 4 周</h2>
       ${renderWeeklyTrainingTrend(insights)}
       ${renderBodyTrend(insights.bodyTrend)}
       ${renderIntensityTrend(insights.intensity)}
     </section>
-
     <section class="section-block">
-      <p class="eyebrow">个人记录</p>
-      <h2>我的训练档案</h2>
+      <p class="eyebrow">档案</p>
+      <h2>个人记录</h2>
       <div class="record-grid">
         ${insights.records.map((record) => `
           <div>
@@ -1606,22 +1849,170 @@ function renderProfile(user) {
         `).join("")}
       </div>
     </section>
+  `;
+}
 
+function renderProfileFriends(user) {
+  const insights = getProfileInsights(user);
+  return `
+    ${renderProfileSubHeader("好友与排行", "昵称、好友码和本周稳定榜", "profile")}
     ${renderFriendsSection(user, insights)}
+  `;
+}
 
+function renderProfileReleases(user) {
+  return `
+    ${renderProfileSubHeader("更新公告", "看看最近改了什么", "profile")}
+    ${renderReleaseNotice(user)}
+    ${renderReleaseSection(user, true)}
+  `;
+}
+
+function renderProfileSettings(user) {
+  const insights = getProfileInsights(user);
+  return `
+    ${renderProfileSubHeader("设置与反馈", "账号、评估和体验反馈", "profile")}
     ${renderFeedbackSection()}
+    ${renderSettingsSection(user, insights)}
+  `;
+}
 
+function renderProfileSubHeader(title, summary, backView) {
+  return `
+    <section class="profile-subhead">
+      <button class="small-button subtle" type="button" data-action="nav" data-view="${escapeAttr(backView)}">返回</button>
+      <div>
+        <p class="eyebrow">我的</p>
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(summary)}</p>
+      </div>
+    </section>
+  `;
+}
+
+function renderSettingsSection(user, insights) {
+  return `
     <section class="section-block">
       <p class="eyebrow">账号与设置</p>
-      <h2 class="account-email">${escapeHtml(user.email)}</h2>
+      <h2>设置</h2>
       <div class="fact-list">
+        <div><span>账号</span><strong>${escapeHtml(user.email)}</strong></div>
         <div><span>数据模式</span><strong>${useCloudMode() ? "云端 Supabase" : "本地浏览器"}</strong></div>
         <div><span>最近训练</span><strong>${insights.latestLog ? formatDate(insights.latestLog.createdAt) : "未记录"}</strong></div>
         <div><span>最近身体记录</span><strong>${insights.bodyTrend.latest ? formatDate(insights.bodyTrend.latest.createdAt) : "未记录"}</strong></div>
       </div>
       <button class="secondary-button" type="button" data-action="reset-assessment">重新评估</button>
+      <button class="link-button danger-link" type="button" data-action="logout">退出登录</button>
     </section>
   `;
+}
+
+function renderReleaseNotice(user) {
+  const releaseState = getReleaseState(user);
+  if (releaseState.schemaReady === false || !releaseState.unreadCount) return "";
+  const latestUnread = releaseState.releases.find((release) => !release.isRead);
+  if (!latestUnread) return "";
+
+  return `
+    <section class="release-alert" data-release-id="${escapeAttr(latestUnread.id)}">
+      <div>
+        <p class="eyebrow">新版本</p>
+        <h2>${escapeHtml(latestUnread.version)} · ${escapeHtml(latestUnread.title)}</h2>
+        <p>${escapeHtml(latestUnread.summary)}</p>
+      </div>
+      <button class="small-button" type="button" data-action="mark-release-read">我知道了</button>
+    </section>
+  `;
+}
+
+function renderReleaseSection(user, forceOpen = false) {
+  const releaseState = getReleaseState(user);
+  const releases = releaseState.releases || [];
+  const shouldOpen = forceOpen || Boolean(releaseState.unreadCount) || releaseState.schemaReady === false;
+
+  return `
+    <details class="section-block profile-panel release-panel" ${shouldOpen ? "open" : ""}>
+      <summary>
+        <span>
+          <p class="eyebrow">更新</p>
+          <strong>更新公告</strong>
+        </span>
+        <b>${releaseState.unreadCount ? `${releaseState.unreadCount} 条未读` : "展开"}</b>
+      </summary>
+      ${releaseState.schemaReady === false
+        ? `<p class="empty-note">${escapeHtml(releaseState.message || "更新公告需要先更新 Supabase 表结构。")}</p>`
+        : ""}
+      ${releaseState.schemaReady !== false && !releases.length
+        ? `<p class="empty-note">还没有发布公告。后续每次合并上线后，会把重点变化放在这里。</p>`
+        : ""}
+      ${releaseState.schemaReady !== false && releases.length
+        ? `<div class="release-list">${releases.slice(0, 5).map((release) => renderReleaseCard(release)).join("")}</div>`
+        : ""}
+    </details>
+  `;
+}
+
+function renderReleaseCard(release) {
+  return `
+    <article class="release-card ${release.isRead ? "read" : "unread"}" data-release-id="${escapeAttr(release.id)}">
+      <div class="release-card-head">
+        <div>
+          <span>${escapeHtml(release.version)} · ${formatReleaseDate(release.publishedAt)}</span>
+          <strong>${escapeHtml(release.title)}</strong>
+        </div>
+        <em>${getReleaseTypeLabel(release.releaseType)}</em>
+      </div>
+      <p>${escapeHtml(release.summary)}</p>
+      ${release.highlights?.length
+        ? `<ul>${release.highlights.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+        : ""}
+      ${release.details ? `<p class="release-detail">${escapeHtml(release.details)}</p>` : ""}
+      ${release.isRead
+        ? `<span class="read-mark">已读</span>`
+        : `<button class="secondary-button" type="button" data-action="mark-release-read">我知道了</button>`}
+    </article>
+  `;
+}
+
+function getReleaseState(user) {
+  if (useCloudMode()) {
+    return user.releases || {
+      schemaReady: true,
+      releases: [],
+      unreadCount: 0
+    };
+  }
+
+  const reads = store.releaseReads || {};
+  const releases = LOCAL_RELEASES.map((release) => ({
+    ...release,
+    readAt: reads[release.id] || null,
+    isRead: Boolean(reads[release.id])
+  }));
+
+  return {
+    schemaReady: true,
+    releases,
+    unreadCount: releases.filter((release) => !release.isRead).length
+  };
+}
+
+function getReleaseTypeLabel(type) {
+  if (type === "feature") return "新功能";
+  if (type === "fix") return "修复";
+  return "优化";
+}
+
+function getSocialSummary(user) {
+  if (!useCloudMode()) return "登录云端后可添加好友";
+  const social = user.social || {};
+  if (social.schemaReady === false) return "需要更新云端表结构";
+  const friendships = social.friendships || [];
+  const incoming = friendships.filter((item) => item.status === "pending" && item.direction === "incoming").length;
+  const accepted = friendships.filter((item) => item.status === "accepted").length;
+  if (incoming) return `${incoming} 个好友请求待确认`;
+  if (accepted) return `${accepted} 个好友 · 榜单 ${social.leaderboard?.length || 0} 人`;
+  return "添加好友后查看本周排行";
 }
 
 function renderFriendsSection(user, insights) {
@@ -1773,9 +2164,8 @@ function renderAcceptedFriends(friends) {
   `;
 }
 
-function renderFeedbackSection() {
-  return `
-    <section class="section-block">
+function renderFeedbackSection(embedded = false) {
+  const body = `
       <div class="section-head">
         <div>
           <p class="eyebrow">体验反馈</p>
@@ -1813,8 +2203,9 @@ function renderFeedbackSection() {
         <button class="secondary-button" type="submit">提交反馈</button>
       </form>
       <p class="empty-note">反馈只有项目维护者在 Supabase 后台查看，好友之间不可见。</p>
-    </section>
   `;
+
+  return embedded ? `<div class="embedded-panel">${body}</div>` : `<section class="section-block">${body}</section>`;
 }
 
 function renderWeeklyTrainingTrend(insights) {
@@ -1928,7 +2319,7 @@ function renderExerciseSummary(exercise, week, user) {
   `;
 }
 
-function renderExerciseLog(exercise, week, draft = {}, user) {
+function renderExerciseLog(exercise, week, draft = {}, user, index = 0) {
   const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
   const target = getPrescription(exercise, week, user?.plan?.weeks);
   const load = getLoadRecommendation(exercise, user?.assessment, user?.logs || [], week);
@@ -1967,27 +2358,30 @@ function renderExerciseLog(exercise, week, draft = {}, user) {
     `;
 
   return `
-    <article class="log-item">
-      <div class="log-title">
+    <details class="log-item" ${index === 0 ? "open" : ""}>
+      <summary class="log-title">
         <img class="thumb" src="${escapeAttr(equipment.imageSrc)}" alt="" aria-hidden="true" />
         <div>
           <strong>${exercise.name}</strong>
           <span>${target.sets} · ${target.reps} · 休息 ${target.rest}</span>
           ${load ? `<span class="load-help">${load.label}</span>` : ""}
         </div>
+        <span class="log-step">第 ${index + 1} 项</span>
+      </summary>
+      <div class="log-body">
         <label class="check-pill">
           <input name="done-${exercise.id}" type="checkbox" ${draft[`done-${exercise.id}`] ? "checked" : ""} />
-          完成
+          完成这个动作
         </label>
+        <p>${exercise.cues.join("；")}</p>
+        ${load ? `<p class="load-note">${load.detail}${load.caution ? ` ${load.caution}` : ""}</p>` : ""}
+        ${metricFields}
+        <fieldset class="feeling-field">
+          <legend>这个动作感觉如何</legend>
+          ${renderFeelingChoices(`feeling-${exercise.id}`, Number(draft[`feeling-${exercise.id}`] || 3))}
+        </fieldset>
       </div>
-      <p>${exercise.cues.join("；")}</p>
-      ${load ? `<p class="load-note">${load.detail}${load.caution ? ` ${load.caution}` : ""}</p>` : ""}
-      ${metricFields}
-      <fieldset class="feeling-field">
-        <legend>这个动作感觉如何</legend>
-        ${renderFeelingChoices(`feeling-${exercise.id}`, Number(draft[`feeling-${exercise.id}`] || 3))}
-      </fieldset>
-    </article>
+    </details>
   `;
 }
 
@@ -2003,12 +2397,19 @@ function renderNav() {
   return `
     <nav class="bottom-nav" aria-label="主导航">
         ${items.map(([view, label]) => `
-        <button class="${activeView === view || (activeView === "plan-edit" && view === "plan") ? "active" : ""}" type="button" data-action="nav" data-view="${view}">
+        <button class="${isNavItemActive(view) ? "active" : ""}" type="button" data-action="nav" data-view="${view}">
           ${label}
         </button>
       `).join("")}
     </nav>
   `;
+}
+
+function isNavItemActive(view) {
+  if (activeView === view) return true;
+  if (activeView === "plan-edit" && view === "plan") return true;
+  if (view === "profile" && activeView.startsWith("profile-")) return true;
+  return false;
 }
 
 function getHeaderTitle(user, needsAssessment) {
@@ -2019,8 +2420,12 @@ function getHeaderTitle(user, needsAssessment) {
     plan: "训练计划",
     "plan-edit": "编辑计划",
     log: "训练记录",
-    equipment: "器械图示",
-    profile: "我的数据"
+    equipment: "器械库",
+    profile: "我的",
+    "profile-weekly": "周报与趋势",
+    "profile-friends": "好友与排行",
+    "profile-releases": "更新公告",
+    "profile-settings": "设置与反馈"
   };
   return titles[activeView] || "今日训练";
 }
@@ -2916,7 +3321,17 @@ function groupEquipmentByCategory(items) {
 
 function getInitialView(params) {
   const view = params.get("view");
-  return ["home", "plan", "log", "equipment", "profile"].includes(view) ? view : "home";
+  return [
+    "home",
+    "plan",
+    "log",
+    "equipment",
+    "profile",
+    "profile-weekly",
+    "profile-friends",
+    "profile-releases",
+    "profile-settings"
+  ].includes(view) ? view : "home";
 }
 
 function getInitialWeek(params) {
@@ -2999,13 +3414,14 @@ function loadStore() {
         sessionUserId: null,
         cloudUser: null,
         cloudDrafts: {},
+        releaseReads: {},
         ...parsed
       };
     }
   } catch {
-    return { users: [], sessionUserId: null, cloudUser: null, cloudDrafts: {} };
+    return { users: [], sessionUserId: null, cloudUser: null, cloudDrafts: {}, releaseReads: {} };
   }
-  return { users: [], sessionUserId: null, cloudUser: null, cloudDrafts: {} };
+  return { users: [], sessionUserId: null, cloudUser: null, cloudDrafts: {}, releaseReads: {} };
 }
 
 function saveStore() {
@@ -3043,6 +3459,13 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function formatReleaseDate(value) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date(value));
+}
+
 function getFriendlyCloudError(error) {
   const message = String(error?.message || error || "云端请求失败。");
   if (message.includes("Invalid login credentials")) return "邮箱或密码不匹配。";
@@ -3050,7 +3473,14 @@ function getFriendlyCloudError(error) {
   if (message.includes("User already registered") || message.includes("already registered")) return "这个邮箱已经注册，直接登录就行。";
   if (message.includes("Failed to fetch") || message.includes("NetworkError")) return "网络连接失败，请确认手机能访问云端保存服务。";
   if (message.includes("JWT") || message.includes("token")) return "登录状态已过期，请重新登录。";
-  if (message.includes("schema cache") || message.includes("friend_profiles") || message.includes("friendships") || message.includes("feedback")) {
+  if (
+    message.includes("schema cache") ||
+    message.includes("friend_profiles") ||
+    message.includes("friendships") ||
+    message.includes("feedback") ||
+    message.includes("app_releases") ||
+    message.includes("user_release_reads")
+  ) {
     return "云端表结构还没更新。请先在 Supabase SQL Editor 执行最新 docs/supabase-schema.sql。";
   }
   return message;
