@@ -59,22 +59,76 @@ create table if not exists public.body_logs (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.friend_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  nickname text not null default '训练伙伴',
+  friend_code text not null unique,
+  share_leaderboard boolean not null default false,
+  share_weekly_summary boolean not null default false,
+  current_week_count int not null default 0,
+  current_week_completed int not null default 0,
+  current_week_completion_rate int not null default 0,
+  streak_weeks int not null default 0,
+  latest_training_at timestamptz,
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  constraint friend_profiles_code_shape check (friend_code ~ '^[A-Z0-9]{6,12}$'),
+  constraint friend_profiles_nickname_length check (char_length(nickname) between 1 and 16),
+  constraint friend_profiles_completion_rate_range check (current_week_completion_rate between 0 and 100)
+);
+
+create table if not exists public.friendships (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references auth.users(id) on delete cascade,
+  addressee_id uuid not null references auth.users(id) on delete cascade,
+  status text not null default 'pending',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint friendships_not_self check (requester_id <> addressee_id),
+  constraint friendships_status_check check (status in ('pending', 'accepted', 'declined'))
+);
+
+create unique index if not exists friendships_unique_pair_idx
+  on public.friendships (least(requester_id, addressee_id), greatest(requester_id, addressee_id));
+
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  rating int not null,
+  category text not null,
+  page text,
+  message text not null,
+  created_at timestamptz not null default now(),
+  constraint feedback_rating_range check (rating between 1 and 5),
+  constraint feedback_message_length check (char_length(message) between 2 and 500)
+);
+
 alter table public.profiles enable row level security;
 alter table public.assessments enable row level security;
 alter table public.plans enable row level security;
 alter table public.training_logs enable row level security;
 alter table public.body_logs enable row level security;
+alter table public.friend_profiles enable row level security;
+alter table public.friendships enable row level security;
+alter table public.feedback enable row level security;
 
 grant select, insert, update, delete on public.profiles to authenticated;
 grant select, insert, update, delete on public.assessments to authenticated;
 grant select, insert, update, delete on public.plans to authenticated;
 grant select, insert, update, delete on public.training_logs to authenticated;
 grant select, insert, update, delete on public.body_logs to authenticated;
+grant select, insert, update on public.friend_profiles to authenticated;
+grant select, insert, update, delete on public.friendships to authenticated;
+grant insert, select on public.feedback to authenticated;
 
 create index if not exists assessments_user_created_idx on public.assessments (user_id, created_at desc);
 create index if not exists plans_user_created_idx on public.plans (user_id, created_at desc);
 create index if not exists training_logs_user_created_idx on public.training_logs (user_id, created_at desc);
 create index if not exists body_logs_user_created_idx on public.body_logs (user_id, created_at desc);
+create index if not exists friend_profiles_code_idx on public.friend_profiles (friend_code);
+create index if not exists friendships_requester_idx on public.friendships (requester_id, status, created_at desc);
+create index if not exists friendships_addressee_idx on public.friendships (addressee_id, status, created_at desc);
+create index if not exists feedback_user_created_idx on public.feedback (user_id, created_at desc);
 
 drop policy if exists "Users can read own profile" on public.profiles;
 drop policy if exists "Users can insert own profile" on public.profiles;
@@ -83,6 +137,15 @@ drop policy if exists "Users can manage own assessments" on public.assessments;
 drop policy if exists "Users can manage own plans" on public.plans;
 drop policy if exists "Users can manage own training logs" on public.training_logs;
 drop policy if exists "Users can manage own body logs" on public.body_logs;
+drop policy if exists "Users can read friend public summaries" on public.friend_profiles;
+drop policy if exists "Users can insert own friend profile" on public.friend_profiles;
+drop policy if exists "Users can update own friend profile" on public.friend_profiles;
+drop policy if exists "Users can read own friendships" on public.friendships;
+drop policy if exists "Users can insert outgoing friend requests" on public.friendships;
+drop policy if exists "Users can update own friendships" on public.friendships;
+drop policy if exists "Users can delete own friendships" on public.friendships;
+drop policy if exists "Users can insert own feedback" on public.feedback;
+drop policy if exists "Users can read own feedback" on public.feedback;
 
 create policy "Users can read own profile" on public.profiles
   for select to authenticated
@@ -111,3 +174,35 @@ create policy "Users can manage own body logs" on public.body_logs
   for all to authenticated
   using ((select auth.uid()) is not null and (select auth.uid()) = user_id)
   with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
+
+create policy "Users can read friend public summaries" on public.friend_profiles
+  for select to authenticated
+  using ((select auth.uid()) is not null);
+create policy "Users can insert own friend profile" on public.friend_profiles
+  for insert to authenticated
+  with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
+create policy "Users can update own friend profile" on public.friend_profiles
+  for update to authenticated
+  using ((select auth.uid()) is not null and (select auth.uid()) = user_id)
+  with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
+
+create policy "Users can read own friendships" on public.friendships
+  for select to authenticated
+  using ((select auth.uid()) is not null and ((select auth.uid()) = requester_id or (select auth.uid()) = addressee_id));
+create policy "Users can insert outgoing friend requests" on public.friendships
+  for insert to authenticated
+  with check ((select auth.uid()) is not null and (select auth.uid()) = requester_id and requester_id <> addressee_id and status = 'pending');
+create policy "Users can update own friendships" on public.friendships
+  for update to authenticated
+  using ((select auth.uid()) is not null and ((select auth.uid()) = requester_id or (select auth.uid()) = addressee_id))
+  with check ((select auth.uid()) is not null and ((select auth.uid()) = requester_id or (select auth.uid()) = addressee_id));
+create policy "Users can delete own friendships" on public.friendships
+  for delete to authenticated
+  using ((select auth.uid()) is not null and ((select auth.uid()) = requester_id or (select auth.uid()) = addressee_id));
+
+create policy "Users can insert own feedback" on public.feedback
+  for insert to authenticated
+  with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
+create policy "Users can read own feedback" on public.feedback
+  for select to authenticated
+  using ((select auth.uid()) is not null and (select auth.uid()) = user_id);

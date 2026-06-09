@@ -738,6 +738,12 @@ input[type="range"] {
   background: rgba(246, 247, 248, 0.68);
 }
 
+.leaderboard-row.self {
+  border-style: solid;
+  border-color: rgba(34, 122, 90, 0.28);
+  background: rgba(34, 122, 90, 0.08);
+}
+
 .leaderboard-row > span {
   display: grid;
   place-items: center;
@@ -753,6 +759,107 @@ input[type="range"] {
 
 .leaderboard-row p {
   margin: 2px 0 0;
+}
+
+.social-settings {
+  margin-top: 12px;
+}
+
+.friend-code-card {
+  padding: 12px;
+  border: 1px solid rgba(34, 122, 90, 0.24);
+  border-radius: 8px;
+  background: rgba(34, 122, 90, 0.08);
+}
+
+.friend-code-card span,
+.friend-code-card p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.friend-code-card strong {
+  display: block;
+  margin: 3px 0;
+  font-size: 24px;
+  letter-spacing: 0.08em;
+}
+
+.friend-code-card p {
+  margin: 0;
+}
+
+.share-grid,
+.friend-list {
+  display: grid;
+  gap: 8px;
+}
+
+.share-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.check-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.check-card input {
+  width: 18px;
+  min-height: 18px;
+  flex: 0 0 auto;
+  accent-color: var(--green);
+}
+
+.add-friend-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.friend-list {
+  margin-top: 10px;
+}
+
+.friend-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.friend-card strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.friend-card p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.friend-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .account-email {
@@ -1150,7 +1257,8 @@ input[type="range"] {
   .feeling-grid,
   .body-trend-grid,
   .intensity-summary,
-  .record-grid {
+  .record-grid,
+  .share-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1178,5 +1286,15 @@ input[type="range"] {
 
   .add-exercise-row {
     grid-template-columns: 1fr;
+  }
+
+  .add-friend-form,
+  .friend-card {
+    grid-template-columns: 1fr;
+  }
+
+  .friend-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 }

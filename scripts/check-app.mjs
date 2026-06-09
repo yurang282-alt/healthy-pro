@@ -24,7 +24,8 @@ const requiredFiles = [
   "public/assets/equipment-contact-sheet.png",
   "public/assets/smith-machine.png",
   "docs/ai-coach-spec.md",
-  "docs/supabase-schema.sql"
+  "docs/supabase-schema.sql",
+  "docs/roadmap.md"
 ];
 
 for (const file of requiredFiles) {
@@ -39,6 +40,7 @@ const manifestSource = readFileSync("public/manifest.webmanifest", "utf8");
 const serviceWorker = readFileSync("sw.js", "utf8");
 const appSource = readFileSync("src/app.js", "utf8");
 const cloudSource = readFileSync("src/cloud.js", "utf8");
+const schemaSource = readFileSync("docs/supabase-schema.sql", "utf8");
 const buildSource = readFileSync("scripts/build-static.mjs", "utf8");
 const buildVersionPlaceholder = "__HEALTHY_PRO_BUILD_VERSION__";
 
@@ -97,8 +99,19 @@ if (!appSource.includes("data-plan-editor-form") || !appSource.includes("restore
   throw new Error("App should support custom plan editing, AI plan restore, previous plan restore, and previous plan history.");
 }
 
-if (!appSource.includes("renderWeeklyTrainingTrend") || !appSource.includes("renderLeaderboardPreview") || !appSource.includes("getProfileInsights")) {
-  throw new Error("Profile page should show record insights, trends, and a reserved leaderboard surface.");
+if (!appSource.includes("renderWeeklyTrainingTrend") || !appSource.includes("renderFriendsSection") || !appSource.includes("getProfileInsights")) {
+  throw new Error("Profile page should show record insights, trends, and friend leaderboard surface.");
+}
+
+if (!appSource.includes("data-feedback-form") || !cloudSource.includes("saveCloudFeedback") || !cloudSource.includes("addCloudFriend")) {
+  throw new Error("App should include feedback submission and friend management hooks.");
+}
+
+if (!schemaSource.includes("create table if not exists public.friend_profiles") ||
+  !schemaSource.includes("create table if not exists public.friendships") ||
+  !schemaSource.includes("create table if not exists public.feedback") ||
+  !schemaSource.includes("Users can read friend public summaries")) {
+  throw new Error("Supabase schema should include friend profiles, friendships, feedback, and RLS policies.");
 }
 
 if (!cloudSource.includes("/auth/v1") || !cloudSource.includes("/token?grant_type=password") || !cloudSource.includes("/rest/v1")) {
