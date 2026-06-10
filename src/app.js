@@ -65,12 +65,15 @@ let activeView = getInitialView(urlParams);
 let authMode = "login";
 let notice = "";
 let selectedPlanWeek = getInitialWeek(urlParams);
+let selectedExerciseId = urlParams.get("exercise") || "";
+let selectedExerciseReturnView = urlParams.get("returnView") || "plan";
 let equipmentQuery = "";
 let appReady = false;
 let networkOnline = navigator.onLine;
 let installPromptEvent = null;
 let installPromptDismissed = localStorage.getItem(INSTALL_DISMISSED_KEY) === "1";
 let syncState = createInitialSyncState();
+let restTimerTimeout = null;
 
 app.innerHTML = renderLoading();
 bootstrapApp();
@@ -88,6 +91,14 @@ app.addEventListener("click", async (event) => {
 
   if (action === "nav") {
     activeView = event.target.closest("[data-view]").dataset.view;
+    render();
+  }
+
+  if (action === "view-exercise") {
+    const button = event.target.closest("[data-exercise-id]");
+    selectedExerciseId = button?.dataset.exerciseId || "";
+    selectedExerciseReturnView = button?.dataset.returnView || activeView || "plan";
+    activeView = "exercise-detail";
     render();
   }
 
@@ -122,6 +133,17 @@ app.addEventListener("click", async (event) => {
   if (action === "start-training") {
     activeView = "log";
     render();
+  }
+
+  if ([
+    "training-prev",
+    "training-next",
+    "training-jump",
+    "training-complete-set",
+    "training-complete-cardio",
+    "training-skip-rest"
+  ].includes(action)) {
+    handleTrainingAction(event, action);
   }
 
   if (action === "edit-plan") {
@@ -569,6 +591,7 @@ async function handleTrainingLog(form) {
 
     return {
       ...base,
+      setsDone: Number(formData.get(`setsDone-${id}`) || 0),
       weight: String(formData.get(`weight-${id}`) || "").trim(),
       reps: String(formData.get(`reps-${id}`) || "").trim()
     };
@@ -928,6 +951,93 @@ function handleDraftChange(event) {
   saveStore();
 }
 
+function handleTrainingAction(event, action) {
+  const user = getUser();
+  if (!user?.plan || user.plan.safetyHold) return;
+
+  const workout = getNextWorkout(user.plan, user.logs || []);
+  const week = getCurrentWeek(user.plan, user.logs || []);
+  const exercises = workout.exercises || [];
+  if (!exercises.length) return;
+
+  const form = event.target.closest("[data-training-form]");
+  const draft = {
+    ...getTrainingDraft(user, workout, week),
+    ...(form ? readFormDraft(form) : {})
+  };
+  const currentIndex = getActiveTrainingIndex(workout, draft);
+  const button = event.target.closest("[data-action]");
+
+  if (action === "training-prev") {
+    draft.activeExerciseIndex = Math.max(0, currentIndex - 1);
+    persistTrainingDraft(user, workout, week, draft);
+    render({ keepScroll: true });
+    return;
+  }
+
+  if (action === "training-next") {
+    draft.activeExerciseIndex = Math.min(exercises.length - 1, currentIndex + 1);
+    persistTrainingDraft(user, workout, week, draft);
+    render({ keepScroll: true });
+    return;
+  }
+
+  if (action === "training-jump") {
+    const index = Number(button?.dataset.exerciseIndex);
+    if (Number.isFinite(index)) {
+      draft.activeExerciseIndex = Math.max(0, Math.min(exercises.length - 1, index));
+      persistTrainingDraft(user, workout, week, draft);
+      render({ keepScroll: true });
+    }
+    return;
+  }
+
+  const exerciseId = button?.dataset.exerciseId || exercises[currentIndex]?.id;
+  const exerciseIndex = exercises.findIndex((item) => item.id === exerciseId);
+  const resolvedExerciseIndex = exerciseIndex >= 0 ? exerciseIndex : currentIndex;
+  const exercise = exercises[resolvedExerciseIndex];
+  if (!exercise) return;
+
+  if (action === "training-skip-rest") {
+    delete draft[`restUntil-${exercise.id}`];
+    persistTrainingDraft(user, workout, week, draft);
+    render({ keepScroll: true });
+    return;
+  }
+
+  if (action === "training-complete-cardio") {
+    draft[`done-${exercise.id}`] = "on";
+    draft[`feeling-${exercise.id}`] = draft[`feeling-${exercise.id}`] || 3;
+    if (!draft[`duration-${exercise.id}`]) {
+      draft[`duration-${exercise.id}`] = String(getTargetMinuteFallback(exercise) || "");
+    }
+    draft.activeExerciseIndex = getNextTrainingIndex(exercises, resolvedExerciseIndex);
+    persistTrainingDraft(user, workout, week, draft);
+    render({ keepScroll: true });
+    return;
+  }
+
+  if (action === "training-complete-set") {
+    const target = getPrescription(exercise, week, user.plan?.weeks);
+    const targetSetCount = getTargetSetCount(exercise, week, user.plan?.weeks);
+    const nextSetCount = Math.min(targetSetCount, getDraftSetCount(draft, exercise, targetSetCount) + 1);
+    draft[`setsDone-${exercise.id}`] = nextSetCount;
+    draft[`feeling-${exercise.id}`] = draft[`feeling-${exercise.id}`] || 3;
+
+    if (nextSetCount >= targetSetCount) {
+      draft[`done-${exercise.id}`] = "on";
+      delete draft[`restUntil-${exercise.id}`];
+      draft.activeExerciseIndex = getNextTrainingIndex(exercises, resolvedExerciseIndex);
+    } else {
+      draft[`restUntil-${exercise.id}`] = String(Date.now() + parseRestSeconds(target.rest) * 1000);
+      draft.activeExerciseIndex = resolvedExerciseIndex;
+    }
+
+    persistTrainingDraft(user, workout, week, draft);
+    render({ keepScroll: true });
+  }
+}
+
 function render(options = {}) {
   if (!appReady) {
     app.innerHTML = renderLoading();
@@ -938,6 +1048,7 @@ function render(options = {}) {
   if (!user) {
     app.innerHTML = renderAuth();
     if (!options.keepScroll) resetScroll();
+    scheduleRestTimerTick(null);
     return;
   }
 
@@ -959,6 +1070,7 @@ function render(options = {}) {
     </div>
   `;
   if (!options.keepScroll) resetScroll();
+  scheduleRestTimerTick(user);
 }
 
 function renderLoading() {
@@ -1052,6 +1164,7 @@ function renderActiveView(user) {
 
   if (activeView === "plan") return renderPlan(user);
   if (activeView === "plan-edit") return renderPlanEditor(user);
+  if (activeView === "exercise-detail") return renderExerciseDetail(user);
   if (activeView === "log") return renderLog(user);
   if (activeView === "equipment") return renderEquipment(user);
   if (activeView === "profile-weekly") return renderProfileWeekly(user);
@@ -1457,6 +1570,8 @@ function renderLog(user) {
   const workout = getNextWorkout(plan, logs);
   const week = getCurrentWeek(plan, logs);
   const trainingDraft = getTrainingDraft(user, workout, week);
+  const activeIndex = getActiveTrainingIndex(workout, trainingDraft);
+  const completedCount = getDraftCompletedCount(workout, trainingDraft);
   const bodyDraft = user.drafts?.body || {};
 
   return `
@@ -1466,19 +1581,22 @@ function renderLog(user) {
       <p class="muted">${workout.focus}</p>
       <div class="training-session-panel">
         <div>
-          <span>本次动作</span>
-          <strong>${workout.exercises.length} 个</strong>
+          <span>进度</span>
+          <strong>${completedCount}/${workout.exercises.length}</strong>
         </div>
         <div>
-          <span>记录方式</span>
-          <strong>逐项打开</strong>
+          <span>当前</span>
+          <strong>第 ${activeIndex + 1} 项</strong>
+        </div>
+        <div>
+          <span>草稿</span>
+          <strong>自动保存</strong>
         </div>
       </div>
-      <p class="empty-note">训练时按顺序展开动作：先看提示，再填关键数字，最后选这组感觉。跑步机只填时长/速度/坡度/阻力。</p>
       <form class="stack" data-training-form>
-        <div class="log-list">
-          ${workout.exercises.map((exercise, index) => renderExerciseLog(exercise, week, trainingDraft, user, index)).join("")}
-        </div>
+        ${renderTrainingCoachPanel(workout, week, trainingDraft, user, activeIndex)}
+        ${renderTrainingHiddenFields(workout.exercises, activeIndex, trainingDraft)}
+        ${renderTrainingQueue(workout, trainingDraft, activeIndex)}
         <fieldset>
           <legend>这次整体强度</legend>
           <div class="choice-grid three">
@@ -1491,7 +1609,7 @@ function renderLog(user) {
           备注
           <textarea name="note" rows="3" placeholder="比如某个动作不稳、器械找不到、重量太轻">${escapeHtml(trainingDraft.note || "")}</textarea>
         </label>
-        <button class="primary-button" type="submit">保存训练</button>
+        <button class="primary-button" type="submit">${completedCount === workout.exercises.length ? "保存本次训练" : "保存已完成训练"}</button>
       </form>
     </section>
 
@@ -1523,6 +1641,190 @@ function renderLog(user) {
       </form>
     </section>
   `;
+}
+
+function renderTrainingCoachPanel(workout, week, draft, user, activeIndex) {
+  const exercise = workout.exercises[activeIndex] || workout.exercises[0];
+  if (!exercise) return "";
+
+  const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
+  const target = getPrescription(exercise, week, user?.plan?.weeks);
+  const load = getLoadRecommendation(exercise, user?.assessment, user?.logs || [], week);
+  const done = isDraftDone(draft, exercise.id);
+  const isCardio = exercise.type === "cardio";
+  const targetSetCount = getTargetSetCount(exercise, week, user?.plan?.weeks);
+  const setsDone = isCardio ? (done ? 1 : 0) : getDraftSetCount(draft, exercise, targetSetCount);
+  const restRemaining = getRestRemainingSeconds(draft[`restUntil-${exercise.id}`]);
+  const progress = Math.round((getDraftCompletedCount(workout, draft) / Math.max(1, workout.exercises.length)) * 100);
+
+  return `
+    <article class="training-coach-card">
+      <div class="training-progress-line" aria-label="本次训练完成进度">
+        <span style="width: ${escapeAttr(progress)}%"></span>
+      </div>
+      <div class="training-current-head">
+        <img class="training-visual" src="${escapeAttr(equipment?.imageSrc || "/public/assets/equipment/dumbbell-rack.png")}" alt="${escapeAttr(equipment?.name || exercise.name)}示意图" />
+        <div>
+          <p class="eyebrow">第 ${activeIndex + 1} 项</p>
+          <h3>${escapeHtml(exercise.name)}</h3>
+          <p>${escapeHtml(equipment?.name || "训练器械")} · ${target.sets} · ${target.reps}</p>
+          ${load ? `<strong class="load-help">${escapeHtml(load.label)}</strong>` : ""}
+        </div>
+      </div>
+
+      <div class="training-tip-grid">
+        <div><span>用力感</span><strong>${target.effort}</strong></div>
+        <div><span>休息</span><strong>${target.rest}</strong></div>
+        <div><span>${isCardio ? "目标时长" : "目标组数"}</span><strong>${isCardio ? target.reps : `${setsDone}/${targetSetCount}`}</strong></div>
+      </div>
+
+      <ul class="cue-list">
+        ${(exercise.cues || []).slice(0, 3).map((cue) => `<li>${escapeHtml(cue)}</li>`).join("")}
+      </ul>
+      ${load ? `<p class="load-note">${escapeHtml(load.detail)}${load.caution ? ` ${escapeHtml(load.caution)}` : ""}</p>` : ""}
+      <button class="small-button subtle detail-inline-button" type="button" data-action="view-exercise" data-exercise-id="${escapeAttr(getBaseExerciseId(exercise))}" data-return-view="log">看动作详情</button>
+
+      ${isCardio
+        ? renderActiveCardioFields(exercise, draft, done)
+        : renderActiveStrengthFields(exercise, draft, targetSetCount, setsDone, restRemaining, done)}
+
+      <fieldset class="feeling-field">
+        <legend>这个动作感觉如何</legend>
+        ${renderFeelingChoices(`feeling-${exercise.id}`, Number(draft[`feeling-${exercise.id}`] || 3))}
+      </fieldset>
+
+      <div class="training-controls">
+        <button class="small-button subtle" type="button" data-action="training-prev" ${activeIndex <= 0 ? "disabled" : ""}>上一项</button>
+        <button class="small-button subtle" type="button" data-action="training-next" ${activeIndex >= workout.exercises.length - 1 ? "disabled" : ""}>下一项</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderActiveStrengthFields(exercise, draft, targetSetCount, setsDone, restRemaining, done) {
+  const nextSet = Math.min(targetSetCount, setsDone + 1);
+  return `
+    <div class="set-progress" aria-label="已完成组数">
+      ${Array.from({ length: targetSetCount }, (_, index) => `<span class="${index < setsDone ? "done" : ""}">${index + 1}</span>`).join("")}
+    </div>
+    ${restRemaining > 0 && !done
+      ? `
+        <div class="rest-timer">
+          <div>
+            <span>组间休息</span>
+            <strong data-rest-until="${escapeAttr(draft[`restUntil-${exercise.id}`] || "")}">${formatSeconds(restRemaining)}</strong>
+          </div>
+          <button class="small-button subtle" type="button" data-action="training-skip-rest">跳过</button>
+        </div>
+      `
+      : ""}
+    <div class="form-grid two">
+      <label>
+        重量
+        <input name="weight-${exercise.id}" type="text" inputmode="decimal" placeholder="kg/档位" value="${escapeAttr(draft[`weight-${exercise.id}`] || "")}" />
+      </label>
+      <label>
+        实际次数
+        <input name="reps-${exercise.id}" type="text" inputmode="numeric" placeholder="如 12/12/10" value="${escapeAttr(draft[`reps-${exercise.id}`] || "")}" />
+      </label>
+    </div>
+    <button class="primary-button training-main-button" type="button" data-action="training-complete-set" data-exercise-id="${escapeAttr(exercise.id)}" ${done ? "disabled" : ""}>
+      ${done ? "本动作已完成" : `完成第 ${nextSet} 组`}
+    </button>
+  `;
+}
+
+function renderActiveCardioFields(exercise, draft, done) {
+  return `
+    <div class="form-grid four">
+      <label>
+        时长 分钟
+        <input name="duration-${exercise.id}" type="number" min="0" max="180" step="1" inputmode="decimal" placeholder="8" value="${escapeAttr(draft[`duration-${exercise.id}`] || "")}" />
+      </label>
+      <label>
+        速度
+        <input name="speed-${exercise.id}" type="number" min="0" max="30" step="0.1" inputmode="decimal" placeholder="5.5" value="${escapeAttr(draft[`speed-${exercise.id}`] || "")}" />
+      </label>
+      <label>
+        坡度 %
+        <input name="incline-${exercise.id}" type="number" min="0" max="30" step="0.5" inputmode="decimal" placeholder="3" value="${escapeAttr(draft[`incline-${exercise.id}`] || "")}" />
+      </label>
+      <label>
+        阻力 档
+        <input name="resistance-${exercise.id}" type="number" min="0" max="30" step="1" inputmode="decimal" placeholder="5" value="${escapeAttr(draft[`resistance-${exercise.id}`] || "")}" />
+      </label>
+    </div>
+    <button class="primary-button training-main-button" type="button" data-action="training-complete-cardio" data-exercise-id="${escapeAttr(exercise.id)}" ${done ? "disabled" : ""}>
+      ${done ? "本动作已完成" : "完成这段有氧"}
+    </button>
+  `;
+}
+
+function renderTrainingHiddenFields(exercises, activeIndex, draft = {}) {
+  const fields = [hiddenInput("activeExerciseIndex", activeIndex)];
+  exercises.forEach((exercise, index) => {
+    fields.push(hiddenInput(`setsDone-${exercise.id}`, draft[`setsDone-${exercise.id}`] || ""));
+    fields.push(hiddenInput(`restUntil-${exercise.id}`, draft[`restUntil-${exercise.id}`] || ""));
+    if (index === activeIndex) {
+      if (isDraftDone(draft, exercise.id)) fields.push(hiddenInput(`done-${exercise.id}`, "on"));
+      return;
+    }
+    fields.push(renderHiddenExerciseDraft(exercise, draft));
+  });
+
+  return `<div class="training-hidden-fields">${fields.join("")}</div>`;
+}
+
+function renderHiddenExerciseDraft(exercise, draft = {}) {
+  const fields = [
+    isDraftDone(draft, exercise.id) ? hiddenInput(`done-${exercise.id}`, "on") : "",
+    hiddenInput(`feeling-${exercise.id}`, draft[`feeling-${exercise.id}`] || 3)
+  ];
+
+  if (exercise.type === "cardio") {
+    fields.push(
+      hiddenInput(`duration-${exercise.id}`, draft[`duration-${exercise.id}`] || ""),
+      hiddenInput(`speed-${exercise.id}`, draft[`speed-${exercise.id}`] || ""),
+      hiddenInput(`incline-${exercise.id}`, draft[`incline-${exercise.id}`] || ""),
+      hiddenInput(`resistance-${exercise.id}`, draft[`resistance-${exercise.id}`] || "")
+    );
+  } else {
+    fields.push(
+      hiddenInput(`weight-${exercise.id}`, draft[`weight-${exercise.id}`] || ""),
+      hiddenInput(`reps-${exercise.id}`, draft[`reps-${exercise.id}`] || "")
+    );
+  }
+
+  return fields.join("");
+}
+
+function renderTrainingQueue(workout, draft, activeIndex) {
+  return `
+    <div class="training-queue">
+      <div class="training-queue-head">
+        <strong>训练队列</strong>
+        <span>${getDraftCompletedCount(workout, draft)}/${workout.exercises.length}</span>
+      </div>
+      <div class="training-queue-list">
+        ${workout.exercises.map((exercise, index) => {
+          const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
+          return `
+            <button class="queue-item ${index === activeIndex ? "active" : ""} ${isDraftDone(draft, exercise.id) ? "done" : ""}" type="button" data-action="training-jump" data-exercise-index="${index}">
+              <span>${index + 1}</span>
+              <div>
+                <strong>${escapeHtml(exercise.name)}</strong>
+                <em>${escapeHtml(equipment?.name || "器械")}</em>
+              </div>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function hiddenInput(name, value) {
+  return `<input type="hidden" name="${escapeAttr(name)}" value="${escapeAttr(value ?? "")}" />`;
 }
 
 function renderWorkoutCard(workout, week, user, index = 0) {
@@ -1685,6 +1987,7 @@ function renderEquipment(user) {
 }
 
 function renderEquipmentCard(item, compact = false) {
+  const primaryExercise = getPrimaryExerciseForEquipment(item.id);
   return `
     <article class="equipment-card ${compact ? "compact" : ""}">
       <img class="equipment-visual" src="${escapeAttr(item.imageSrc)}" alt="${escapeAttr(item.name)}示意图" />
@@ -1701,9 +2004,142 @@ function renderEquipmentCard(item, compact = false) {
             ${item.mistakes.map((text) => `<span>${text}</span>`).join("")}
           </div>
         `}
+        ${primaryExercise
+          ? `<button class="small-button equipment-action" type="button" data-action="view-exercise" data-exercise-id="${escapeAttr(primaryExercise.id)}" data-return-view="equipment">查看动作</button>`
+          : ""}
       </div>
     </article>
   `;
+}
+
+function renderExerciseDetail(user) {
+  const exercise = getExerciseForDetail(user, selectedExerciseId);
+  if (!exercise) {
+    return `
+      <section class="section-block">
+        <p class="eyebrow">动作详情</p>
+        <h2>没有找到这个动作</h2>
+        <p class="empty-note">可能是计划刚刚更新过。先回到计划页重新打开动作。</p>
+        <button class="secondary-button" type="button" data-action="nav" data-view="plan">返回计划</button>
+      </section>
+    `;
+  }
+
+  const equipment = EQUIPMENT_BY_ID[exercise.equipmentId];
+  const week = getCurrentWeek(user.plan, user.logs || []);
+  const target = getPrescription(exercise, week, user.plan?.weeks);
+  const load = getLoadRecommendation(exercise, user.assessment, user.logs || [], week);
+  const loadFactLabel = exercise.type === "cardio" ? "无需重量" : load?.shortLabel || "按感觉试";
+  const relatedExercises = getRelatedExercises(exercise);
+  const returnView = selectedExerciseReturnView || "plan";
+
+  return `
+    <section class="profile-subhead detail-subhead">
+      <button class="small-button subtle" type="button" data-action="nav" data-view="${escapeAttr(returnView)}">返回</button>
+      <div>
+        <p class="eyebrow">动作详情</p>
+        <h2>${escapeHtml(exercise.name)}</h2>
+        <p>${escapeHtml(equipment?.name || "训练器械")} · ${escapeHtml(getExerciseArea(exercise))}</p>
+      </div>
+    </section>
+
+    <section class="section-block exercise-detail-hero">
+      <img class="detail-visual" src="${escapeAttr(equipment?.imageSrc || "/public/assets/equipment/dumbbell-rack.png")}" alt="${escapeAttr(equipment?.name || exercise.name)}示意图" />
+      <div class="detail-facts">
+        <div><span>目标</span><strong>${target.sets} · ${target.reps}</strong></div>
+        <div><span>休息</span><strong>${target.rest}</strong></div>
+        <div><span>用力感</span><strong>${target.effort}</strong></div>
+        <div><span>建议重量</span><strong>${escapeHtml(loadFactLabel)}</strong></div>
+      </div>
+      <p class="coach-note">先用保守重量确认动作轨迹。只要出现刺痛、麻木或关节不适，本次动作直接停止。</p>
+    </section>
+
+    ${renderGuideList("先把器械调对", equipment?.setup || [])}
+    ${renderGuideList("怎么做", getExerciseInstructionSteps(exercise, equipment))}
+    ${load ? `
+      <section class="section-block">
+        <p class="eyebrow">重量建议</p>
+        <h2>${escapeHtml(load.label)}</h2>
+        <p class="load-note">${escapeHtml(load.detail)}${load.caution ? ` ${escapeHtml(load.caution)}` : ""}</p>
+      </section>
+    ` : ""}
+    ${renderGuideList("别这样", equipment?.mistakes || [], "warning")}
+
+    <section class="section-block">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">替代动作</p>
+          <h2>器械被占时怎么换</h2>
+        </div>
+      </div>
+      ${relatedExercises.length
+        ? `<div class="alternative-list">${relatedExercises.map((item) => {
+          const itemEquipment = EQUIPMENT_BY_ID[item.equipmentId];
+          return `
+            <button class="alternative-card" type="button" data-action="view-exercise" data-exercise-id="${escapeAttr(item.id)}" data-return-view="${escapeAttr(returnView)}">
+              <img class="thumb" src="${escapeAttr(itemEquipment?.imageSrc || "/public/assets/equipment/dumbbell-rack.png")}" alt="" aria-hidden="true" />
+              <span><strong>${escapeHtml(item.name)}</strong><em>${escapeHtml(itemEquipment?.name || "同类器械")}</em></span>
+            </button>
+          `;
+        }).join("")}</div>`
+        : `<p class="empty-note">这个动作暂时没有合适替代。器械被占时先做下一个动作，回来再补。</p>`}
+    </section>
+  `;
+}
+
+function renderGuideList(title, items = [], variant = "") {
+  if (!items.length) return "";
+  return `
+    <section class="section-block guide-block ${variant}">
+      <p class="eyebrow">${variant === "warning" ? "风险提醒" : "现场提示"}</p>
+      <h2>${escapeHtml(title)}</h2>
+      <ol class="guide-list">
+        ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ol>
+    </section>
+  `;
+}
+
+function getExerciseForDetail(user, exerciseId) {
+  const id = exerciseId || "";
+  const planExercises = (user?.plan?.workouts || []).flatMap((workout) => workout.exercises || []);
+  const matchedPlanExercise = planExercises.find((exercise) => {
+    const baseId = getBaseExerciseId(exercise);
+    return [exercise.id, exercise.sourceExerciseId, baseId].includes(id);
+  });
+  if (matchedPlanExercise) return matchedPlanExercise;
+
+  const libraryExercise = createExerciseFromLibrary(id);
+  if (libraryExercise) return libraryExercise;
+
+  const nextWorkout = user?.plan && !user.plan.safetyHold ? getNextWorkout(user.plan, user.logs || []) : null;
+  return nextWorkout?.exercises?.[0] || null;
+}
+
+function getExerciseInstructionSteps(exercise, equipment) {
+  const intro = exercise.type === "cardio"
+    ? ["先从低速度或低阻力开始，身体热起来后再微调。"]
+    : ["先用轻重量做 1 组试动作，确认轨迹和关节感觉。"];
+  return [...intro, ...(exercise.cues || []), ...(equipment?.setup?.slice(0, 1) || [])].slice(0, 5);
+}
+
+function getRelatedExercises(exercise) {
+  const baseId = getBaseExerciseId(exercise);
+  const area = getExerciseArea(exercise);
+  const sameEquipment = PLAN_EXERCISES.filter((item) =>
+    item.id !== baseId &&
+    item.equipmentId === exercise.equipmentId
+  );
+  const sameArea = PLAN_EXERCISES.filter((item) =>
+    item.id !== baseId &&
+    item.equipmentId !== exercise.equipmentId &&
+    getExerciseArea(item) === area
+  );
+  return [...sameEquipment, ...sameArea].slice(0, 3);
+}
+
+function getPrimaryExerciseForEquipment(equipmentId) {
+  return PLAN_EXERCISES.find((exercise) => exercise.equipmentId === equipmentId) || null;
 }
 
 function getCurrentWorkoutEquipment(user, visibleEquipment) {
@@ -2307,7 +2743,7 @@ function renderExerciseSummary(exercise, week, user) {
   const load = getLoadRecommendation(exercise, user?.assessment, user?.logs || [], week);
   const tag = exercise.focusTag ? ` · ${exercise.focusTag}` : "";
   return `
-    <article class="exercise-row">
+    <button class="exercise-row exercise-row-button" type="button" data-action="view-exercise" data-exercise-id="${escapeAttr(getBaseExerciseId(exercise))}" data-return-view="${escapeAttr(activeView)}">
       <img class="thumb" src="${escapeAttr(equipment.imageSrc)}" alt="" aria-hidden="true" />
       <div>
         <strong>${exercise.name}</strong>
@@ -2315,7 +2751,7 @@ function renderExerciseSummary(exercise, week, user) {
         ${load ? `<span class="load-help">${load.label}</span>` : ""}
         <span class="effort-help">用力感 ${target.effort}：${target.effortText}</span>
       </div>
-    </article>
+    </button>
   `;
 }
 
@@ -2408,6 +2844,7 @@ function renderNav() {
 function isNavItemActive(view) {
   if (activeView === view) return true;
   if (activeView === "plan-edit" && view === "plan") return true;
+  if (activeView === "exercise-detail" && selectedExerciseReturnView === view) return true;
   if (view === "profile" && activeView.startsWith("profile-")) return true;
   return false;
 }
@@ -2419,6 +2856,7 @@ function getHeaderTitle(user, needsAssessment) {
     home: "今日训练",
     plan: "训练计划",
     "plan-edit": "编辑计划",
+    "exercise-detail": "动作详情",
     log: "训练记录",
     equipment: "器械库",
     profile: "我的",
@@ -3030,6 +3468,22 @@ function getTrainingDraft(user, workout, week) {
   return user.drafts?.training?.[key] || {};
 }
 
+function persistTrainingDraft(user, workout, week, draft) {
+  if (!user || !workout) return;
+  user.drafts = user.drafts || {};
+  user.drafts.training = user.drafts.training || {};
+  user.drafts.training[getTrainingDraftKey(user, workout, week)] = draft;
+
+  if (useCloudMode()) {
+    store.cloudDrafts = {
+      ...(store.cloudDrafts || {}),
+      [user.id]: user.drafts
+    };
+  }
+
+  saveStore();
+}
+
 function clearTrainingDraft(user, workout, week) {
   if (!user?.drafts?.training || !workout) return;
   delete user.drafts.training[getTrainingDraftKey(user, workout, week)];
@@ -3037,6 +3491,86 @@ function clearTrainingDraft(user, workout, week) {
 
 function getTrainingDraftKey(user, workout, week) {
   return `${user.plan?.id || "plan"}:${week}:${workout.id}`;
+}
+
+function getActiveTrainingIndex(workout, draft = {}) {
+  const exercises = workout?.exercises || [];
+  if (!exercises.length) return 0;
+  const storedIndex = Number(draft.activeExerciseIndex);
+  if (Number.isFinite(storedIndex) && storedIndex >= 0 && storedIndex < exercises.length) {
+    return Math.floor(storedIndex);
+  }
+  const firstOpenIndex = exercises.findIndex((exercise) => !isDraftDone(draft, exercise.id));
+  return firstOpenIndex >= 0 ? firstOpenIndex : exercises.length - 1;
+}
+
+function getNextTrainingIndex(exercises, currentIndex) {
+  const nextIndex = Math.min(exercises.length - 1, Math.max(0, currentIndex) + 1);
+  return Number.isFinite(nextIndex) ? nextIndex : 0;
+}
+
+function isDraftDone(draft = {}, exerciseId) {
+  return [true, "true", "on", "1"].includes(draft[`done-${exerciseId}`]);
+}
+
+function getDraftCompletedCount(workout, draft = {}) {
+  return (workout?.exercises || []).filter((exercise) => isDraftDone(draft, exercise.id)).length;
+}
+
+function getDraftSetCount(draft = {}, exercise, targetSetCount = 1) {
+  if (isDraftDone(draft, exercise.id)) return targetSetCount;
+  const value = Number(draft[`setsDone-${exercise.id}`] || 0);
+  return Number.isFinite(value) ? Math.max(0, Math.min(targetSetCount, value)) : 0;
+}
+
+function getTargetSetCount(exercise, week, weekRules) {
+  if (exercise.type === "cardio") return 1;
+  const target = getPrescription(exercise, week, weekRules);
+  const parsed = Number(String(target.sets || "").match(/\d+/)?.[0] || exercise.baseSets || 1);
+  return Math.max(1, Math.min(6, parsed));
+}
+
+function parseRestSeconds(value) {
+  if (String(value || "").includes("无")) return 0;
+  const seconds = Number(String(value || "").match(/\d+/)?.[0] || 60);
+  return Math.max(0, seconds);
+}
+
+function getRestRemainingSeconds(value) {
+  const targetTime = Number(value || 0);
+  if (!Number.isFinite(targetTime) || targetTime <= Date.now()) return 0;
+  return Math.ceil((targetTime - Date.now()) / 1000);
+}
+
+function formatSeconds(seconds) {
+  const safeSeconds = Math.max(0, Number(seconds) || 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  const restSeconds = safeSeconds % 60;
+  return `${minutes}:${String(restSeconds).padStart(2, "0")}`;
+}
+
+function getTargetMinuteFallback(exercise) {
+  const value = String(exercise?.target || exercise?.reps || "");
+  return Number(value.match(/\d+/)?.[0] || 0);
+}
+
+function scheduleRestTimerTick(user) {
+  if (restTimerTimeout) {
+    clearTimeout(restTimerTimeout);
+    restTimerTimeout = null;
+  }
+  if (activeView !== "log" || !user?.plan || user.plan.safetyHold) return;
+  const timerNodes = Array.from(app.querySelectorAll("[data-rest-until]"));
+  if (!timerNodes.length) return;
+  let hasRunningTimer = false;
+  for (const node of timerNodes) {
+    const remaining = getRestRemainingSeconds(node.dataset.restUntil);
+    node.textContent = formatSeconds(remaining);
+    if (remaining > 0) hasRunningTimer = true;
+  }
+  if (hasRunningTimer) {
+    restTimerTimeout = setTimeout(() => scheduleRestTimerTick(user), 1000);
+  }
 }
 
 function getFocusText(plan) {
@@ -3325,6 +3859,7 @@ function getInitialView(params) {
     "home",
     "plan",
     "log",
+    "exercise-detail",
     "equipment",
     "profile",
     "profile-weekly",

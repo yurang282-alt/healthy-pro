@@ -111,6 +111,14 @@ if (!appSource.includes("renderReleaseSection") || !appSource.includes("mark-rel
   throw new Error("App should include release announcement display and read-state hooks.");
 }
 
+if (!appSource.includes("renderExerciseDetail") || !appSource.includes("view-exercise") || !appSource.includes("getRelatedExercises")) {
+  throw new Error("App should include tappable exercise details with related exercise fallback guidance.");
+}
+
+if (!appSource.includes("renderTrainingCoachPanel") || !appSource.includes("training-complete-set") || !appSource.includes("scheduleRestTimerTick")) {
+  throw new Error("Training log should behave like an in-session coach with set completion and rest timing.");
+}
+
 if (!schemaSource.includes("create table if not exists public.friend_profiles") ||
   !schemaSource.includes("create table if not exists public.friendships") ||
   !schemaSource.includes("create table if not exists public.feedback") ||
