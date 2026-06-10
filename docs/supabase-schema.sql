@@ -283,3 +283,30 @@ insert into public.app_releases (
   release_type = excluded.release_type,
   is_published = excluded.is_published,
   published_at = excluded.published_at;
+
+insert into public.app_releases (
+  version,
+  title,
+  summary,
+  highlights,
+  details,
+  release_type,
+  is_published,
+  published_at
+) values (
+  'v0.6.0',
+  '动作详情和训练中辅助',
+  '训练动作可以点进详情，记录页也升级成边练边看的训练助手。',
+  '["新增动作详情页，包含器械图、调节方式、动作提示、常见错误和替代动作", "记录页新增当前动作卡、完成组数、训练队列和组间休息倒计时", "器械页可以直接查看相关动作，训练时更容易确认自己该怎么做"]'::jsonb,
+  '这次更新让 App 不只是生成计划和记录结果，而是在训练过程中给你更清晰的动作指引。后续会继续把训练记录转化成动作进步分析和更主动的计划调整建议。',
+  'feature',
+  true,
+  '2026-06-10 11:20:00+08'
+) on conflict (version) do update set
+  title = excluded.title,
+  summary = excluded.summary,
+  highlights = excluded.highlights,
+  details = excluded.details,
+  release_type = excluded.release_type,
+  is_published = excluded.is_published,
+  published_at = excluded.published_at;

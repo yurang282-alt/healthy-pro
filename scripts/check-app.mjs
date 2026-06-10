@@ -41,6 +41,7 @@ const serviceWorker = readFileSync("sw.js", "utf8");
 const appSource = readFileSync("src/app.js", "utf8");
 const cloudSource = readFileSync("src/cloud.js", "utf8");
 const schemaSource = readFileSync("docs/supabase-schema.sql", "utf8");
+const agentsSource = readFileSync("AGENTS.md", "utf8");
 const buildSource = readFileSync("scripts/build-static.mjs", "utf8");
 const buildVersionPlaceholder = "__HEALTHY_PRO_BUILD_VERSION__";
 
@@ -109,6 +110,14 @@ if (!appSource.includes("data-feedback-form") || !cloudSource.includes("saveClou
 
 if (!appSource.includes("renderReleaseSection") || !appSource.includes("mark-release-read") || !cloudSource.includes("loadCloudReleases") || !cloudSource.includes("markCloudReleaseRead")) {
   throw new Error("App should include release announcement display and read-state hooks.");
+}
+
+if (!appSource.includes("v0.6.0") || !schemaSource.includes("v0.6.0") || !appSource.includes("mergeReleaseStates")) {
+  throw new Error("Latest release announcement should be available in built-in app releases, Supabase seed, and cloud/local merge logic.");
+}
+
+if (!agentsSource.includes("每次发布上线都必须同步整理并发布更新公告")) {
+  throw new Error("Project operating rules should require release announcements for every production release.");
 }
 
 if (!appSource.includes("renderExerciseDetail") || !appSource.includes("view-exercise") || !appSource.includes("getRelatedExercises")) {

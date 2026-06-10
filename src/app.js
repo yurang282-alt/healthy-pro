@@ -54,6 +54,20 @@ const LOCAL_RELEASES = [
     details: "这次更新重点不是增加复杂功能，而是把训练流程变得更像一个可以拿在手里的私人教练工具。",
     releaseType: "improvement",
     publishedAt: "2026-06-09T00:00:00+08:00"
+  },
+  {
+    id: "local-v0.6.0",
+    version: "v0.6.0",
+    title: "动作详情和训练中辅助",
+    summary: "训练动作可以点进详情，记录页也升级成边练边看的训练助手。",
+    highlights: [
+      "新增动作详情页，包含器械图、调节方式、动作提示、常见错误和替代动作",
+      "记录页新增当前动作卡、完成组数、训练队列和组间休息倒计时",
+      "器械页可以直接查看相关动作，训练时更容易确认自己该怎么做"
+    ],
+    details: "这次更新让 App 不只是生成计划和记录结果，而是在训练过程中给你更清晰的动作指引。后续会继续把训练记录转化成动作进步分析和更主动的计划调整建议。",
+    releaseType: "feature",
+    publishedAt: "2026-06-10T11:20:00+08:00"
   }
 ];
 const app = document.querySelector("#app");
@@ -877,7 +891,7 @@ async function handleReleaseRead(event) {
   const releaseId = event.target.closest("[data-release-id]")?.dataset.releaseId;
   if (!user || !releaseId) return;
 
-  if (useCloudMode()) {
+  if (useCloudMode() && !isLocalReleaseId(releaseId)) {
     if (!ensureCloudCanWrite()) return;
     try {
       setSyncState("syncing", "正在更新公告已读状态...");
@@ -902,6 +916,10 @@ async function handleReleaseRead(event) {
   saveStore();
   notice = "已标记为已读。";
   render({ keepScroll: true });
+}
+
+function isLocalReleaseId(releaseId) {
+  return LOCAL_RELEASES.some((release) => release.id === releaseId);
 }
 
 function handleDraftChange(event) {
@@ -2411,14 +2429,30 @@ function renderReleaseCard(release) {
 }
 
 function getReleaseState(user) {
+  const builtInState = getBuiltInReleaseState();
+
   if (useCloudMode()) {
-    return user.releases || {
+    const cloudState = user.releases || {
       schemaReady: true,
       releases: [],
       unreadCount: 0
     };
+
+    if (cloudState.schemaReady === false) {
+      return {
+        ...cloudState,
+        releases: builtInState.releases,
+        unreadCount: builtInState.unreadCount
+      };
+    }
+
+    return mergeReleaseStates(cloudState, builtInState);
   }
 
+  return builtInState;
+}
+
+function getBuiltInReleaseState() {
   const reads = store.releaseReads || {};
   const releases = LOCAL_RELEASES.map((release) => ({
     ...release,
@@ -2428,6 +2462,20 @@ function getReleaseState(user) {
 
   return {
     schemaReady: true,
+    releases,
+    unreadCount: releases.filter((release) => !release.isRead).length
+  };
+}
+
+function mergeReleaseStates(cloudState, builtInState) {
+  const cloudReleases = cloudState.releases || [];
+  const cloudVersions = new Set(cloudReleases.map((release) => release.version));
+  const fallbackReleases = builtInState.releases.filter((release) => !cloudVersions.has(release.version));
+  const releases = [...cloudReleases, ...fallbackReleases]
+    .sort((left, right) => new Date(right.publishedAt) - new Date(left.publishedAt));
+
+  return {
+    ...cloudState,
     releases,
     unreadCount: releases.filter((release) => !release.isRead).length
   };
