@@ -505,14 +505,26 @@ input[type="range"] {
   color: var(--ink);
 }
 
-.plan-actions .section-head {
-  align-items: center;
-}
-
-.plan-actions .pill {
-  max-width: 46%;
+.plan-actions > summary b {
+  max-width: 40%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-actions-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.log-panel > form,
+.log-panel .history-list {
+  margin-top: 14px;
+}
+
+.log-panel .empty-note {
+  margin-top: 14px;
 }
 
 .notice {

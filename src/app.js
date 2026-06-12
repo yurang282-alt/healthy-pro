@@ -88,6 +88,7 @@ let installPromptEvent = null;
 let installPromptDismissed = localStorage.getItem(INSTALL_DISMISSED_KEY) === "1";
 let syncState = createInitialSyncState();
 let restTimerTimeout = null;
+let noticeTimeout = null;
 
 app.innerHTML = renderLoading();
 bootstrapApp();
@@ -899,8 +900,7 @@ async function handleReleaseRead(event) {
       user.releases = await loadCloudReleases();
       setSyncState("synced", "公告已标记为已读。");
       saveStore();
-      notice = "已标记为已读。";
-      render({ keepScroll: true });
+      showTemporaryNotice("已标记为已读。", { keepScroll: true });
     } catch (error) {
       notice = getFriendlyCloudError(error);
       setSyncState("error", "公告已读状态保存失败。");
@@ -914,8 +914,19 @@ async function handleReleaseRead(event) {
     [releaseId]: new Date().toISOString()
   };
   saveStore();
-  notice = "已标记为已读。";
-  render({ keepScroll: true });
+  showTemporaryNotice("已标记为已读。", { keepScroll: true });
+}
+
+function showTemporaryNotice(message, renderOptions = {}) {
+  notice = message;
+  render(renderOptions);
+  if (noticeTimeout) window.clearTimeout(noticeTimeout);
+  noticeTimeout = window.setTimeout(() => {
+    if (notice !== message) return;
+    notice = "";
+    noticeTimeout = null;
+    render({ keepScroll: true });
+  }, 1800);
 }
 
 function isLocalReleaseId(releaseId) {
@@ -1144,21 +1155,6 @@ function renderAuth() {
 
 function renderStatusBanners(user) {
   const items = [];
-  const configStatus = getCloudConfigStatus();
-  const dataMode = useCloudMode() ? configStatus.label : "本地模式";
-  const statusClass = !networkOnline ? "offline" : syncState.status;
-  const statusText = !networkOnline ? "当前离线，可以查看已加载数据；保存需要联网。" : syncState.message;
-  const shouldShowSyncBanner = !networkOnline || ["syncing", "error", "offline", "local"].includes(syncState.status);
-
-  if (shouldShowSyncBanner) {
-    items.push(`
-      <div class="sync-banner ${statusClass}">
-        <strong>${dataMode}</strong>
-        <span>${statusText}</span>
-      </div>
-    `);
-  }
-
   if (shouldShowInstallPrompt(user)) {
     items.push(`
       <div class="install-banner">
@@ -1239,9 +1235,9 @@ function renderHome(user) {
 
     <section class="coach-summary-card">
       <div>
-        <p class="eyebrow">教练判断</p>
+        <p class="eyebrow">今日建议</p>
         <h2>${plan.goal.type}</h2>
-        <p>${plan.goal.priority}${focusText ? ` 当前重点：${focusText}。` : ""}</p>
+        <p>今天先完成 ${workout.title}，动作稳定比追重量更重要。${focusText ? `当前重点：${focusText}。` : ""}</p>
       </div>
       <div class="metric-grid">
         <div><span>BMI</span><strong>${plan.metrics.bmi}</strong></div>
@@ -1253,8 +1249,8 @@ function renderHome(user) {
     <section class="section-block quiet-section">
       <div class="section-head">
         <div>
-          <p class="eyebrow">复盘</p>
-          <h2>最近状态</h2>
+          <p class="eyebrow">最近状态</p>
+          <h2>训练反馈</h2>
         </div>
         <button class="small-button" type="button" data-action="adjust-plan">调整计划</button>
       </div>
@@ -1393,10 +1389,6 @@ function renderPlan(user) {
   const previousPlan = getPreviousPlan(plan);
 
   return `
-    ${renderPlanActions(user, previousPlan)}
-
-    ${user.drafts?.showPreviousPlan && previousPlan ? renderPreviousPlan(previousPlan) : ""}
-
     <section class="section-block plan-overview-card">
       <div class="section-head">
         <div>
@@ -1420,6 +1412,10 @@ function renderPlan(user) {
       </div>
       <p class="adjust-explainer">${plan.weeks[week - 1]?.load || ""}。${plan.weeks[week - 1]?.rule || ""}</p>
     </section>
+
+    ${renderPlanActions(user, previousPlan)}
+
+    ${user.drafts?.showPreviousPlan && previousPlan ? renderPreviousPlan(previousPlan) : ""}
 
     <section class="section-block">
       <p class="eyebrow">动作安排</p>
@@ -1461,21 +1457,23 @@ function renderPlanActions(user, previousPlan) {
   const hasPrevious = Boolean(previousPlan);
 
   return `
-    <section class="section-block plan-actions">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">计划操作</p>
-          <h2>当前计划</h2>
-        </div>
-        <span class="pill">${escapeHtml(versionLabel)}</span>
-      </div>
-      <button class="primary-button" type="button" data-action="edit-plan">编辑计划</button>
-      <div class="button-row">
+    <details class="section-block profile-panel plan-actions">
+      <summary>
+        <span>
+          <p class="eyebrow">计划管理</p>
+          <strong>编辑、恢复或查看旧版</strong>
+        </span>
+        <b>${escapeHtml(versionLabel)}</b>
+      </summary>
+      <div class="plan-actions-body">
+        <button class="primary-button" type="button" data-action="edit-plan">编辑计划</button>
+        <div class="button-row">
         ${hasPrevious ? `<button class="small-button" type="button" data-action="restore-previous-plan">恢复上一版</button>` : ""}
         ${hasPrevious ? `<button class="small-button" type="button" data-action="toggle-previous-plan">${user.drafts?.showPreviousPlan ? "收起上一版" : "查看上一版"}</button>` : ""}
         ${canRestoreOriginalPlan(plan) ? `<button class="small-button" type="button" data-action="restore-original-plan">恢复 AI 计划</button>` : ""}
+        </div>
       </div>
-    </section>
+    </details>
   `;
 }
 
@@ -1616,7 +1614,7 @@ function renderLog(user) {
         ${renderTrainingHiddenFields(workout.exercises, activeIndex, trainingDraft)}
         ${renderTrainingQueue(workout, trainingDraft, activeIndex)}
         <fieldset>
-          <legend>这次整体强度</legend>
+          <legend>这次练完感觉</legend>
           <div class="choice-grid three">
             ${radio("intensityFeedback", "too-easy", "太弱了", trainingDraft.intensityFeedback === "too-easy")}
             ${radio("intensityFeedback", "right", "刚刚好", !trainingDraft.intensityFeedback || trainingDraft.intensityFeedback === "right")}
@@ -1633,9 +1631,14 @@ function renderLog(user) {
 
     ${renderTrainingHistory(logs)}
 
-    <section class="section-block">
-      <p class="eyebrow">身体状态</p>
-      <h2>今天的身体数据</h2>
+    <details class="section-block profile-panel log-panel">
+      <summary>
+        <span>
+          <p class="eyebrow">身体</p>
+          <strong>身体状态</strong>
+        </span>
+        <b>可选</b>
+      </summary>
       <form class="stack" data-body-form>
         <div class="form-grid two">
           <label>
@@ -1657,7 +1660,7 @@ function renderLog(user) {
         </label>
         <button class="secondary-button" type="submit">保存身体记录</button>
       </form>
-    </section>
+    </details>
   `;
 }
 
@@ -1691,7 +1694,7 @@ function renderTrainingCoachPanel(workout, week, draft, user, activeIndex) {
       </div>
 
       <div class="training-tip-grid">
-        <div><span>用力感</span><strong>${target.effort}</strong></div>
+        <div><span>吃力程度</span><strong>${target.effort}</strong></div>
         <div><span>休息</span><strong>${target.rest}</strong></div>
         <div><span>${isCardio ? "目标时长" : "目标组数"}</span><strong>${isCardio ? target.reps : `${setsDone}/${targetSetCount}`}</strong></div>
       </div>
@@ -1820,7 +1823,7 @@ function renderTrainingQueue(workout, draft, activeIndex) {
   return `
     <div class="training-queue">
       <div class="training-queue-head">
-        <strong>训练队列</strong>
+        <strong>今天顺序</strong>
         <span>${getDraftCompletedCount(workout, draft)}/${workout.exercises.length}</span>
       </div>
       <div class="training-queue-list">
@@ -1867,14 +1870,14 @@ function renderTrainingHistory(logs = []) {
   const recentLogs = [...logs].reverse().slice(0, 12);
 
   return `
-    <section class="section-block">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">历史记录</p>
-          <h2>过去的训练</h2>
-        </div>
-        <span class="pill">${logs.length} 次</span>
-      </div>
+    <details class="section-block profile-panel log-panel">
+      <summary>
+        <span>
+          <p class="eyebrow">历史</p>
+          <strong>过去的训练</strong>
+        </span>
+        <b>${logs.length} 次</b>
+      </summary>
       ${recentLogs.length
         ? `
           <div class="history-list">
@@ -1901,7 +1904,7 @@ function renderTrainingHistory(logs = []) {
           </div>
         `
         : `<p class="empty-note">还没有历史训练。保存一次训练后，会按时间倒序显示在这里。</p>`}
-    </section>
+    </details>
   `;
 }
 
@@ -2066,7 +2069,7 @@ function renderExerciseDetail(user) {
       <div class="detail-facts">
         <div><span>目标</span><strong>${target.sets} · ${target.reps}</strong></div>
         <div><span>休息</span><strong>${target.rest}</strong></div>
-        <div><span>用力感</span><strong>${target.effort}</strong></div>
+        <div><span>吃力程度</span><strong>${target.effort}</strong></div>
         <div><span>建议重量</span><strong>${escapeHtml(loadFactLabel)}</strong></div>
       </div>
       <p class="coach-note">先用保守重量确认动作轨迹。只要出现刺痛、麻木或关节不适，本次动作直接停止。</p>
@@ -2186,12 +2189,13 @@ function renderProfile(user) {
 
   return `
     <section class="profile-identity section-block">
-      <p class="eyebrow">基础信息</p>
-      <h2 class="account-email">${escapeHtml(user.email)}</h2>
+      <p class="eyebrow">训练档案</p>
+      <h2>当前计划执行中</h2>
+      <p class="muted">当前目标：${plan.goal.type} · ${plan.frequency.sessionsPerWeek} 次/周</p>
       <div class="profile-chip-row">
-        <span>${plan.goal.type}</span>
-        <span>${plan.frequency.sessionsPerWeek} 次/周</span>
+        <span>本周 ${insights.thisWeekCount}/${insights.weekTarget || "-"} 次</span>
         <span>${useCloudMode() ? "云端数据" : "本地数据"}</span>
+        <span>${releaseState.unreadCount ? `${releaseState.unreadCount} 条更新` : "已是最新"}</span>
       </div>
     </section>
 
@@ -2242,7 +2246,7 @@ function renderProfile(user) {
           view: "profile-settings",
           eyebrow: "设置",
           title: "设置与反馈",
-          summary: "账号、重新评估、退出登录"
+          summary: "账号、评估、反馈与退出"
         })}
       </div>
     </section>
@@ -2345,13 +2349,15 @@ function renderProfileSubHeader(title, summary, backView) {
 }
 
 function renderSettingsSection(user, insights) {
+  const status = getDataStatusSummary();
   return `
     <section class="section-block">
       <p class="eyebrow">账号与设置</p>
       <h2>设置</h2>
       <div class="fact-list">
         <div><span>账号</span><strong>${escapeHtml(user.email)}</strong></div>
-        <div><span>数据模式</span><strong>${useCloudMode() ? "云端 Supabase" : "本地浏览器"}</strong></div>
+        <div><span>数据模式</span><strong>${escapeHtml(status.mode)}</strong></div>
+        <div><span>同步状态</span><strong>${escapeHtml(status.message)}</strong></div>
         <div><span>最近训练</span><strong>${insights.latestLog ? formatDate(insights.latestLog.createdAt) : "未记录"}</strong></div>
         <div><span>最近身体记录</span><strong>${insights.bodyTrend.latest ? formatDate(insights.bodyTrend.latest.createdAt) : "未记录"}</strong></div>
       </div>
@@ -2359,6 +2365,27 @@ function renderSettingsSection(user, insights) {
       <button class="link-button danger-link" type="button" data-action="logout">退出登录</button>
     </section>
   `;
+}
+
+function getDataStatusSummary() {
+  if (!networkOnline) {
+    return {
+      mode: useCloudMode() ? getCloudConfigStatus().label : "本地浏览器",
+      message: "当前离线"
+    };
+  }
+
+  if (!useCloudMode()) {
+    return {
+      mode: isDemoMode ? "演示模式" : "本地浏览器",
+      message: isDemoMode ? "本机临时数据" : "未连接云端保存"
+    };
+  }
+
+  return {
+    mode: getCloudConfigStatus().label,
+    message: syncState.message || "云端数据已同步"
+  };
 }
 
 function renderReleaseNotice(user) {
@@ -2797,7 +2824,7 @@ function renderExerciseSummary(exercise, week, user) {
         <strong>${exercise.name}</strong>
         <span>${equipment.name}${tag} · ${target.sets} · ${target.reps}</span>
         ${load ? `<span class="load-help">${load.label}</span>` : ""}
-        <span class="effort-help">用力感 ${target.effort}：${target.effortText}</span>
+        <span class="effort-help">吃力程度 ${target.effort}：${target.effortText}</span>
       </div>
     </button>
   `;
