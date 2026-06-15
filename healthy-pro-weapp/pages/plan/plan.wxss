@@ -1,0 +1,118 @@
+.plan-overview-card {
+  padding-bottom: 28rpx;
+}
+
+.plan-overview-card .small-button {
+  flex: 0 0 auto;
+}
+
+.plan-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14rpx;
+  margin-top: 24rpx;
+}
+
+.plan-brief-grid view {
+  min-height: 116rpx;
+  padding: 18rpx;
+  border: 1rpx solid #d9e0e8;
+  border-radius: 14rpx;
+  background: #f8fafb;
+}
+
+.plan-brief-grid text {
+  display: block;
+  color: #667085;
+  font-size: 24rpx;
+  line-height: 1.35;
+}
+
+.plan-brief-grid .brief-value {
+  margin-top: 8rpx;
+  color: #111827;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 1.28;
+}
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+  margin-top: 24rpx;
+}
+
+.week-chip {
+  min-height: 96rpx;
+  padding: 18rpx;
+  border: 1rpx solid #d9e0e8;
+  border-radius: 14rpx;
+  background: #ffffff;
+}
+
+.week-chip text {
+  display: block;
+  color: #667085;
+  font-size: 24rpx;
+  line-height: 1.35;
+}
+
+.week-label {
+  margin-top: 4rpx;
+  color: #111827;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.week-chip.active {
+  border-color: rgba(21, 122, 85, 0.5);
+  background: #eaf4ef;
+}
+
+.adjust-explainer {
+  margin-top: 18rpx;
+  padding: 18rpx;
+  border-radius: 12rpx;
+  background: #fff7e8;
+  color: #7a4b11;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.plan-management-card .pill {
+  max-width: 190rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previous-list {
+  margin-top: 20rpx;
+}
+
+.previous-list .history-row + .history-row {
+  margin-top: 14rpx;
+}
+
+.workout-stack {
+  gap: 28rpx;
+}
+
+.workout-card {
+  padding-top: 22rpx;
+  border-top: 1rpx solid #eef2f5;
+}
+
+.workout-card:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.workout-head {
+  align-items: flex-start;
+}
+
+.workout-title {
+  font-size: 36rpx;
+}

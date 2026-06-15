@@ -1,0 +1,13 @@
+.dark-actions {
+  align-items: stretch;
+}
+
+.dark-actions .primary-button {
+  flex: 1.15;
+}
+
+.dark-actions .ghost-button {
+  color: rgba(255, 255, 255, 0.86);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}

@@ -1,0 +1,63 @@
+<view class="page">
+  <view class="eyebrow">Healthy Pro</view>
+  <view class="title">今日训练</view>
+
+  <view wx:if="{{workout}}" class="dark-card">
+    <view class="row">
+      <view>
+        <view class="eyebrow">今天训练</view>
+        <text class="card-title">{{workout.title}}</text>
+      </view>
+      <text class="pill">第 {{week}} 周</text>
+    </view>
+    <view class="muted">{{workout.focus}}</view>
+
+    <view class="metric-grid">
+      <view class="metric">
+        <text>预计</text>
+        <text class="metric-value">{{plan.duration.label}}</text>
+      </view>
+      <view class="metric">
+        <text>动作</text>
+        <text class="metric-value">{{workout.exercises.length}} 个</text>
+      </view>
+      <view class="metric">
+        <text>本周</text>
+        <text class="metric-value">{{logsCount}}/{{plan.frequency.sessionsPerWeek}}</text>
+      </view>
+    </view>
+
+    <view class="action-row dark-actions">
+      <button class="primary-button" bindtap="startTraining">开始训练</button>
+      <button class="ghost-button" bindtap="goPlan">完整计划</button>
+    </view>
+  </view>
+
+  <view wx:if="{{workout}}" class="card">
+    <view class="eyebrow">今日顺序</view>
+    <text class="card-title">先做这几项</text>
+    <view class="list">
+      <view wx:for="{{previewExercises}}" wx:key="id" class="exercise-row">
+        <image class="thumb" src="{{item.image}}" mode="aspectFit" />
+        <view class="item-body">
+          <text class="item-title">{{item.name}}</text>
+          <text class="item-meta">{{item.equipmentName}} · {{item.sets}} · {{item.reps}}</text>
+          <text class="item-help">吃力程度 {{item.effort}}：{{item.cue}}</text>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{remainingCount}}" class="empty-note">后面还有 {{remainingCount}} 个动作，开始训练后按顺序完成。</view>
+  </view>
+
+  <view wx:if="{{plan}}" class="card">
+    <view class="eyebrow">今日建议</view>
+    <text class="card-title">{{plan.goal.type}}</text>
+    <view class="muted">今天先完成 {{workout.title}}，动作稳定比追重量更重要。当前重点：{{plan.focusText}}。</view>
+  </view>
+
+  <view wx:else class="card">
+    <text class="card-title">先完成基础评估</text>
+    <view class="muted">填身高、体重、体脂和目标后，系统会生成第一版训练计划。</view>
+    <button class="primary-button" bindtap="goAssessment">开始评估</button>
+  </view>
+</view>

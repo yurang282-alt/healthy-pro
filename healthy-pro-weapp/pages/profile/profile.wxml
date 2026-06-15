@@ -1,0 +1,44 @@
+<view class="page">
+  <view class="eyebrow">Healthy Pro</view>
+  <view class="title">我的</view>
+
+  <view wx:if="{{user}}" class="card">
+    <view class="eyebrow">训练档案</view>
+    <text class="card-title">当前计划执行中</text>
+    <view class="muted">当前目标：{{user.plan.goal.type}} · {{user.plan.frequency.sessionsPerWeek}} 次/周</view>
+    <view class="metric-grid">
+      <view class="metric light-metric">
+        <text>本周训练</text>
+        <text class="metric-value">{{logs.length}}/{{user.plan.frequency.sessionsPerWeek}}</text>
+      </view>
+      <view class="metric light-metric">
+        <text>完成率</text>
+        <text class="metric-value">{{completionRate}}%</text>
+      </view>
+      <view class="metric light-metric">
+        <text>数据模式</text>
+        <text class="metric-value">本地 mock</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{user}}" class="card">
+    <view class="eyebrow">微信端状态</view>
+    <text class="card-title">第一版骨架</text>
+    <view class="muted">当前已能预览页面、生成计划和保存本地训练记录。微信登录和云数据库等你给我云环境 ID 后接入。</view>
+    <button class="secondary-button" bindtap="mockLogin">微信登录预留</button>
+  </view>
+
+  <view wx:if="{{user}}" class="card">
+    <view class="eyebrow">更新公告</view>
+    <text class="card-title">小程序端 MVP 启动</text>
+    <view class="muted">新增 Healthy Pro 微信小程序端骨架，保留 PWA，不影响现有线上版本。</view>
+  </view>
+
+  <view wx:if="{{user}}" class="card">
+    <view class="eyebrow">设置</view>
+    <text class="card-title">本地开发</text>
+    <button class="secondary-button" bindtap="goAssessment">重新评估</button>
+    <button class="ghost-button" bindtap="resetDemo">重置 mock 数据</button>
+  </view>
+</view>

@@ -1,0 +1,59 @@
+<view class="page">
+  <view class="eyebrow">训练记录</view>
+  <view class="title">{{workout.title}}</view>
+  <view class="muted">{{workout.focus}}</view>
+
+  <view wx:if="{{workout}}" class="card">
+    <view class="row">
+      <view>
+        <view class="eyebrow">本次训练</view>
+        <text class="card-title">今天顺序</text>
+      </view>
+      <text class="pill">第 {{week}} 周</text>
+    </view>
+    <view class="list">
+      <view wx:for="{{workout.exercises}}" wx:key="id" class="exercise-row">
+        <image class="thumb" src="{{item.image}}" mode="aspectFit" />
+        <view class="item-body">
+          <text class="item-title">{{index + 1}}. {{item.name}}</text>
+          <text class="item-meta">{{item.equipmentName}} · {{item.sets}} · {{item.reps}}</text>
+          <text class="item-help">吃力程度 {{item.effort}}：{{item.cue}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="field">
+      <text class="label">这次练完感觉</text>
+      <view class="choice-grid">
+        <view class="choice {{feeling == 'easy' ? 'active' : ''}}" data-value="easy" bindtap="chooseFeeling">太轻松</view>
+        <view class="choice {{feeling == 'right' ? 'active' : ''}}" data-value="right" bindtap="chooseFeeling">刚刚好</view>
+        <view class="choice {{feeling == 'hard' ? 'active' : ''}}" data-value="hard" bindtap="chooseFeeling">太吃力</view>
+      </view>
+    </view>
+    <view class="field">
+      <text class="label">备注</text>
+      <textarea class="textarea" value="{{note}}" bindinput="setNote" placeholder="器械找不到、动作不稳、重量偏轻都可以记这里" />
+    </view>
+    <button class="primary-button" bindtap="saveLog">保存本次训练</button>
+  </view>
+
+  <view class="card">
+    <view class="row">
+      <view>
+        <view class="eyebrow">历史</view>
+        <text class="card-title">过去的训练</text>
+      </view>
+      <text class="pill">{{logs.length}} 次</text>
+    </view>
+    <view wx:if="{{logs.length}}" class="list">
+      <view wx:for="{{logs}}" wx:key="id" class="history-row">
+        <view class="item-body">
+          <text class="item-title">{{item.workoutTitle}}</text>
+          <text class="item-meta">第 {{item.week}} 周 · {{item.createdLabel}} · 完成 {{item.completedCount}} 个动作</text>
+          <text wx:if="{{item.note}}" class="item-help">{{item.note}}</text>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-note">还没有历史训练。保存一次训练后会出现在这里。</view>
+  </view>
+</view>

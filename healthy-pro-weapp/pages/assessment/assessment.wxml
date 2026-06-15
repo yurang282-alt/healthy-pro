@@ -1,0 +1,62 @@
+<view class="page">
+  <view class="eyebrow">基础评估</view>
+  <view class="title">生成我的训练计划</view>
+  <view class="muted">先做本地 mock 版。后面接微信登录和云开发后，会保存到你的微信账号下。</view>
+
+  <view class="card form">
+    <view class="field">
+      <text class="label">年龄</text>
+      <input class="input" type="number" value="{{draft.age}}" data-key="age" bindinput="setValue" />
+    </view>
+    <view class="field">
+      <text class="label">身高 cm</text>
+      <input class="input" type="number" value="{{draft.height}}" data-key="height" bindinput="setValue" />
+    </view>
+    <view class="field">
+      <text class="label">体重 kg</text>
+      <input class="input" type="digit" value="{{draft.weight}}" data-key="weight" bindinput="setValue" />
+    </view>
+    <view class="field">
+      <text class="label">体脂 %</text>
+      <input class="input" type="digit" value="{{draft.bodyFat}}" data-key="bodyFat" bindinput="setValue" />
+    </view>
+
+    <view class="field">
+      <text class="label">目标</text>
+      <view class="choice-grid">
+        <view class="choice {{draft.target == 'muscle' ? 'active' : ''}}" data-key="target" data-value="muscle" bindtap="chooseValue">增肌</view>
+        <view class="choice {{draft.target == 'fat-loss' ? 'active' : ''}}" data-key="target" data-value="fat-loss" bindtap="chooseValue">减脂</view>
+      </view>
+    </view>
+
+    <view class="field">
+      <text class="label">健身了解程度</text>
+      <view class="choice-grid">
+        <view class="choice {{draft.experience == 'beginner' ? 'active' : ''}}" data-key="experience" data-value="beginner" bindtap="chooseValue">健身小白</view>
+        <view class="choice {{draft.experience == 'familiar' ? 'active' : ''}}" data-key="experience" data-value="familiar" bindtap="chooseValue">略有了解</view>
+        <view class="choice {{draft.experience == 'years' ? 'active' : ''}}" data-key="experience" data-value="years" bindtap="chooseValue">健身多年</view>
+        <view class="choice {{draft.experience == 'coach' ? 'active' : ''}}" data-key="experience" data-value="coach" bindtap="chooseValue">资深教练</view>
+      </view>
+    </view>
+
+    <view class="field">
+      <text class="label">每周最多训练</text>
+      <view class="choice-grid">
+        <view class="choice {{draft.frequency == 2 ? 'active' : ''}}" data-key="frequency" data-value="2" bindtap="chooseValue">最多 2 次</view>
+        <view class="choice {{draft.frequency == 3 ? 'active' : ''}}" data-key="frequency" data-value="3" bindtap="chooseValue">约 3 次</view>
+        <view class="choice {{draft.frequency == 4 ? 'active' : ''}}" data-key="frequency" data-value="4" bindtap="chooseValue">4 次以上</view>
+      </view>
+    </view>
+
+    <view class="field">
+      <text class="label">重点部位</text>
+      <checkbox-group class="choice-grid" bindchange="chooseFocus">
+        <label wx:for="{{focusOptions}}" wx:key="id" class="choice {{item.checked ? 'active' : ''}}">
+          <checkbox value="{{item.id}}" checked="{{item.checked}}" />{{item.label}}
+        </label>
+      </checkbox-group>
+    </view>
+
+    <button class="primary-button" bindtap="submit">生成我的 4 周计划</button>
+  </view>
+</view>
