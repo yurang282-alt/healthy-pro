@@ -1,0 +1,17 @@
+{
+  "appid": "touristappid",
+  "projectname": "healthy-pro-weapp",
+  "miniprogramRoot": "./",
+  "compileType": "miniprogram",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": false,
+    "postcss": true,
+    "minified": false
+  },
+  "condition": {},
+  "packOptions": {
+    "ignore": []
+  }
+}

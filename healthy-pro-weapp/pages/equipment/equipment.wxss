@@ -1,0 +1,4 @@
+.thumb {
+  width: 128rpx;
+  height: 128rpx;
+}
