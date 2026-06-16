@@ -8,9 +8,10 @@ Page({
       height: 170,
       weight: 65,
       bodyFat: 14,
-      target: "muscle",
-      experience: "familiar",
-      frequency: 3,
+      targetPreference: "gain",
+      trainingExperience: "familiar",
+      weeklyLimit: "3",
+      injury: "none",
       sessionBudget: 75,
       focusAreas: ["chest", "back"]
     },

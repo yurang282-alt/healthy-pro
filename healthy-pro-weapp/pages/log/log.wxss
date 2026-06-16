@@ -1,3 +1,14 @@
 .choice-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10rpx;
+}
+
+.choice {
+  min-height: 68rpx;
+  padding: 14rpx 10rpx;
+  font-size: 25rpx;
+}
+
+.textarea {
+  min-height: 150rpx;
 }

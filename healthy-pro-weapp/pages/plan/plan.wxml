@@ -3,12 +3,14 @@
   <view class="title">训练计划</view>
 
   <view wx:if="{{plan}}" class="card plan-overview-card">
-    <view class="row">
+    <view class="plan-week-heading">
       <view>
         <view class="eyebrow">本周安排</view>
-        <text class="card-title">第 {{selectedWeek}} 周 · {{selectedWeekInfo.label}}</text>
+        <view class="week-title-line">
+          <text class="card-title plan-week-title">第 {{selectedWeek}} 周</text>
+          <text class="phase-tag">{{selectedWeekInfo.label}}</text>
+        </view>
       </view>
-      <button class="small-button" bindtap="adjustPlan">重新调整</button>
     </view>
 
     <view class="plan-brief-grid">
@@ -34,6 +36,11 @@
     </view>
 
     <view class="adjust-explainer">{{selectedWeekInfo.note}}</view>
+
+    <view class="plan-overview-actions">
+      <button class="secondary-button" bindtap="adjustPlan">重新调整</button>
+      <button class="ghost-button" bindtap="goAssessment">重新评估</button>
+    </view>
   </view>
 
   <view wx:if="{{plan}}" class="card plan-management-card">
@@ -44,11 +51,13 @@
       </view>
       <text class="pill">{{versionLabel}}</text>
     </view>
-    <button class="primary-button" bindtap="editPlan">编辑计划</button>
-    <view class="action-row">
+    <view class="plan-management-actions">
+      <button class="primary-button" bindtap="editPlan">编辑计划</button>
+      <button wx:if="{{canRestoreOriginal}}" class="ghost-button" bindtap="restoreOriginal">恢复 AI</button>
+    </view>
+    <view class="action-row secondary-plan-actions">
       <button wx:if="{{previousPlan}}" class="secondary-button" bindtap="restorePrevious">恢复上一版</button>
       <button wx:if="{{previousPlan}}" class="ghost-button" bindtap="togglePreviousPlan">{{showPreviousPlan ? '收起旧版' : '查看旧版'}}</button>
-      <button wx:if="{{canRestoreOriginal}}" class="ghost-button" bindtap="restoreOriginal">恢复 AI</button>
     </view>
   </view>
 
@@ -76,14 +85,14 @@
     <text class="card-title">这一周怎么练</text>
     <view class="list workout-stack">
       <view wx:for="{{plan.workouts}}" wx:key="id" class="workout-card">
-        <view class="row workout-head">
+        <view class="row workout-head" data-id="{{item.id}}" bindtap="toggleWorkout">
           <view>
             <text class="card-title workout-title">{{item.title}}</text>
             <view class="muted">{{item.focus}}</view>
           </view>
-          <text class="pill">{{plan.duration.label}}</text>
+          <text class="pill">{{expandedWorkoutId == item.id ? plan.duration.label : item.exercises.length + ' 个动作'}}</text>
         </view>
-        <view class="list">
+        <view wx:if="{{expandedWorkoutId == item.id}}" class="list">
           <view wx:for="{{item.exercises}}" wx:for-item="exercise" wx:key="id" class="exercise-row">
             <image class="thumb" src="{{exercise.image}}" mode="aspectFit" />
             <view class="item-body">
@@ -94,6 +103,7 @@
             </view>
           </view>
         </view>
+        <view wx:else class="workout-summary" data-id="{{item.id}}" bindtap="toggleWorkout">点击展开动作和建议重量</view>
       </view>
     </view>
   </view>

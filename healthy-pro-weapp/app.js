@@ -1,4 +1,11 @@
-const { createDemoUser, getCurrentWeek, getNextWorkout } = require("./utils/coach");
+const {
+  COACH_SPEC_VERSION,
+  createDemoUser,
+  generatePlan,
+  getCurrentWeek,
+  getNextWorkout,
+  normalizeAssessment
+} = require("./utils/coach");
 
 App({
   globalData: {
@@ -35,9 +42,28 @@ App({
     );
   },
 
+  migrateStore(store) {
+    if (!this.isUsableStore(store)) return store;
+    const assessment = normalizeAssessment(store.user.assessment || {});
+    store.user.assessment = assessment;
+    if (store.user.plan.version !== COACH_SPEC_VERSION) {
+      store.user.plan = generatePlan(assessment);
+    }
+    store.logs = (store.logs || []).map((log) => ({
+      ...log,
+      intensityFeedback: log.intensityFeedback || (log.feeling === "easy" ? "too-easy" : log.feeling === "hard" ? "too-hard" : "right"),
+      exercises: Array.isArray(log.exercises) ? log.exercises : []
+    }));
+    return store;
+  },
+
   ensureStore() {
     const store = wx.getStorageSync("healthyProStore");
-    if (this.isUsableStore(store)) return store;
+    if (this.isUsableStore(store)) {
+      const migratedStore = this.migrateStore(store);
+      wx.setStorageSync("healthyProStore", migratedStore);
+      return migratedStore;
+    }
 
     const nextStore = this.createDefaultStore();
     wx.setStorageSync("healthyProStore", nextStore);

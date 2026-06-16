@@ -24,27 +24,27 @@
     <view class="field">
       <text class="label">目标</text>
       <view class="choice-grid">
-        <view class="choice {{draft.target == 'muscle' ? 'active' : ''}}" data-key="target" data-value="muscle" bindtap="chooseValue">增肌</view>
-        <view class="choice {{draft.target == 'fat-loss' ? 'active' : ''}}" data-key="target" data-value="fat-loss" bindtap="chooseValue">减脂</view>
+        <view class="choice {{draft.targetPreference == 'gain' ? 'active' : ''}}" data-key="targetPreference" data-value="gain" bindtap="chooseValue">增肌</view>
+        <view class="choice {{draft.targetPreference == 'fat-loss' ? 'active' : ''}}" data-key="targetPreference" data-value="fat-loss" bindtap="chooseValue">减脂</view>
       </view>
     </view>
 
     <view class="field">
       <text class="label">健身了解程度</text>
       <view class="choice-grid">
-        <view class="choice {{draft.experience == 'beginner' ? 'active' : ''}}" data-key="experience" data-value="beginner" bindtap="chooseValue">健身小白</view>
-        <view class="choice {{draft.experience == 'familiar' ? 'active' : ''}}" data-key="experience" data-value="familiar" bindtap="chooseValue">略有了解</view>
-        <view class="choice {{draft.experience == 'years' ? 'active' : ''}}" data-key="experience" data-value="years" bindtap="chooseValue">健身多年</view>
-        <view class="choice {{draft.experience == 'coach' ? 'active' : ''}}" data-key="experience" data-value="coach" bindtap="chooseValue">资深教练</view>
+        <view class="choice {{draft.trainingExperience == 'beginner' ? 'active' : ''}}" data-key="trainingExperience" data-value="beginner" bindtap="chooseValue">健身小白</view>
+        <view class="choice {{draft.trainingExperience == 'familiar' ? 'active' : ''}}" data-key="trainingExperience" data-value="familiar" bindtap="chooseValue">略有了解</view>
+        <view class="choice {{draft.trainingExperience == 'years' ? 'active' : ''}}" data-key="trainingExperience" data-value="years" bindtap="chooseValue">健身多年</view>
+        <view class="choice {{draft.trainingExperience == 'coach' ? 'active' : ''}}" data-key="trainingExperience" data-value="coach" bindtap="chooseValue">资深教练</view>
       </view>
     </view>
 
     <view class="field">
       <text class="label">每周最多训练</text>
       <view class="choice-grid">
-        <view class="choice {{draft.frequency == 2 ? 'active' : ''}}" data-key="frequency" data-value="2" bindtap="chooseValue">最多 2 次</view>
-        <view class="choice {{draft.frequency == 3 ? 'active' : ''}}" data-key="frequency" data-value="3" bindtap="chooseValue">约 3 次</view>
-        <view class="choice {{draft.frequency == 4 ? 'active' : ''}}" data-key="frequency" data-value="4" bindtap="chooseValue">4 次以上</view>
+        <view class="choice {{draft.weeklyLimit == '2' ? 'active' : ''}}" data-key="weeklyLimit" data-value="2" bindtap="chooseValue">最多 2 次</view>
+        <view class="choice {{draft.weeklyLimit == '3' ? 'active' : ''}}" data-key="weeklyLimit" data-value="3" bindtap="chooseValue">约 3 次</view>
+        <view class="choice {{draft.weeklyLimit == '4' ? 'active' : ''}}" data-key="weeklyLimit" data-value="4" bindtap="chooseValue">4 次以上</view>
       </view>
     </view>
 

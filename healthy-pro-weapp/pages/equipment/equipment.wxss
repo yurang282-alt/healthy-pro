@@ -1,4 +1,8 @@
 .thumb {
-  width: 128rpx;
-  height: 128rpx;
+  width: 112rpx;
+  height: 112rpx;
+}
+
+.equipment-row {
+  align-items: center;
 }

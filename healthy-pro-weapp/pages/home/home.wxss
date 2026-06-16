@@ -1,9 +1,13 @@
+.home-hero .card-title {
+  font-size: 40rpx;
+}
+
 .dark-actions {
   align-items: stretch;
 }
 
 .dark-actions .primary-button {
-  flex: 1.15;
+  flex: 1.25;
 }
 
 .dark-actions .ghost-button {

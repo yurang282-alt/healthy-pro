@@ -21,8 +21,8 @@ Page({
       workout: context.workout,
       week: context.week,
       logsCount: context.logs.length,
-      previewExercises: exercises.slice(0, 3),
-      remainingCount: Math.max(0, exercises.length - 3)
+      previewExercises: exercises.slice(0, 2),
+      remainingCount: Math.max(0, exercises.length - 2)
     });
   },
 

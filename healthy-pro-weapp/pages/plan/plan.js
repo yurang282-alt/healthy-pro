@@ -15,6 +15,7 @@ Page({
     logsCount: 0,
     previousPlan: null,
     showPreviousPlan: false,
+    expandedWorkoutId: "",
     canRestoreOriginal: false,
     versionLabel: "AI 计划"
   },
@@ -32,6 +33,14 @@ Page({
       : context.week;
     const safeWeek = Math.max(1, Math.min(4, Number(selectedWeek || context.week || 1)));
     const previousPlan = getPreviousPlan(plan);
+    const workouts = plan && Array.isArray(plan.workouts) ? plan.workouts : [];
+    const fallbackWorkoutId = context.workout && context.workout.id
+      ? context.workout.id
+      : workouts[0] && workouts[0].id;
+    const currentExpandedId = options.keepExpanded ? this.data.expandedWorkoutId : fallbackWorkoutId;
+    const expandedWorkoutId = workouts.some((item) => item.id === currentExpandedId)
+      ? currentExpandedId
+      : fallbackWorkoutId || "";
     this.setData({
       plan,
       selectedWeek: safeWeek,
@@ -39,6 +48,7 @@ Page({
       selectedWeekInfo: plan && plan.weeks ? plan.weeks[safeWeek - 1] : null,
       logsCount: context.logs.length,
       previousPlan,
+      expandedWorkoutId,
       canRestoreOriginal: canRestoreOriginalPlan(plan),
       versionLabel: plan && plan.customization && plan.customization.label ? plan.customization.label : "AI 计划"
     });
@@ -49,6 +59,13 @@ Page({
     this.setData({
       selectedWeek,
       selectedWeekInfo: this.data.plan && this.data.plan.weeks ? this.data.plan.weeks[selectedWeek - 1] : null
+    });
+  },
+
+  toggleWorkout(event) {
+    const workoutId = event.currentTarget.dataset.id;
+    this.setData({
+      expandedWorkoutId: this.data.expandedWorkoutId === workoutId ? "" : workoutId
     });
   },
 
@@ -89,7 +106,7 @@ Page({
         if (!res.confirm) return;
         store.user.plan = result.plan;
         app.setStore(store);
-        this.refresh({ keepSelected: true });
+        this.refresh({ keepSelected: true, keepExpanded: true });
         wx.showToast({
           title: result.changed ? "已调整" : "已复盘",
           icon: "success"
@@ -112,7 +129,7 @@ Page({
           store.user.plan = result.plan;
           app.setStore(store);
           this.setData({ showPreviousPlan: false });
-          this.refresh({ keepSelected: true });
+          this.refresh({ keepSelected: true, keepExpanded: true });
           wx.showToast({ title: "已恢复", icon: "success" });
         }
       }
@@ -133,7 +150,7 @@ Page({
           store.user.plan = result.plan;
           app.setStore(store);
           this.setData({ showPreviousPlan: false });
-          this.refresh({ keepSelected: true });
+          this.refresh({ keepSelected: true, keepExpanded: true });
           wx.showToast({ title: "已恢复", icon: "success" });
         }
       }

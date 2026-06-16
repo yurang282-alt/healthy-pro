@@ -1,1 +1,20 @@
+.profile-button {
+  width: 72%;
+  margin-left: auto;
+  margin-right: auto;
+}
 
+.profile-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.profile-actions .secondary-button,
+.profile-actions .ghost-button {
+  min-height: 66rpx;
+  margin-top: 0;
+  font-size: 25rpx;
+  line-height: 66rpx;
+}

@@ -2,7 +2,7 @@
   <view class="eyebrow">Healthy Pro</view>
   <view class="title">今日训练</view>
 
-  <view wx:if="{{workout}}" class="dark-card">
+  <view wx:if="{{workout}}" class="dark-card home-hero">
     <view class="row">
       <view>
         <view class="eyebrow">今天训练</view>
@@ -29,13 +29,13 @@
 
     <view class="action-row dark-actions">
       <button class="primary-button" bindtap="startTraining">开始训练</button>
-      <button class="ghost-button" bindtap="goPlan">完整计划</button>
+      <button class="ghost-button" bindtap="goPlan">计划</button>
     </view>
   </view>
 
   <view wx:if="{{workout}}" class="card">
     <view class="eyebrow">今日顺序</view>
-    <text class="card-title">先做这几项</text>
+    <text class="card-title">先做前 2 项</text>
     <view class="list">
       <view wx:for="{{previewExercises}}" wx:key="id" class="exercise-row">
         <image class="thumb" src="{{item.image}}" mode="aspectFit" />
@@ -46,7 +46,7 @@
         </view>
       </view>
     </view>
-    <view wx:if="{{remainingCount}}" class="empty-note">后面还有 {{remainingCount}} 个动作，开始训练后按顺序完成。</view>
+    <view wx:if="{{remainingCount}}" class="empty-note">后面还有 {{remainingCount}} 个动作，开始训练后继续按顺序做。</view>
   </view>
 
   <view wx:if="{{plan}}" class="card">

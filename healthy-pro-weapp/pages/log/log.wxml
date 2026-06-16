@@ -25,9 +25,9 @@
     <view class="field">
       <text class="label">这次练完感觉</text>
       <view class="choice-grid">
-        <view class="choice {{feeling == 'easy' ? 'active' : ''}}" data-value="easy" bindtap="chooseFeeling">太轻松</view>
-        <view class="choice {{feeling == 'right' ? 'active' : ''}}" data-value="right" bindtap="chooseFeeling">刚刚好</view>
-        <view class="choice {{feeling == 'hard' ? 'active' : ''}}" data-value="hard" bindtap="chooseFeeling">太吃力</view>
+        <view class="choice {{intensityFeedback == 'too-easy' ? 'active' : ''}}" data-value="too-easy" bindtap="chooseIntensity">太轻松</view>
+        <view class="choice {{intensityFeedback == 'right' ? 'active' : ''}}" data-value="right" bindtap="chooseIntensity">刚刚好</view>
+        <view class="choice {{intensityFeedback == 'too-hard' ? 'active' : ''}}" data-value="too-hard" bindtap="chooseIntensity">太吃力</view>
       </view>
     </view>
     <view class="field">

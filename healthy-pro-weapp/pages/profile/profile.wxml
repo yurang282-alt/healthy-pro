@@ -16,17 +16,17 @@
         <text class="metric-value">{{completionRate}}%</text>
       </view>
       <view class="metric light-metric">
-        <text>数据模式</text>
-        <text class="metric-value">本地 mock</text>
+        <text>数据</text>
+        <text class="metric-value">本地</text>
       </view>
     </view>
   </view>
 
   <view wx:if="{{user}}" class="card">
-    <view class="eyebrow">微信端状态</view>
-    <text class="card-title">第一版骨架</text>
-    <view class="muted">当前已能预览页面、生成计划和保存本地训练记录。微信登录和云数据库等你给我云环境 ID 后接入。</view>
-    <button class="secondary-button" bindtap="mockLogin">微信登录预留</button>
+    <view class="eyebrow">小程序预览版</view>
+    <text class="card-title">本地数据运行中</text>
+    <view class="muted">当前可生成计划和保存本机训练记录，后续接入微信登录和云数据库。</view>
+    <button class="secondary-button profile-button" bindtap="mockLogin">微信登录预留</button>
   </view>
 
   <view wx:if="{{user}}" class="card">
@@ -37,8 +37,10 @@
 
   <view wx:if="{{user}}" class="card">
     <view class="eyebrow">设置</view>
-    <text class="card-title">本地开发</text>
-    <button class="secondary-button" bindtap="goAssessment">重新评估</button>
-    <button class="ghost-button" bindtap="resetDemo">重置 mock 数据</button>
+    <text class="card-title">训练设置</text>
+    <view class="profile-actions">
+      <button class="secondary-button" bindtap="goAssessment">重新评估</button>
+      <button class="ghost-button" bindtap="resetDemo">重置数据</button>
+    </view>
   </view>
 </view>

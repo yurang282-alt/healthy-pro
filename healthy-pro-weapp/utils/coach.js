@@ -6,6 +6,8 @@ const focusLabels = {
   glutes: "臀"
 };
 
+const COACH_SPEC_VERSION = "mvp-2026-06-05-model-v2";
+
 const equipment = [
   {
     id: "treadmill",
@@ -240,15 +242,18 @@ function getFocusLabels(focusAreas = []) {
 
 function normalizeAssessment(form = {}) {
   const focusAreas = Array.isArray(form.focusAreas) && form.focusAreas.length ? form.focusAreas : ["chest", "back"];
+  const frequency = Number(form.frequency || form.weeklyLimit || 3);
+  const targetPreference = form.targetPreference || (form.target === "muscle" ? "gain" : form.target) || "gain";
   return {
     age: Number(form.age || 28),
     gender: form.gender || "male",
     height: Number(form.height || 170),
     weight: Number(form.weight || 65),
     bodyFat: Number(form.bodyFat || 14),
-    target: form.target || "muscle",
-    experience: form.experience || "familiar",
-    frequency: Number(form.frequency || 3),
+    targetPreference: ["auto", "fat-loss", "gain", "shape"].includes(targetPreference) ? targetPreference : "gain",
+    trainingExperience: form.trainingExperience || form.experience || "familiar",
+    weeklyLimit: ["coach", "2", "3", "4"].includes(String(form.weeklyLimit || frequency)) ? String(form.weeklyLimit || frequency) : "3",
+    injury: form.injury || "none",
     sessionBudget: Number(form.sessionBudget || 75),
     focusAreas
   };
@@ -292,25 +297,43 @@ function generatePlan(input = {}) {
         exerciseLibrary.hipThrust
       ].map(decorateExercise)
     }
-  ].slice(0, Math.max(2, Math.min(4, assessment.frequency)));
+  ].slice(0, Math.max(2, Math.min(4, Number(assessment.weeklyLimit === "coach" ? 3 : assessment.weeklyLimit))));
 
   return {
     id: createId("plan"),
-    version: "weapp-mock-v1",
+    version: COACH_SPEC_VERSION,
+    safetyHold: false,
     goal: {
-      type: assessment.target === "fat-loss" ? "减脂塑形基础期" : "精益增肌期",
-      priority: assessment.target === "fat-loss"
+      type: assessment.targetPreference === "fat-loss" ? "减脂塑形基础期" : "精益增肌期",
+      priority: assessment.targetPreference === "fat-loss"
         ? "先稳定训练频次和饮食记录，再逐步拉高消耗。"
         : "你的体重和体脂更适合精益增肌，重点是力量动作质量和渐进加量。"
     },
+    focusAreas: assessment.focusAreas.map((id) => ({ id, label: focusLabels[id] || id })),
     focusText: focus.length ? focus.join("、") : "全身均衡",
     frequency: {
       sessionsPerWeek: workouts.length,
-      pattern: workouts.map((item) => item.title).join(" / ")
+      pattern: workouts.map((item) => item.title).join(" / "),
+      limitLabel: assessment.weeklyLimit === "coach" ? "教练安排" : `最多 ${assessment.weeklyLimit} 次`,
+      restDays: "两次力量训练之间尽量间隔 1 天"
     },
     duration: {
       label: assessment.sessionBudget >= 75 ? "45-60 分钟" : "30-45 分钟",
-      budget: assessment.sessionBudget
+      budget: assessment.sessionBudget,
+      split: "热身 5-8 分钟，力量训练为主，组间保留完整休息。"
+    },
+    experience: {
+      id: assessment.trainingExperience,
+      label: {
+        beginner: "健身小白",
+        familiar: "略有了解",
+        years: "健身多年",
+        coach: "资深教练"
+      }[assessment.trainingExperience] || "略有了解"
+    },
+    review: {
+      status: "new",
+      recommendation: "完成第一周记录后，再根据感觉、强弱反馈和完成度调整。"
     },
     weeks: [
       { week: 1, label: "适应周", note: "找到能稳定完成的重量，不急着加量。" },
@@ -319,6 +342,8 @@ function generatePlan(input = {}) {
       { week: 4, label: "复盘周", note: "保留训练频次，观察疲劳和动作质量。" }
     ],
     workouts,
+    rationale: "小程序当前使用本地预览模型，但字段结构与 PWA v2 计划保持一致，后续可直接接 CloudBase。",
+    adjustmentGuide: "重新调整会读取最近训练反馈；觉得太弱或太强时，先记录训练，再回到计划页调整。",
     createdAt: new Date().toISOString()
   };
 }
@@ -355,7 +380,14 @@ function rewriteSetCount(sets = "", nextCount) {
 }
 
 function getAdjustmentSignal(logs = []) {
-  const recent = logs.slice(-3).filter((item) => item && item.feeling);
+  const recent = logs.slice(-3).map((item) => {
+    if (!item) return null;
+    if (item.intensityFeedback) return item.intensityFeedback;
+    if (item.feeling === "easy") return "too-easy";
+    if (item.feeling === "hard") return "too-hard";
+    if (item.feeling === "right") return "right";
+    return null;
+  }).filter(Boolean);
   if (!recent.length) {
     return {
       status: "empty",
@@ -364,8 +396,8 @@ function getAdjustmentSignal(logs = []) {
     };
   }
 
-  const easyCount = recent.filter((item) => item.feeling === "easy").length;
-  const hardCount = recent.filter((item) => item.feeling === "hard").length;
+  const easyCount = recent.filter((feedback) => feedback === "too-easy").length;
+  const hardCount = recent.filter((feedback) => feedback === "too-hard").length;
   const threshold = recent.length >= 2 ? 2 : 1;
   if (hardCount >= threshold) {
     return {
@@ -658,6 +690,7 @@ function getEquipment() {
 }
 
 module.exports = {
+  COACH_SPEC_VERSION,
   adjustPlanFromLogs,
   buildCustomPlan,
   canRestoreOriginalPlan,

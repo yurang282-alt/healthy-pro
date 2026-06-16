@@ -1,22 +1,41 @@
 .plan-overview-card {
-  padding-bottom: 28rpx;
+  padding-bottom: 22rpx;
 }
 
-.plan-overview-card .small-button {
-  flex: 0 0 auto;
+.week-title-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 4rpx;
+}
+
+.plan-week-title {
+  font-size: 42rpx;
+}
+
+.phase-tag {
+  min-height: 44rpx;
+  padding: 7rpx 14rpx;
+  border-radius: 999rpx;
+  background: #eaf4ef;
+  color: #157a55;
+  font-size: 23rpx;
+  font-weight: 900;
+  line-height: 30rpx;
 }
 
 .plan-brief-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14rpx;
-  margin-top: 24rpx;
+  gap: 10rpx;
+  margin-top: 18rpx;
 }
 
 .plan-brief-grid view {
-  min-height: 116rpx;
-  padding: 18rpx;
-  border: 1rpx solid #d9e0e8;
+  min-height: 102rpx;
+  padding: 14rpx;
+  border: 1rpx solid #e1e7ee;
   border-radius: 14rpx;
   background: #f8fafb;
 }
@@ -31,7 +50,7 @@
 .plan-brief-grid .brief-value {
   margin-top: 8rpx;
   color: #111827;
-  font-size: 28rpx;
+  font-size: 27rpx;
   font-weight: 900;
   line-height: 1.28;
 }
@@ -39,14 +58,14 @@
 .week-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14rpx;
-  margin-top: 24rpx;
+  gap: 10rpx;
+  margin-top: 18rpx;
 }
 
 .week-chip {
-  min-height: 96rpx;
-  padding: 18rpx;
-  border: 1rpx solid #d9e0e8;
+  min-height: 86rpx;
+  padding: 14rpx;
+  border: 1rpx solid #e1e7ee;
   border-radius: 14rpx;
   background: #ffffff;
 }
@@ -61,7 +80,7 @@
 .week-label {
   margin-top: 4rpx;
   color: #111827;
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 900;
 }
 
@@ -71,13 +90,33 @@
 }
 
 .adjust-explainer {
-  margin-top: 18rpx;
-  padding: 18rpx;
+  margin-top: 14rpx;
+  padding: 14rpx;
   border-radius: 12rpx;
   background: #fff7e8;
   color: #7a4b11;
-  font-size: 26rpx;
-  line-height: 1.55;
+  font-size: 24rpx;
+  line-height: 1.45;
+}
+
+.plan-overview-actions,
+.plan-management-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.plan-overview-actions .secondary-button,
+.plan-overview-actions .ghost-button,
+.plan-management-actions .primary-button,
+.plan-management-actions .ghost-button,
+.secondary-plan-actions .secondary-button,
+.secondary-plan-actions .ghost-button {
+  min-height: 64rpx;
+  margin-top: 0;
+  font-size: 25rpx;
+  line-height: 64rpx;
 }
 
 .plan-management-card .pill {
@@ -87,32 +126,40 @@
   white-space: nowrap;
 }
 
+.plan-management-card .card-title {
+  font-size: 32rpx;
+}
+
 .previous-list {
-  margin-top: 20rpx;
+  margin-top: 16rpx;
 }
 
 .previous-list .history-row + .history-row {
-  margin-top: 14rpx;
+  margin-top: 12rpx;
 }
 
 .workout-stack {
-  gap: 28rpx;
+  gap: 14rpx;
 }
 
 .workout-card {
-  padding-top: 22rpx;
-  border-top: 1rpx solid #eef2f5;
-}
-
-.workout-card:first-child {
-  padding-top: 0;
-  border-top: 0;
+  padding: 16rpx;
+  border: 1rpx solid #e1e7ee;
+  border-radius: 16rpx;
+  background: #ffffff;
 }
 
 .workout-head {
-  align-items: flex-start;
+  align-items: center;
 }
 
 .workout-title {
-  font-size: 36rpx;
+  font-size: 32rpx;
+}
+
+.workout-summary {
+  margin-top: 10rpx;
+  color: #667085;
+  font-size: 24rpx;
+  line-height: 1.4;
 }
