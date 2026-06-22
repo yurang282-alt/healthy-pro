@@ -1,0 +1,81 @@
+<view class="page">
+  <button class="small-button back-button" bindtap="goBack">返回</button>
+
+  <view wx:if="{{detail}}">
+    <view class="eyebrow">动作详情</view>
+    <view class="title">{{detail.exercise.name}}</view>
+    <view class="muted">{{detail.equipment.name}} · {{detail.area}}</view>
+
+    <view class="card hero-card">
+      <image class="detail-image" src="{{detail.equipment.image}}" mode="aspectFit" />
+      <view class="detail-grid">
+        <view class="light-metric">
+          <text>目标</text>
+          <text class="metric-value">{{detail.exercise.sets}} · {{detail.exercise.reps}}</text>
+        </view>
+        <view class="light-metric">
+          <text>休息</text>
+          <text class="metric-value">{{detail.exercise.rest}}</text>
+        </view>
+        <view class="light-metric">
+          <text>吃力程度</text>
+          <text class="metric-value">{{detail.exercise.effort}}</text>
+        </view>
+        <view class="light-metric">
+          <text>建议重量</text>
+          <text class="metric-value">{{detail.loadFactLabel}}</text>
+        </view>
+      </view>
+      <view class="safety-note">{{detail.safetyNote}}</view>
+    </view>
+
+    <view class="card guide-card">
+      <view class="eyebrow">先把器械调对</view>
+      <view class="guide-list">
+        <view wx:for="{{detail.equipment.setup}}" wx:key="*this" class="guide-item">{{index + 1}}. {{item}}</view>
+      </view>
+    </view>
+
+    <view class="card guide-card">
+      <view class="eyebrow">怎么做</view>
+      <view class="guide-list">
+        <view wx:for="{{detail.instructionSteps}}" wx:key="*this" class="guide-item">{{index + 1}}. {{item}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{detail.exercise.loadDetail}}" class="card">
+      <view class="eyebrow">重量建议</view>
+      <text class="card-title">{{detail.exercise.loadLabel}}</text>
+      <view class="muted load-detail">{{detail.exercise.loadDetail}} {{detail.exercise.loadCaution}}</view>
+    </view>
+
+    <view class="card warning-card">
+      <view class="eyebrow">风险提醒</view>
+      <text class="card-title">别这样</text>
+      <view class="guide-list">
+        <view wx:for="{{detail.equipment.mistakes}}" wx:key="*this" class="guide-item">{{index + 1}}. {{item}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="eyebrow">器械被占时</view>
+      <text class="card-title">可以换这些</text>
+      <view wx:if="{{detail.relatedExercises.length}}" class="list">
+        <view wx:for="{{detail.relatedExercises}}" wx:key="id" class="exercise-row related-row" data-id="{{item.sourceExerciseId || item.id}}" bindtap="viewRelated">
+          <image class="thumb" src="{{item.image}}" mode="aspectFit" />
+          <view class="item-body">
+            <text class="item-title">{{item.name}}</text>
+            <text class="item-meta">{{item.equipmentName}} · {{item.sets}} · {{item.reps}}</text>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="empty-note">这个动作暂时没有合适替代。器械被占时先做下一个动作，回来再补。</view>
+    </view>
+  </view>
+
+  <view wx:else class="card">
+    <text class="card-title">没有找到这个动作</text>
+    <view class="muted">可能是计划刚刚更新过。先回到计划页重新打开动作。</view>
+    <button class="secondary-button" bindtap="goBack">返回</button>
+  </view>
+</view>

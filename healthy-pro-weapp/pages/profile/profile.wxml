@@ -16,29 +16,118 @@
         <text class="metric-value">{{completionRate}}%</text>
       </view>
       <view class="metric light-metric">
-        <text>数据模式</text>
-        <text class="metric-value">本地 mock</text>
+        <text>数据</text>
+        <text class="metric-value">{{syncStatusText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{insights}}" class="card weekly-card">
+    <view class="row">
+      <view>
+        <view class="eyebrow">周报</view>
+        <text class="card-title">本周完成 {{insights.thisWeekCount}}/{{insights.weekTargetText}} 次</text>
+      </view>
+      <text class="pill">{{insights.weekCompletionRate}}%</text>
+    </view>
+    <view class="progress-track">
+      <view class="progress-fill" style="width: {{insights.weekCompletionRate}}%;"></view>
+    </view>
+    <view class="metric-grid">
+      <view class="metric light-metric">
+        <text>完成动作</text>
+        <text class="metric-value">{{insights.thisWeekCompleted}}</text>
+      </view>
+      <view class="metric light-metric">
+        <text>最近感觉</text>
+        <text class="metric-value">{{insights.intensity.feelingLabel}}</text>
+      </view>
+      <view class="metric light-metric">
+        <text>最近体重</text>
+        <text class="metric-value">{{insights.latestWeightText}}</text>
+      </view>
+    </view>
+    <view class="coach-message">{{insights.coachMessage}}</view>
+
+    <view class="trend-list">
+      <view wx:for="{{insights.weeklyBuckets}}" wx:key="label" class="trend-row">
+        <view class="trend-meta">
+          <text>{{item.label}}</text>
+          <text>{{item.count}} 次</text>
+        </view>
+        <view class="trend-track"><view class="trend-fill soft" style="width: {{item.rate}}%;"></view></view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{insights}}" class="card">
+    <view class="eyebrow">个人记录</view>
+    <text class="card-title">训练和身体趋势</text>
+    <view class="record-grid">
+      <view wx:for="{{insights.records}}" wx:key="label" class="record-cell">
+        <text>{{item.label}}</text>
+        <text class="record-value">{{item.value}}</text>
+        <text class="record-note">{{item.note}}</text>
       </view>
     </view>
   </view>
 
   <view wx:if="{{user}}" class="card">
-    <view class="eyebrow">微信端状态</view>
-    <text class="card-title">第一版骨架</text>
-    <view class="muted">当前已能预览页面、生成计划和保存本地训练记录。微信登录和云数据库等你给我云环境 ID 后接入。</view>
-    <button class="secondary-button" bindtap="mockLogin">微信登录预留</button>
+    <view class="row">
+      <view>
+        <view class="eyebrow">好友</view>
+        <text class="card-title">好友与排行</text>
+      </view>
+      <text class="pill">预留</text>
+    </view>
+    <view class="muted">当前微信云已能保存你的训练摘要。下一步接好友关系后，会在这里显示本周训练次数和稳定榜。</view>
+    <view class="friend-summary">
+      <view>
+        <text>本周训练</text>
+        <text>{{insights.thisWeekCount}} 次</text>
+      </view>
+      <view>
+        <text>完成动作</text>
+        <text>{{insights.thisWeekCompleted}} 个</text>
+      </view>
+      <view>
+        <text>连续训练周</text>
+        <text>{{insights.streakText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{user}}" class="card">
+    <view class="eyebrow">微信云同步</view>
+    <text class="card-title">{{profile.syncMessage}}</text>
+    <view wx:if="{{lastSyncedLabel}}" class="muted">上次同步：{{lastSyncedLabel}}</view>
+    <view wx:elif="{{profile.error}}" class="muted">错误信息：{{profile.error}}</view>
+    <view wx:else class="muted">训练计划和记录会保存到当前微信账号。</view>
+    <button class="secondary-button profile-button" bindtap="syncCloud">立即同步</button>
   </view>
 
   <view wx:if="{{user}}" class="card">
     <view class="eyebrow">更新公告</view>
-    <text class="card-title">小程序端 MVP 启动</text>
-    <view class="muted">新增 Healthy Pro 微信小程序端骨架，保留 PWA，不影响现有线上版本。</view>
+    <text class="card-title">小程序端功能对齐</text>
+    <view class="muted">对齐 PWA 训练模型、评估项、记录项和动作详情入口。正式发布时会继续同步更新公告。</view>
+  </view>
+
+  <view wx:if="{{user}}" class="card">
+    <view class="eyebrow">反馈</view>
+    <text class="card-title">给我提建议</text>
+    <textarea class="textarea feedback-textarea" value="{{feedbackText}}" bindinput="setFeedbackText" placeholder="哪里难用、哪里看不懂、计划哪里不合理，都可以写这里" />
+    <button class="secondary-button profile-button" bindtap="saveFeedback">保存反馈</button>
+    <view wx:if="{{feedbacks.length}}" class="muted">已保存 {{feedbacks.length}} 条反馈，会随微信云数据同步。</view>
   </view>
 
   <view wx:if="{{user}}" class="card">
     <view class="eyebrow">设置</view>
-    <text class="card-title">本地开发</text>
-    <button class="secondary-button" bindtap="goAssessment">重新评估</button>
-    <button class="ghost-button" bindtap="resetDemo">重置 mock 数据</button>
+    <text class="card-title">训练设置</text>
+    <view class="profile-actions">
+      <button class="secondary-button" bindtap="goAssessment">重新评估</button>
+      <button class="ghost-button" bindtap="goPlan">训练计划</button>
+      <button class="ghost-button" bindtap="goLog">训练记录</button>
+      <button class="ghost-button" bindtap="resetDemo">重置数据</button>
+    </view>
   </view>
 </view>

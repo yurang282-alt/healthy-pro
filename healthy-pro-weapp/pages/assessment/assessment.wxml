@@ -9,6 +9,12 @@
       <input class="input" type="number" value="{{draft.age}}" data-key="age" bindinput="setValue" />
     </view>
     <view class="field">
+      <text class="label">性别</text>
+      <view class="choice-grid three-col">
+        <view wx:for="{{genderOptions}}" wx:key="value" class="choice {{draft.gender == item.value ? 'active' : ''}}" data-key="gender" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
+      </view>
+    </view>
+    <view class="field">
       <text class="label">身高 cm</text>
       <input class="input" type="number" value="{{draft.height}}" data-key="height" bindinput="setValue" />
     </view>
@@ -24,27 +30,28 @@
     <view class="field">
       <text class="label">目标</text>
       <view class="choice-grid">
-        <view class="choice {{draft.target == 'muscle' ? 'active' : ''}}" data-key="target" data-value="muscle" bindtap="chooseValue">增肌</view>
-        <view class="choice {{draft.target == 'fat-loss' ? 'active' : ''}}" data-key="target" data-value="fat-loss" bindtap="chooseValue">减脂</view>
+        <view wx:for="{{targetOptions}}" wx:key="value" class="choice {{draft.targetPreference == item.value ? 'active' : ''}}" data-key="targetPreference" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
       </view>
     </view>
 
     <view class="field">
       <text class="label">健身了解程度</text>
       <view class="choice-grid">
-        <view class="choice {{draft.experience == 'beginner' ? 'active' : ''}}" data-key="experience" data-value="beginner" bindtap="chooseValue">健身小白</view>
-        <view class="choice {{draft.experience == 'familiar' ? 'active' : ''}}" data-key="experience" data-value="familiar" bindtap="chooseValue">略有了解</view>
-        <view class="choice {{draft.experience == 'years' ? 'active' : ''}}" data-key="experience" data-value="years" bindtap="chooseValue">健身多年</view>
-        <view class="choice {{draft.experience == 'coach' ? 'active' : ''}}" data-key="experience" data-value="coach" bindtap="chooseValue">资深教练</view>
+        <view wx:for="{{experienceOptions}}" wx:key="value" class="choice {{draft.trainingExperience == item.value ? 'active' : ''}}" data-key="trainingExperience" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
       </view>
     </view>
 
     <view class="field">
       <text class="label">每周最多训练</text>
       <view class="choice-grid">
-        <view class="choice {{draft.frequency == 2 ? 'active' : ''}}" data-key="frequency" data-value="2" bindtap="chooseValue">最多 2 次</view>
-        <view class="choice {{draft.frequency == 3 ? 'active' : ''}}" data-key="frequency" data-value="3" bindtap="chooseValue">约 3 次</view>
-        <view class="choice {{draft.frequency == 4 ? 'active' : ''}}" data-key="frequency" data-value="4" bindtap="chooseValue">4 次以上</view>
+        <view wx:for="{{weeklyLimitOptions}}" wx:key="value" class="choice {{draft.weeklyLimit == item.value ? 'active' : ''}}" data-key="weeklyLimit" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
+      </view>
+    </view>
+
+    <view class="field">
+      <text class="label">单次可接受时长</text>
+      <view class="choice-grid three-col">
+        <view wx:for="{{sessionBudgetOptions}}" wx:key="value" class="choice {{draft.sessionBudget == item.value ? 'active' : ''}}" data-key="sessionBudget" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
       </view>
     </view>
 
@@ -55,6 +62,13 @@
           <checkbox value="{{item.id}}" checked="{{item.checked}}" />{{item.label}}
         </label>
       </checkbox-group>
+    </view>
+
+    <view class="field">
+      <text class="label">伤病或医生限制</text>
+      <view class="choice-grid">
+        <view wx:for="{{injuryOptions}}" wx:key="value" class="choice {{draft.injury == item.value ? 'active' : ''}}" data-key="injury" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
+      </view>
     </view>
 
     <button class="primary-button" bindtap="submit">生成我的 4 周计划</button>

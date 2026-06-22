@@ -7,17 +7,67 @@
     <view class="row">
       <view>
         <view class="eyebrow">本次训练</view>
-        <text class="card-title">今天顺序</text>
+        <text class="card-title">逐项记录</text>
       </view>
-      <text class="pill">第 {{week}} 周</text>
+      <text class="pill">{{completedCount}}/{{exerciseRecords.length}}</text>
     </view>
-    <view class="list">
-      <view wx:for="{{workout.exercises}}" wx:key="id" class="exercise-row">
-        <image class="thumb" src="{{item.image}}" mode="aspectFit" />
-        <view class="item-body">
-          <text class="item-title">{{index + 1}}. {{item.name}}</text>
-          <text class="item-meta">{{item.equipmentName}} · {{item.sets}} · {{item.reps}}</text>
-          <text class="item-help">吃力程度 {{item.effort}}：{{item.cue}}</text>
+    <view class="muted session-hint">第 {{week}} 周 · 可以只保存实际完成的动作，没做的不用勾选。</view>
+
+    <view class="list record-list">
+      <view wx:for="{{exerciseRecords}}" wx:for-item="record" wx:for-index="recordIndex" wx:key="id" class="record-card {{record.done ? 'done' : ''}}">
+        <view class="record-head">
+          <image class="thumb" src="{{record.image}}" mode="aspectFit" />
+          <view class="item-body">
+            <text class="item-title">{{recordIndex + 1}}. {{record.name}}</text>
+            <text class="item-meta">{{record.equipmentName}} · {{record.sets}} · {{record.reps}}</text>
+            <text wx:if="{{record.load}}" class="load-line">建议起步：{{record.load}}</text>
+            <text class="item-help">吃力程度 {{record.effort}}：{{record.cue}}</text>
+            <button class="small-button detail-button" data-id="{{record.sourceExerciseId || record.id}}" bindtap="viewExercise">看动作详情</button>
+          </view>
+          <button class="done-toggle {{record.done ? 'active' : ''}}" data-index="{{recordIndex}}" bindtap="toggleRecord">
+            {{record.done ? '已完成' : '未完成'}}
+          </button>
+        </view>
+
+        <view wx:if="{{record.isStrength}}" class="record-grid strength-grid">
+          <view class="mini-field">
+            <text>组数</text>
+            <input type="number" value="{{record.setsDone}}" placeholder="{{record.targetSets}}" data-index="{{recordIndex}}" data-key="setsDone" bindinput="setRecordField" />
+          </view>
+          <view class="mini-field">
+            <text>重量/档位</text>
+            <input type="digit" value="{{record.weight}}" placeholder="kg" data-index="{{recordIndex}}" data-key="weight" bindinput="setRecordField" />
+          </view>
+          <view class="mini-field">
+            <text>实际次数</text>
+            <input type="text" value="{{record.actualReps}}" placeholder="12/12/10" data-index="{{recordIndex}}" data-key="actualReps" bindinput="setRecordField" />
+          </view>
+        </view>
+
+        <view wx:if="{{record.isCardio}}" class="record-grid cardio-grid">
+          <view class="mini-field">
+            <text>时长</text>
+            <input type="digit" value="{{record.durationMinutes}}" placeholder="分钟" data-index="{{recordIndex}}" data-key="durationMinutes" bindinput="setRecordField" />
+          </view>
+          <view class="mini-field">
+            <text>速度</text>
+            <input type="digit" value="{{record.speed}}" placeholder="5.5" data-index="{{recordIndex}}" data-key="speed" bindinput="setRecordField" />
+          </view>
+          <view class="mini-field">
+            <text>坡度</text>
+            <input type="digit" value="{{record.incline}}" placeholder="%" data-index="{{recordIndex}}" data-key="incline" bindinput="setRecordField" />
+          </view>
+          <view class="mini-field">
+            <text>阻力</text>
+            <input type="number" value="{{record.resistance}}" placeholder="档" data-index="{{recordIndex}}" data-key="resistance" bindinput="setRecordField" />
+          </view>
+        </view>
+
+        <view class="feeling-row">
+          <view wx:for="{{feelingChoices}}" wx:for-item="choice" wx:key="value" class="feeling-choice {{record.feeling == choice.value ? 'active' : ''}}" data-index="{{recordIndex}}" data-value="{{choice.value}}" bindtap="chooseFeeling">
+            <text class="feeling-icon">{{choice.icon}}</text>
+            <text class="feeling-label">{{choice.label}}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -25,16 +75,16 @@
     <view class="field">
       <text class="label">这次练完感觉</text>
       <view class="choice-grid">
-        <view class="choice {{feeling == 'easy' ? 'active' : ''}}" data-value="easy" bindtap="chooseFeeling">太轻松</view>
-        <view class="choice {{feeling == 'right' ? 'active' : ''}}" data-value="right" bindtap="chooseFeeling">刚刚好</view>
-        <view class="choice {{feeling == 'hard' ? 'active' : ''}}" data-value="hard" bindtap="chooseFeeling">太吃力</view>
+        <view class="choice {{intensityFeedback == 'too-easy' ? 'active' : ''}}" data-value="too-easy" bindtap="chooseIntensity">太轻松</view>
+        <view class="choice {{intensityFeedback == 'right' ? 'active' : ''}}" data-value="right" bindtap="chooseIntensity">刚刚好</view>
+        <view class="choice {{intensityFeedback == 'too-hard' ? 'active' : ''}}" data-value="too-hard" bindtap="chooseIntensity">太吃力</view>
       </view>
     </view>
     <view class="field">
       <text class="label">备注</text>
       <textarea class="textarea" value="{{note}}" bindinput="setNote" placeholder="器械找不到、动作不稳、重量偏轻都可以记这里" />
     </view>
-    <button class="primary-button" bindtap="saveLog">保存本次训练</button>
+    <button class="primary-button" bindtap="saveLog">{{completedCount == exerciseRecords.length ? '保存本次训练' : '保存已完成训练'}}</button>
   </view>
 
   <view class="card">
@@ -46,14 +96,51 @@
       <text class="pill">{{logs.length}} 次</text>
     </view>
     <view wx:if="{{logs.length}}" class="list">
-      <view wx:for="{{logs}}" wx:key="id" class="history-row">
+      <view wx:for="{{logs}}" wx:for-item="log" wx:key="id" class="history-row">
         <view class="item-body">
-          <text class="item-title">{{item.workoutTitle}}</text>
-          <text class="item-meta">第 {{item.week}} 周 · {{item.createdLabel}} · 完成 {{item.completedCount}} 个动作</text>
-          <text wx:if="{{item.note}}" class="item-help">{{item.note}}</text>
+          <text class="item-title">{{log.workoutTitle}}</text>
+          <text class="item-meta">第 {{log.week}} 周 · {{log.createdLabel}} · {{log.feedbackLabel}} · 完成 {{log.completedCount}} 个动作</text>
+          <text wx:if="{{log.completedText}}" class="item-help">完成：{{log.completedText}}</text>
+          <view wx:if="{{log.detailLines.length}}" class="history-detail">
+            <text wx:for="{{log.detailLines}}" wx:for-item="detail" wx:key="*this">{{detail}}</text>
+          </view>
+          <text wx:if="{{log.note}}" class="item-help">{{log.note}}</text>
         </view>
       </view>
     </view>
     <view wx:else class="empty-note">还没有历史训练。保存一次训练后会出现在这里。</view>
+  </view>
+
+  <view class="card">
+    <view class="row">
+      <view>
+        <view class="eyebrow">身体</view>
+        <text class="card-title">身体状态</text>
+      </view>
+      <text class="pill">可选</text>
+    </view>
+    <view class="record-grid body-grid">
+      <view class="mini-field">
+        <text>体重 kg</text>
+        <input type="digit" value="{{bodyDraft.weight}}" placeholder="65" data-key="weight" bindinput="setBodyField" />
+      </view>
+      <view class="mini-field">
+        <text>体脂 %</text>
+        <input type="digit" value="{{bodyDraft.bodyFat}}" placeholder="14" data-key="bodyFat" bindinput="setBodyField" />
+      </view>
+      <view class="mini-field">
+        <text>睡眠 h</text>
+        <input type="digit" value="{{bodyDraft.sleep}}" placeholder="7.5" data-key="sleep" bindinput="setBodyField" />
+      </view>
+    </view>
+    <view class="field">
+      <text class="label">身体备注</text>
+      <textarea class="textarea body-textarea" value="{{bodyDraft.note}}" data-key="note" bindinput="setBodyField" placeholder="精神状态、酸痛、饮食波动" />
+    </view>
+    <button class="secondary-button" bindtap="saveBodyLog">保存身体记录</button>
+
+    <view wx:if="{{latestBodyLog}}" class="body-history">
+      <text class="item-meta">最近身体记录：{{latestBodyLog.createdLabel}} · {{latestBodyLog.weight}}kg</text>
+    </view>
   </view>
 </view>

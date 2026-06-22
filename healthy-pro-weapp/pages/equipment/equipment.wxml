@@ -1,19 +1,20 @@
 <view class="page">
   <view class="eyebrow">器械库</view>
   <view class="title">先认识器械</view>
-  <view class="muted">第一版先用本地图片，后续正式版可以迁到云存储。</view>
+  <view class="muted">看图找器械，先确认名字和使用位置。</view>
 
   <view class="field">
     <input class="input" type="text" value="{{query}}" bindinput="search" placeholder="搜索胸、背、跑步机、史密斯" />
   </view>
 
   <view class="list">
-    <view wx:for="{{visibleEquipment}}" wx:key="id" class="equipment-row">
+    <view wx:for="{{visibleEquipment}}" wx:key="id" class="equipment-row" data-id="{{item.id}}" bindtap="viewEquipmentExercise">
       <image class="thumb" src="{{item.image}}" mode="aspectFit" />
       <view class="item-body">
         <text class="item-title">{{item.name}}</text>
         <text class="item-meta">{{item.category}} · {{item.muscles}}</text>
         <text class="item-help">{{item.setup}}</text>
+        <text class="item-meta">点开看动作说明</text>
       </view>
     </view>
   </view>
