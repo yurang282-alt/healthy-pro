@@ -68,6 +68,20 @@ const LOCAL_RELEASES = [
     details: "这次更新让 App 不只是生成计划和记录结果，而是在训练过程中给你更清晰的动作指引。后续会继续把训练记录转化成动作进步分析和更主动的计划调整建议。",
     releaseType: "feature",
     publishedAt: "2026-06-10T11:20:00+08:00"
+  },
+  {
+    id: "local-v0.7.0",
+    version: "v0.7.0",
+    title: "微信小程序功能迁移",
+    summary: "小程序端补齐 PWA 已验证的训练记录、好友排行、反馈和更新公告能力。",
+    highlights: [
+      "记录页升级为训练助手，支持当前动作、休息倒计时和动作详情",
+      "我的页补齐好友码、好友请求、稳定榜和结构化反馈",
+      "小程序端发布公告支持多版本展示和已读状态"
+    ],
+    details: "这次更新重点是让微信小程序端和 PWA 的可用功能保持一致，方便朋友直接在微信里体验和反馈。",
+    releaseType: "feature",
+    publishedAt: "2026-06-22T00:00:00+08:00"
   }
 ];
 const app = document.querySelector("#app");
