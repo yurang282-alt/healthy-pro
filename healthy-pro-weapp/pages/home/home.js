@@ -15,9 +15,11 @@ Page({
   refresh() {
     const app = getApp();
     const context = app.getTrainingContext();
+    const user = context.user || {};
+    const plan = user.plan || null;
     const exercises = context.workout && context.workout.exercises ? context.workout.exercises : [];
     this.setData({
-      plan: context.user.plan,
+      plan,
       workout: context.workout,
       week: context.week,
       logsCount: context.logs.length,

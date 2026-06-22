@@ -294,6 +294,33 @@ insert into public.app_releases (
   is_published,
   published_at
 ) values (
+  'v0.7.1',
+  '小程序用户数据隔离修复',
+  '微信小程序启动时会自动绑定当前微信用户，新用户不再默认进入同一套演示计划。',
+  '["启动时自动读取微信身份并按 openid 加载云端数据", "新用户先进入基础评估，不再共用默认 demo 计划", "本地训练草稿和身体草稿按微信用户隔离"]'::jsonb,
+  '这次修复解决体验版里不同用户先看到相同默认数据的问题。云端仍按微信 openid 分用户保存，已有误同步的纯 demo seed 会被识别并清理。',
+  'fix',
+  true,
+  '2026-06-22 12:00:00+08'
+) on conflict (version) do update set
+  title = excluded.title,
+  summary = excluded.summary,
+  highlights = excluded.highlights,
+  details = excluded.details,
+  release_type = excluded.release_type,
+  is_published = excluded.is_published,
+  published_at = excluded.published_at;
+
+insert into public.app_releases (
+  version,
+  title,
+  summary,
+  highlights,
+  details,
+  release_type,
+  is_published,
+  published_at
+) values (
   'v0.7.0',
   '微信小程序功能迁移',
   '小程序端补齐 PWA 已验证的训练记录、好友排行、反馈和更新公告能力。',

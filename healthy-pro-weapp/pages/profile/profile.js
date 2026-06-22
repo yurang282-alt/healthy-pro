@@ -27,6 +27,15 @@ const LOCAL_RELEASES = [
     highlights: ["训练记录支持当前动作、休息倒计时和动作详情", "我的页支持好友码、好友请求、排行和反馈", "更新公告可查看多版本并标记已读"],
     releaseType: "feature",
     publishedAt: "2026-06-22T00:00:00+08:00"
+  },
+  {
+    id: "weapp-v0.3.1",
+    version: "v0.3.1",
+    title: "微信用户数据隔离修复",
+    summary: "小程序启动时会自动绑定当前微信用户，新用户不再默认进入同一套演示计划。",
+    highlights: ["启动时自动读取微信身份并按 openid 加载云端数据", "新用户先进入基础评估，不再共用默认 demo 计划", "本地训练草稿和身体草稿按微信用户隔离"],
+    releaseType: "fix",
+    publishedAt: "2026-06-22T12:00:00+08:00"
   }
 ];
 

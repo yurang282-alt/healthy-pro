@@ -28,6 +28,21 @@ Page({
   refresh(options = {}) {
     const app = getApp();
     const context = app.getTrainingContext();
+    if (!context.user || !context.user.plan) {
+      this.setData({
+        plan: null,
+        selectedWeek: 1,
+        currentWeek: 1,
+        selectedWeekInfo: null,
+        logsCount: context.logs ? context.logs.length : 0,
+        previousPlan: null,
+        showPreviousPlan: false,
+        expandedWorkoutId: "",
+        canRestoreOriginal: false,
+        versionLabel: "AI 计划"
+      });
+      return;
+    }
     const selectedWeek = options.keepSelected
       ? this.data.selectedWeek
       : context.week;
@@ -62,6 +77,7 @@ Page({
   chooseWeek(event) {
     const selectedWeek = Number(event.currentTarget.dataset.week);
     const store = getApp().getStore();
+    if (!store.user || !store.user.plan) return;
     const plan = decoratePlanForWeapp(store.user && store.user.plan, {
       assessment: store.user && store.user.assessment,
       logs: store.logs || [],

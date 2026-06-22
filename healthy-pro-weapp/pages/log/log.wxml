@@ -3,6 +3,12 @@
   <view class="title">{{workout.title}}</view>
   <view class="muted">{{workout.focus}}</view>
 
+  <view wx:if="{{!workout}}" class="card">
+    <text class="card-title">先完成基础评估</text>
+    <view class="muted">生成训练计划后，这里会变成训练中的逐项记录工具。</view>
+    <button class="primary-button" bindtap="goAssessment">开始评估</button>
+  </view>
+
   <view wx:if="{{workout}}" class="card">
     <view class="row">
       <view>

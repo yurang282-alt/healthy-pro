@@ -2,7 +2,7 @@
   <view class="eyebrow">Healthy Pro</view>
   <view class="title">我的</view>
 
-  <view wx:if="{{user}}" class="card">
+  <view wx:if="{{user && user.plan}}" class="card">
     <view class="eyebrow">训练档案</view>
     <text class="card-title">当前计划执行中</text>
     <view class="muted">当前目标：{{user.plan.goal.type}} · {{user.plan.frequency.sessionsPerWeek}} 次/周</view>
@@ -20,6 +20,13 @@
         <text class="metric-value">{{syncStatusText}}</text>
       </view>
     </view>
+  </view>
+
+  <view wx:elif="{{user}}" class="card">
+    <view class="eyebrow">训练档案</view>
+    <text class="card-title">先完成基础评估</text>
+    <view class="muted">当前微信用户还没有训练计划。完成评估后，数据会绑定到你的微信身份。</view>
+    <button class="primary-button profile-button" bindtap="goAssessment">开始评估</button>
   </view>
 
   <view wx:if="{{insights}}" class="card weekly-card">

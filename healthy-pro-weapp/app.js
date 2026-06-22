@@ -1,5 +1,4 @@
 const {
-  createDemoUser,
   decoratePlanForWeapp,
   generatePlan,
   getCurrentWeek,
@@ -23,6 +22,11 @@ const {
 } = require("./utils/cloud");
 
 const STORAGE_KEY = "healthyProStore";
+const STORAGE_KEY_PREFIX = "healthyProStore:user:";
+
+function getStorageKeyForOpenid(openid) {
+  return `${STORAGE_KEY_PREFIX}${openid}`;
+}
 
 function hashText(value) {
   return String(value || "").split("").reduce((hash, char) => {
@@ -34,6 +38,36 @@ function hashText(value) {
 function createFriendCode(source) {
   const hash = Math.abs(hashText(source || `local_${Date.now()}`));
   return `HP${hash.toString(36).toUpperCase().padStart(6, "0").slice(-6)}`;
+}
+
+function createEmptyUser(openid = "") {
+  return {
+    id: openid ? `weapp-${openid}` : "pending-weapp-user",
+    openid,
+    assessment: null,
+    plan: null,
+    needsAssessment: true
+  };
+}
+
+function isLegacySeedStore(store) {
+  if (!store || !store.user || !store.user.assessment || !store.user.plan) return false;
+  const assessment = store.user.assessment;
+  const noUserData = !(store.logs || []).length && !(store.bodyLogs || []).length && !(store.feedbacks || []).length;
+  return noUserData &&
+    store.user.id === "demo-user" &&
+    Number(assessment.age) === 28 &&
+    assessment.gender === "male" &&
+    Number(assessment.height) === 170 &&
+    Number(assessment.weight) === 65 &&
+    Number(assessment.bodyFat) === 14 &&
+    assessment.targetPreference === "gain" &&
+    assessment.trainingExperience === "familiar" &&
+    String(assessment.weeklyLimit) === "3" &&
+    Number(assessment.sessionBudget) === 75 &&
+    assessment.injury === "none" &&
+    Array.isArray(assessment.focusAreas) &&
+    assessment.focusAreas.join(",") === "chest,back";
 }
 
 function getStartOfLocalWeek(now = new Date()) {
@@ -114,16 +148,20 @@ App({
 
   onLaunch() {
     this.ensureStore();
+    this.whenCloudReady().then(() => this.refreshCurrentPage());
   },
 
   cloudReadyPromise: null,
   cloudSyncTimer: null,
   cloudSyncing: false,
   cloudIdentity: null,
+  activeStorageKey: STORAGE_KEY,
 
-  createDefaultStore() {
+  createDefaultStore(options = {}) {
+    const openid = options.openid || "";
+    const cloudEnabled = Boolean(openid && options.cloudEnabled);
     return {
-      user: createDemoUser(),
+      user: createEmptyUser(openid),
       logs: [],
       bodyLogs: [],
       feedbacks: [],
@@ -131,18 +169,18 @@ App({
       social: null,
       profile: {
         nickname: "微信用户",
-        mode: "local",
-        modeLabel: "本地",
-        cloudReady: false,
-        syncStatus: "local",
-        syncMessage: "本地数据运行中",
+        mode: cloudEnabled ? "cloud" : "local",
+        modeLabel: cloudEnabled ? "云端" : "本地",
+        cloudReady: cloudEnabled,
+        syncStatus: cloudEnabled ? "connecting" : "local",
+        syncMessage: cloudEnabled ? "正在读取微信数据" : "先完成基础评估",
         lastSyncedAt: ""
       },
       cloud: {
         envId: CLOUD_ENV_ID,
-        openid: "",
-        userDocId: "",
-        enabled: false,
+        openid,
+        userDocId: openid ? userDocId(openid) : "",
+        enabled: cloudEnabled,
         lastPulledAt: "",
         lastPushedAt: "",
         localUpdatedAt: new Date().toISOString(),
@@ -155,17 +193,17 @@ App({
     return Boolean(
       store &&
       store.user &&
-      store.user.plan &&
-      Array.isArray(store.user.plan.workouts) &&
-      store.user.plan.workouts.length &&
-      Array.isArray(store.logs)
+      Array.isArray(store.logs) &&
+      Array.isArray(store.bodyLogs)
     );
   },
 
   migrateStore(store) {
     if (!this.isUsableStore(store)) return store;
-    const assessment = normalizeAssessment(store.user.assessment || {});
+    const hasAssessment = Boolean(store.user.assessment);
+    const assessment = hasAssessment ? normalizeAssessment(store.user.assessment || {}) : null;
     store.user.assessment = assessment;
+    store.user.needsAssessment = !assessment || !store.user.plan;
     store.logs = (store.logs || []).map((log) => ({
       ...log,
       intensityFeedback: log.intensityFeedback || (log.feeling === "easy" ? "too-easy" : log.feeling === "hard" ? "too-hard" : "right"),
@@ -173,14 +211,18 @@ App({
     }));
     store.feedbacks = Array.isArray(store.feedbacks) ? store.feedbacks : [];
     store.releaseReads = store.releaseReads || {};
-    if (shouldRegeneratePlan(store.user.plan)) {
+    if (store.user.plan && shouldRegeneratePlan(store.user.plan)) {
       store.user.plan = generatePlan(assessment, store.logs);
-    } else {
+      store.user.needsAssessment = false;
+    } else if (store.user.plan) {
       store.user.plan = decoratePlanForWeapp(store.user.plan, {
         assessment,
         logs: store.logs,
         week: getCurrentWeek(store.user.plan, store.logs)
       });
+      store.user.needsAssessment = false;
+    } else {
+      store.user.plan = null;
     }
     store.bodyLogs = Array.isArray(store.bodyLogs) ? store.bodyLogs : [];
     store.profile = {
@@ -209,15 +251,15 @@ App({
   },
 
   ensureStore() {
-    const store = wx.getStorageSync(STORAGE_KEY);
+    const store = wx.getStorageSync(this.activeStorageKey || STORAGE_KEY);
     if (this.isUsableStore(store)) {
       const migratedStore = this.migrateStore(store);
-      wx.setStorageSync(STORAGE_KEY, migratedStore);
+      wx.setStorageSync(this.activeStorageKey || STORAGE_KEY, migratedStore);
       return migratedStore;
     }
 
     const nextStore = this.createDefaultStore();
-    wx.setStorageSync(STORAGE_KEY, nextStore);
+    wx.setStorageSync(this.activeStorageKey || STORAGE_KEY, nextStore);
     return nextStore;
   },
 
@@ -231,7 +273,7 @@ App({
     if (options.touch !== false) {
       store.cloud.localUpdatedAt = new Date().toISOString();
     }
-    wx.setStorageSync(STORAGE_KEY, store);
+    wx.setStorageSync(this.activeStorageKey || STORAGE_KEY, store);
     if (options.sync !== false) {
       this.scheduleCloudSync();
     }
@@ -249,7 +291,10 @@ App({
 
   resetDemo() {
     const current = this.getStore();
-    const nextStore = this.createDefaultStore();
+    const nextStore = this.createDefaultStore({
+      openid: current.cloud && current.cloud.openid,
+      cloudEnabled: Boolean(current.cloud && current.cloud.enabled)
+    });
     nextStore.cloud = {
       ...(nextStore.cloud || {}),
       openid: current.cloud && current.cloud.openid,
@@ -270,6 +315,14 @@ App({
 
   getTrainingContext() {
     const store = this.getStore();
+    if (!store.user || !store.user.plan) {
+      return {
+        ...store,
+        user: store.user || createEmptyUser(store.cloud && store.cloud.openid),
+        week: 1,
+        workout: null
+      };
+    }
     const week = getCurrentWeek(store.user.plan, store.logs);
     const plan = decoratePlanForWeapp(store.user.plan, {
       assessment: store.user.assessment,
@@ -329,7 +382,17 @@ App({
 
       const identity = await getCloudIdentity();
       this.cloudIdentity = identity;
-      const currentStore = this.getStore();
+      const legacyStore = this.getStore();
+      const userStorageKey = getStorageKeyForOpenid(identity.openid);
+      const userScopedStore = wx.getStorageSync(userStorageKey);
+      this.activeStorageKey = userStorageKey;
+      const hasUserScopedStore = this.isUsableStore(userScopedStore);
+      const userScopedSeedOnly = isLegacySeedStore(userScopedStore);
+      const currentStore = hasUserScopedStore && !userScopedSeedOnly
+        ? this.migrateStore(userScopedStore)
+        : (isLegacySeedStore(legacyStore)
+          ? this.createDefaultStore({ openid: identity.openid, cloudEnabled: true })
+          : this.migrateStore(legacyStore));
       const hadCloudBinding = Boolean(currentStore.cloud && currentStore.cloud.userDocId);
       currentStore.cloud = {
         ...(currentStore.cloud || {}),
@@ -354,8 +417,9 @@ App({
       this.setStore(currentStore, { sync: false, touch: false });
 
       const cloudRecord = await readCloudStore(identity.openid);
+      const cloudRecordIsSeedOnly = cloudRecord && isLegacySeedStore(cloudRecord.store);
       const localStore = this.getStore();
-      if (cloudRecord && (!hadCloudBinding || this.shouldUseCloudStore(localStore, cloudRecord))) {
+      if (cloudRecord && !cloudRecordIsSeedOnly && (!hadCloudBinding || this.shouldUseCloudStore(localStore, cloudRecord))) {
         const nextStore = this.migrateStore(cloudRecord.store);
         nextStore.cloud = {
           ...(nextStore.cloud || {}),
@@ -395,6 +459,14 @@ App({
       });
     }
     return this.getStore();
+  },
+
+  refreshCurrentPage() {
+    const pages = typeof getCurrentPages === "function" ? getCurrentPages() : [];
+    const currentPage = pages[pages.length - 1];
+    if (currentPage && typeof currentPage.refresh === "function") {
+      currentPage.refresh();
+    }
   },
 
   whenCloudReady() {

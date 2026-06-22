@@ -82,6 +82,20 @@ const LOCAL_RELEASES = [
     details: "这次更新重点是让微信小程序端和 PWA 的可用功能保持一致，方便朋友直接在微信里体验和反馈。",
     releaseType: "feature",
     publishedAt: "2026-06-22T00:00:00+08:00"
+  },
+  {
+    id: "local-v0.7.1",
+    version: "v0.7.1",
+    title: "小程序用户数据隔离修复",
+    summary: "微信小程序启动时会自动绑定当前微信用户，新用户不再默认进入同一套演示计划。",
+    highlights: [
+      "启动时自动读取微信身份并按 openid 加载云端数据",
+      "新用户先进入基础评估，不再共用默认 demo 计划",
+      "本地训练草稿和身体草稿按微信用户隔离"
+    ],
+    details: "这次修复解决体验版里不同用户先看到相同默认数据的问题。云端仍按微信 openid 分用户保存，已有误同步的纯 demo seed 会被识别并清理。",
+    releaseType: "fix",
+    publishedAt: "2026-06-22T12:00:00+08:00"
   }
 ];
 const app = document.querySelector("#app");

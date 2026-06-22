@@ -104,8 +104,13 @@ Page({
     const assessment = normalizeAssessment(this.data.draft);
     const app = getApp();
     const store = app.getStore();
+    store.user = store.user || {
+      id: store.cloud && store.cloud.openid ? `weapp-${store.cloud.openid}` : "pending-weapp-user",
+      openid: store.cloud && store.cloud.openid || ""
+    };
     store.user.assessment = assessment;
     store.user.plan = generatePlan(assessment, store.logs || []);
+    store.user.needsAssessment = false;
     app.setStore(store);
     wx.showToast({ title: "计划已生成", icon: "success" });
     wx.switchTab({ url: "/pages/home/home" });

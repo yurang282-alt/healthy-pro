@@ -1,7 +1,7 @@
 const { formatDateTime } = require("../../utils/format");
 
 const TRAINING_DRAFT_PREFIX = "healthyProTrainingDraft";
-const BODY_DRAFT_KEY = "healthyProBodyDraft";
+const BODY_DRAFT_PREFIX = "healthyProBodyDraft";
 const FEELING_CHOICES = [
   { value: 1, icon: "😄", label: "太轻松" },
   { value: 2, icon: "🙂", label: "轻松" },
@@ -39,9 +39,19 @@ function formatSeconds(seconds) {
   return `${minutes}:${String(restSeconds).padStart(2, "0")}`;
 }
 
-function getDraftKey(workout, week) {
+function getDraftScope() {
+  const app = getApp();
+  const store = app && app.getStore ? app.getStore() : {};
+  return store.cloud && store.cloud.openid || store.social && store.social.localUserId || "local";
+}
+
+function getDraftKey(workout, week, scope) {
   const workoutId = workout && workout.id ? workout.id : "unknown";
-  return `${TRAINING_DRAFT_PREFIX}:${workoutId}:${week || 1}`;
+  return `${TRAINING_DRAFT_PREFIX}:${scope || "local"}:${workoutId}:${week || 1}`;
+}
+
+function getBodyDraftKey(scope) {
+  return `${BODY_DRAFT_PREFIX}:${scope || "local"}`;
 }
 
 function getIntensityLabel(value) {
@@ -144,10 +154,11 @@ Page({
     const context = getApp().getTrainingContext();
     const workout = context.workout;
     const week = context.week;
-    const draft = this.loadTrainingDraft(workout, week);
+    const draftScope = getDraftScope();
+    const draft = this.loadTrainingDraft(workout, week, draftScope);
     const exerciseRecords = this.buildExerciseRecords(workout, draft);
     const activeExerciseIndex = Math.max(0, Math.min(exerciseRecords.length - 1, Number(draft.activeExerciseIndex || 0)));
-    const bodyDraft = wx.getStorageSync(BODY_DRAFT_KEY) || this.data.bodyDraft;
+    const bodyDraft = wx.getStorageSync(getBodyDraftKey(draftScope)) || this.data.bodyDraft;
     this.setData({
       workout,
       week,
@@ -170,8 +181,12 @@ Page({
     this.startRestTimer();
   },
 
-  loadTrainingDraft(workout, week) {
-    return wx.getStorageSync(getDraftKey(workout, week)) || {};
+  goAssessment() {
+    wx.navigateTo({ url: "/pages/assessment/assessment" });
+  },
+
+  loadTrainingDraft(workout, week, scope) {
+    return wx.getStorageSync(getDraftKey(workout, week, scope || getDraftScope())) || {};
   },
 
   buildExerciseRecords(workout, draft = {}) {
@@ -246,7 +261,7 @@ Page({
       activeExerciseIndex: this.data.activeExerciseIndex,
       ...patch
     };
-    wx.setStorageSync(getDraftKey(this.data.workout, this.data.week), {
+    wx.setStorageSync(getDraftKey(this.data.workout, this.data.week, getDraftScope()), {
       intensityFeedback: nextData.intensityFeedback,
       note: nextData.note,
       activeExerciseIndex: Number(nextData.activeExerciseIndex || 0),
@@ -489,7 +504,7 @@ Page({
     app.setStore(store);
     app.syncTrainingLog(nextLog);
     this.setData({ note: "", intensityFeedback: "right" });
-    wx.removeStorageSync(getDraftKey(workout, this.data.week));
+    wx.removeStorageSync(getDraftKey(workout, this.data.week, getDraftScope()));
     this.refresh();
     wx.showToast({ title: "已记录", icon: "success" });
   },
@@ -501,7 +516,7 @@ Page({
       [key]: event.detail.value
     };
     this.setData({ bodyDraft });
-    wx.setStorageSync(BODY_DRAFT_KEY, bodyDraft);
+    wx.setStorageSync(getBodyDraftKey(getDraftScope()), bodyDraft);
   },
 
   saveBodyLog() {
@@ -526,7 +541,7 @@ Page({
     store.bodyLogs = Array.isArray(store.bodyLogs) ? store.bodyLogs : [];
     store.bodyLogs.push(nextBodyLog);
     app.setStore(store);
-    wx.removeStorageSync(BODY_DRAFT_KEY);
+    wx.removeStorageSync(getBodyDraftKey(getDraftScope()));
     this.setData({
       bodyDraft: {
         weight: "",
