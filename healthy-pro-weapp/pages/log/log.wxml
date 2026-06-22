@@ -13,6 +13,104 @@
     </view>
     <view class="muted session-hint">第 {{week}} 周 · 可以只保存实际完成的动作，没做的不用勾选。</view>
 
+    <view wx:if="{{activeRecord}}" class="training-card">
+      <view class="training-progress-line">
+        <view style="width: {{activeMeta.progressPercent}}%;"></view>
+      </view>
+      <view class="record-head active-head">
+        <image class="training-visual" src="{{activeRecord.image}}" mode="aspectFit" />
+        <view class="item-body">
+          <text class="eyebrow">{{activeMeta.indexText}}</text>
+          <text class="card-title">{{activeRecord.name}}</text>
+          <text class="item-meta">{{activeRecord.equipmentName}} · {{activeRecord.sets}} · {{activeRecord.reps}}</text>
+          <text wx:if="{{activeRecord.load}}" class="load-line">建议起步：{{activeRecord.load}}</text>
+        </view>
+      </view>
+
+      <view class="training-tip-grid">
+        <view>
+          <text>吃力程度</text>
+          <text>{{activeRecord.effort}}</text>
+        </view>
+        <view>
+          <text>休息</text>
+          <text>{{activeRecord.rest}}</text>
+        </view>
+        <view>
+          <text>{{activeRecord.isCardio ? '目标时长' : '完成组数'}}</text>
+          <text>{{activeMeta.targetText}}</text>
+        </view>
+      </view>
+
+      <view class="cue-list">
+        <text wx:for="{{activeRecord.cues}}" wx:key="*this">{{item}}</text>
+      </view>
+
+      <view wx:if="{{activeRecord.loadDetail}}" class="load-note">{{activeRecord.loadDetail}} {{activeRecord.loadCaution}}</view>
+      <button class="small-button detail-button" data-id="{{activeRecord.sourceExerciseId || activeRecord.id}}" bindtap="viewExercise">看动作详情</button>
+
+      <view wx:if="{{activeRecord.isStrength}}" class="record-grid active-field-grid">
+        <view class="mini-field">
+          <text>重量/档位</text>
+          <input type="digit" value="{{activeRecord.weight}}" placeholder="kg" data-index="{{activeExerciseIndex}}" data-key="weight" bindinput="setRecordField" />
+        </view>
+        <view class="mini-field">
+          <text>实际次数</text>
+          <input type="text" value="{{activeRecord.actualReps}}" placeholder="12/12/10" data-index="{{activeExerciseIndex}}" data-key="actualReps" bindinput="setRecordField" />
+        </view>
+      </view>
+
+      <view wx:if="{{activeRecord.isCardio}}" class="record-grid cardio-grid">
+        <view class="mini-field">
+          <text>时长</text>
+          <input type="digit" value="{{activeRecord.durationMinutes}}" placeholder="分钟" data-index="{{activeExerciseIndex}}" data-key="durationMinutes" bindinput="setRecordField" />
+        </view>
+        <view class="mini-field">
+          <text>速度</text>
+          <input type="digit" value="{{activeRecord.speed}}" placeholder="5.5" data-index="{{activeExerciseIndex}}" data-key="speed" bindinput="setRecordField" />
+        </view>
+        <view class="mini-field">
+          <text>坡度</text>
+          <input type="digit" value="{{activeRecord.incline}}" placeholder="%" data-index="{{activeExerciseIndex}}" data-key="incline" bindinput="setRecordField" />
+        </view>
+        <view class="mini-field">
+          <text>阻力</text>
+          <input type="number" value="{{activeRecord.resistance}}" placeholder="档" data-index="{{activeExerciseIndex}}" data-key="resistance" bindinput="setRecordField" />
+        </view>
+      </view>
+
+      <view wx:if="{{restRemaining}}" class="rest-timer">
+        <view>
+          <text>组间休息</text>
+          <text>{{restRemainingText}}</text>
+        </view>
+        <button class="small-button" bindtap="skipRest">跳过</button>
+      </view>
+
+      <view class="feeling-row">
+        <view wx:for="{{feelingChoices}}" wx:for-item="choice" wx:key="value" class="feeling-choice {{activeRecord.feeling == choice.value ? 'active' : ''}}" data-index="{{activeExerciseIndex}}" data-value="{{choice.value}}" bindtap="chooseFeeling">
+          <text class="feeling-icon">{{choice.icon}}</text>
+          <text class="feeling-label">{{choice.label}}</text>
+        </view>
+      </view>
+
+      <button wx:if="{{activeRecord.isStrength}}" class="primary-button training-main-button" disabled="{{activeRecord.done}}" bindtap="completeActiveStrengthSet">{{activeMeta.actionLabel}}</button>
+      <button wx:if="{{activeRecord.isCardio}}" class="primary-button training-main-button" disabled="{{activeRecord.done}}" bindtap="completeActiveCardio">{{activeMeta.actionLabel}}</button>
+
+      <view class="training-controls">
+        <button class="small-button" disabled="{{activeExerciseIndex <= 0}}" bindtap="previousExercise">上一项</button>
+        <button class="small-button" disabled="{{activeExerciseIndex >= exerciseRecords.length - 1}}" bindtap="nextExercise">下一项</button>
+      </view>
+
+      <view class="training-queue">
+        <view wx:for="{{exerciseRecords}}" wx:for-index="recordIndex" wx:key="id" class="queue-item {{recordIndex == activeExerciseIndex ? 'active' : ''}} {{item.done ? 'done' : ''}}" data-index="{{recordIndex}}" bindtap="jumpExercise">
+          <text>{{recordIndex + 1}}</text>
+          <text>{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="subsection-title">完整记录</view>
     <view class="list record-list">
       <view wx:for="{{exerciseRecords}}" wx:for-item="record" wx:for-index="recordIndex" wx:key="id" class="record-card {{record.done ? 'done' : ''}}">
         <view class="record-head">

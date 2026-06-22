@@ -21,6 +21,24 @@ function parseSetCount(value) {
   return Number(parseFirstNumber(value, "1")) || 1;
 }
 
+function parseRestSeconds(value) {
+  if (String(value || "").indexOf("无") >= 0) return 0;
+  return Number(parseFirstNumber(value, "60")) || 60;
+}
+
+function getRestRemainingSeconds(value) {
+  const targetTime = Number(value || 0);
+  if (!Number.isFinite(targetTime) || targetTime <= Date.now()) return 0;
+  return Math.ceil((targetTime - Date.now()) / 1000);
+}
+
+function formatSeconds(seconds) {
+  const safeSeconds = Math.max(0, Number(seconds) || 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  const restSeconds = safeSeconds % 60;
+  return `${minutes}:${String(restSeconds).padStart(2, "0")}`;
+}
+
 function getDraftKey(workout, week) {
   const workoutId = workout && workout.id ? workout.id : "unknown";
   return `${TRAINING_DRAFT_PREFIX}:${workoutId}:${week || 1}`;
@@ -58,6 +76,29 @@ function formatExerciseDetail(exercise) {
   return `${exercise.name}${parts.length ? `：${parts.join(" · ")}` : ""}`;
 }
 
+function getActiveTrainingMeta(record, index, total) {
+  if (!record) {
+    return {
+      indexText: "第 0 项",
+      progressPercent: 0,
+      actionLabel: "开始",
+      targetText: ""
+    };
+  }
+  const doneCount = Number(record.setsDone || 0);
+  const targetSets = Math.max(1, Number(record.targetSets || 1));
+  const nextSet = Math.min(targetSets, doneCount + 1);
+  const progressPercent = total ? Math.round(((Number(index || 0) + (record.done ? 1 : 0)) / total) * 100) : 0;
+  return {
+    indexText: `第 ${Number(index || 0) + 1}/${total || 1} 项`,
+    progressPercent,
+    actionLabel: record.isCardio
+      ? (record.done ? "本段已完成" : "完成这段有氧")
+      : (record.done ? "本动作已完成" : `完成第 ${nextSet} 组`),
+    targetText: record.isCardio ? record.reps : `${doneCount}/${targetSets} 组`
+  };
+}
+
 Page({
   data: {
     workout: {
@@ -70,6 +111,11 @@ Page({
     bodyLogs: [],
     latestBodyLog: null,
     exerciseRecords: [],
+    activeExerciseIndex: 0,
+    activeRecord: null,
+    activeMeta: getActiveTrainingMeta(null, 0, 0),
+    restRemaining: 0,
+    restRemainingText: "0:00",
     feelingChoices: FEELING_CHOICES,
     completedCount: 0,
     intensityFeedback: "right",
@@ -86,17 +132,29 @@ Page({
     this.refresh();
   },
 
+  onHide() {
+    this.stopRestTimer();
+  },
+
+  onUnload() {
+    this.stopRestTimer();
+  },
+
   refresh() {
     const context = getApp().getTrainingContext();
     const workout = context.workout;
     const week = context.week;
     const draft = this.loadTrainingDraft(workout, week);
     const exerciseRecords = this.buildExerciseRecords(workout, draft);
+    const activeExerciseIndex = Math.max(0, Math.min(exerciseRecords.length - 1, Number(draft.activeExerciseIndex || 0)));
     const bodyDraft = wx.getStorageSync(BODY_DRAFT_KEY) || this.data.bodyDraft;
     this.setData({
       workout,
       week,
       exerciseRecords,
+      activeExerciseIndex,
+      activeRecord: exerciseRecords[activeExerciseIndex] || null,
+      activeMeta: getActiveTrainingMeta(exerciseRecords[activeExerciseIndex], activeExerciseIndex, exerciseRecords.length),
       completedCount: exerciseRecords.filter((item) => item.done).length,
       intensityFeedback: draft.intensityFeedback || this.data.intensityFeedback || "right",
       note: draft.note || "",
@@ -108,6 +166,8 @@ Page({
       })),
       latestBodyLog: this.formatLatestBodyLog(context.bodyLogs || [])
     });
+    this.refreshRestTimer();
+    this.startRestTimer();
   },
 
   loadTrainingDraft(workout, week) {
@@ -136,12 +196,17 @@ Page({
         isStrength: !isCardio,
         sets: exercise.sets,
         reps: exercise.reps,
+        rest: exercise.rest,
         effort: exercise.effort,
         load: exercise.load || "",
+        loadDetail: exercise.loadDetail || "",
+        loadCaution: exercise.loadCaution || "",
         cue: exercise.cue,
+        cues: exercise.cues || [],
         done: Boolean(saved.done),
         targetSets,
         setsDone: saved.setsDone || "",
+        restUntil: saved.restUntil || "",
         weight: saved.weight || "",
         actualReps: saved.actualReps || saved.reps || "",
         durationMinutes: saved.durationMinutes || saved.duration || (isCardio ? parseFirstNumber(exercise.reps) : ""),
@@ -178,16 +243,19 @@ Page({
       intensityFeedback: this.data.intensityFeedback,
       note: this.data.note,
       exerciseRecords: this.data.exerciseRecords,
+      activeExerciseIndex: this.data.activeExerciseIndex,
       ...patch
     };
     wx.setStorageSync(getDraftKey(this.data.workout, this.data.week), {
       intensityFeedback: nextData.intensityFeedback,
       note: nextData.note,
+      activeExerciseIndex: Number(nextData.activeExerciseIndex || 0),
       exercises: (nextData.exerciseRecords || []).map((item) => ({
         id: item.id,
         done: Boolean(item.done),
         feeling: Number(item.feeling || 3),
         setsDone: item.setsDone || "",
+        restUntil: item.restUntil || "",
         weight: item.weight || "",
         actualReps: item.actualReps || "",
         reps: item.actualReps || "",
@@ -197,6 +265,111 @@ Page({
         resistance: item.resistance || ""
       }))
     });
+  },
+
+  applyExerciseRecords(exerciseRecords, activeExerciseIndex = this.data.activeExerciseIndex) {
+    const safeIndex = Math.max(0, Math.min(exerciseRecords.length - 1, Number(activeExerciseIndex || 0)));
+    this.setData({
+      exerciseRecords,
+      activeExerciseIndex: safeIndex,
+      activeRecord: exerciseRecords[safeIndex] || null,
+      activeMeta: getActiveTrainingMeta(exerciseRecords[safeIndex], safeIndex, exerciseRecords.length),
+      completedCount: exerciseRecords.filter((item) => item.done).length
+    });
+    this.persistTrainingDraft({ exerciseRecords, activeExerciseIndex: safeIndex });
+    this.refreshRestTimer();
+  },
+
+  refreshRestTimer() {
+    const activeRecord = this.data.activeRecord;
+    const restRemaining = getRestRemainingSeconds(activeRecord && activeRecord.restUntil);
+    this.setData({
+      restRemaining,
+      restRemainingText: formatSeconds(restRemaining)
+    });
+  },
+
+  startRestTimer() {
+    this.stopRestTimer();
+    this.restTimer = setInterval(() => {
+      this.refreshRestTimer();
+      if (!this.data.restRemaining) {
+        this.stopRestTimer();
+      }
+    }, 1000);
+  },
+
+  stopRestTimer() {
+    if (this.restTimer) {
+      clearInterval(this.restTimer);
+      this.restTimer = null;
+    }
+  },
+
+  jumpExercise(event) {
+    const activeExerciseIndex = Number(event.currentTarget.dataset.index);
+    this.applyExerciseRecords(this.data.exerciseRecords, activeExerciseIndex);
+    this.startRestTimer();
+  },
+
+  previousExercise() {
+    this.jumpToIndex(this.data.activeExerciseIndex - 1);
+  },
+
+  nextExercise() {
+    this.jumpToIndex(this.data.activeExerciseIndex + 1);
+  },
+
+  jumpToIndex(index) {
+    this.applyExerciseRecords(this.data.exerciseRecords, index);
+    this.startRestTimer();
+  },
+
+  skipRest() {
+    const index = Number(this.data.activeExerciseIndex || 0);
+    const exerciseRecords = this.data.exerciseRecords.map((item, itemIndex) => (
+      itemIndex === index ? { ...item, restUntil: "" } : item
+    ));
+    this.applyExerciseRecords(exerciseRecords, index);
+    this.stopRestTimer();
+  },
+
+  completeActiveStrengthSet() {
+    const index = Number(this.data.activeExerciseIndex || 0);
+    const exerciseRecords = this.data.exerciseRecords.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      const nextSetsDone = Math.min(Number(item.targetSets || 1), Number(item.setsDone || 0) + 1);
+      const done = nextSetsDone >= Number(item.targetSets || 1);
+      return {
+        ...item,
+        done,
+        setsDone: String(nextSetsDone),
+        restUntil: done ? "" : String(Date.now() + parseRestSeconds(item.rest) * 1000)
+      };
+    });
+    this.applyExerciseRecords(exerciseRecords, index);
+    const activeRecord = exerciseRecords[index];
+    if (activeRecord && activeRecord.done && index < exerciseRecords.length - 1) {
+      setTimeout(() => this.jumpToIndex(index + 1), 250);
+    } else {
+      this.startRestTimer();
+    }
+  },
+
+  completeActiveCardio() {
+    const index = Number(this.data.activeExerciseIndex || 0);
+    const exerciseRecords = this.data.exerciseRecords.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      return {
+        ...item,
+        done: true,
+        durationMinutes: item.durationMinutes || parseFirstNumber(item.reps, "8")
+      };
+    });
+    this.applyExerciseRecords(exerciseRecords, index);
+    if (index < exerciseRecords.length - 1) {
+      setTimeout(() => this.jumpToIndex(index + 1), 250);
+    }
   },
 
   chooseIntensity(event) {
@@ -228,11 +401,7 @@ Page({
     const exerciseRecords = this.data.exerciseRecords.map((item, itemIndex) => (
       itemIndex === index ? { ...item, done: !item.done } : item
     ));
-    this.setData({
-      exerciseRecords,
-      completedCount: exerciseRecords.filter((item) => item.done).length
-    });
-    this.persistTrainingDraft({ exerciseRecords });
+    this.applyExerciseRecords(exerciseRecords);
   },
 
   setRecordField(event) {
@@ -247,11 +416,7 @@ Page({
         done: value !== "" ? true : item.done
       };
     });
-    this.setData({
-      exerciseRecords,
-      completedCount: exerciseRecords.filter((item) => item.done).length
-    });
-    this.persistTrainingDraft({ exerciseRecords });
+    this.applyExerciseRecords(exerciseRecords);
   },
 
   chooseFeeling(event) {
@@ -260,11 +425,7 @@ Page({
     const exerciseRecords = this.data.exerciseRecords.map((item, itemIndex) => (
       itemIndex === index ? { ...item, feeling, done: true } : item
     ));
-    this.setData({
-      exerciseRecords,
-      completedCount: exerciseRecords.filter((item) => item.done).length
-    });
-    this.persistTrainingDraft({ exerciseRecords });
+    this.applyExerciseRecords(exerciseRecords);
   },
 
   saveLog() {

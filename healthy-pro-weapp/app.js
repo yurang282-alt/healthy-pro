@@ -10,15 +10,100 @@ const {
 const {
   APP_ID,
   CLOUD_ENV_ID,
+  deleteCloudFriendship,
   getCloudIdentity,
   initCloud,
+  readCloudSocial,
   readCloudStore,
+  respondCloudFriendship,
+  sendCloudFriendRequest,
   userDocId,
   writeCloudLog,
   writeCloudStore
 } = require("./utils/cloud");
 
 const STORAGE_KEY = "healthyProStore";
+
+function hashText(value) {
+  return String(value || "").split("").reduce((hash, char) => {
+    const nextHash = ((hash << 5) - hash) + char.charCodeAt(0);
+    return nextHash | 0;
+  }, 0);
+}
+
+function createFriendCode(source) {
+  const hash = Math.abs(hashText(source || `local_${Date.now()}`));
+  return `HP${hash.toString(36).toUpperCase().padStart(6, "0").slice(-6)}`;
+}
+
+function getStartOfLocalWeek(now = new Date()) {
+  const date = new Date(now);
+  const day = date.getDay() || 7;
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - day + 1);
+  return date;
+}
+
+function getWeekKey(dateValue) {
+  const date = new Date(dateValue);
+  const start = getStartOfLocalWeek(date);
+  return `${start.getFullYear()}-${start.getMonth() + 1}-${start.getDate()}`;
+}
+
+function getCurrentTrainingWeekStreak(logs = [], now = new Date()) {
+  if (!logs.length) return 0;
+  const weeks = new Set(logs.map((log) => getWeekKey(log.createdAt)));
+  let streak = 0;
+  const cursor = getStartOfLocalWeek(now);
+  while (weeks.has(getWeekKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 7);
+  }
+  return streak;
+}
+
+function buildSocialSummary(store) {
+  const logs = Array.isArray(store.logs) ? store.logs : [];
+  const now = new Date();
+  const weekStart = getStartOfLocalWeek(now);
+  const currentWeekLogs = logs.filter((log) => {
+    const createdAt = new Date(log.createdAt);
+    return createdAt >= weekStart && createdAt <= now;
+  });
+  const target = Number(store.user && store.user.plan && store.user.plan.frequency && store.user.plan.frequency.sessionsPerWeek || 0);
+  const completed = currentWeekLogs.reduce((sum, log) => sum + Number(log.completedCount || 0), 0);
+  return {
+    currentWeekCount: currentWeekLogs.length,
+    currentWeekCompleted: completed,
+    currentWeekCompletionRate: target ? Math.min(100, Math.round((currentWeekLogs.length / target) * 100)) : 0,
+    weekTarget: target,
+    streakWeeks: getCurrentTrainingWeekStreak(logs, now),
+    latestTrainingAt: logs.length ? logs[logs.length - 1].createdAt || "" : "",
+    updatedAt: now.toISOString()
+  };
+}
+
+function ensureSocialStore(store) {
+  const social = store.social || {};
+  const localUserId = social.localUserId || `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const profile = store.profile || {};
+  const existingProfile = social.friendProfile || {};
+  const friendCode = existingProfile.friendCode || createFriendCode(store.cloud && store.cloud.openid || localUserId);
+  store.social = {
+    localUserId,
+    friendProfile: {
+      nickname: existingProfile.nickname || profile.nickname || "微信用户",
+      friendCode,
+      shareLeaderboard: existingProfile.shareLeaderboard !== false,
+      shareWeeklySummary: existingProfile.shareWeeklySummary !== false
+    },
+    friendships: Array.isArray(social.friendships) ? social.friendships : [],
+    leaderboard: Array.isArray(social.leaderboard) ? social.leaderboard : [],
+    summary: buildSocialSummary(store),
+    lastSyncedAt: social.lastSyncedAt || ""
+  };
+  return store.social;
+}
 
 App({
   globalData: {
@@ -42,6 +127,8 @@ App({
       logs: [],
       bodyLogs: [],
       feedbacks: [],
+      releaseReads: {},
+      social: null,
       profile: {
         nickname: "微信用户",
         mode: "local",
@@ -85,6 +172,7 @@ App({
       exercises: Array.isArray(log.exercises) ? log.exercises : []
     }));
     store.feedbacks = Array.isArray(store.feedbacks) ? store.feedbacks : [];
+    store.releaseReads = store.releaseReads || {};
     if (shouldRegeneratePlan(store.user.plan)) {
       store.user.plan = generatePlan(assessment, store.logs);
     } else {
@@ -116,6 +204,7 @@ App({
       error: "",
       ...(store.cloud || {})
     };
+    ensureSocialStore(store);
     return store;
   },
 
@@ -138,6 +227,7 @@ App({
 
   setStore(nextStore, options = {}) {
     const store = this.migrateStore(nextStore);
+    ensureSocialStore(store);
     if (options.touch !== false) {
       store.cloud.localUpdatedAt = new Date().toISOString();
     }
@@ -396,5 +486,42 @@ App({
       };
       this.setStore(store, { sync: false, touch: false });
     }
+  },
+
+  async refreshCloudSocial() {
+    await this.whenCloudReady();
+    const store = this.getStore();
+    const openid = store.cloud && store.cloud.openid;
+    if (!openid) return store.social || null;
+    const social = await readCloudSocial(openid, store);
+    const nextStore = this.getStore();
+    nextStore.social = {
+      ...(nextStore.social || {}),
+      ...social
+    };
+    this.setStore(nextStore, { sync: false, touch: false });
+    return nextStore.social;
+  },
+
+  async addCloudFriendByCode(friendCode) {
+    await this.whenCloudReady();
+    const store = this.getStore();
+    const openid = store.cloud && store.cloud.openid;
+    if (!openid) throw new Error("微信云未连接");
+    await this.pushCloudStore({ mirrorLogs: false });
+    await sendCloudFriendRequest(friendCode, this.getStore(), { openid });
+    return this.refreshCloudSocial();
+  },
+
+  async respondCloudFriendship(friendshipId, status) {
+    await this.whenCloudReady();
+    await respondCloudFriendship(friendshipId, status);
+    return this.refreshCloudSocial();
+  },
+
+  async removeCloudFriendship(friendshipId) {
+    await this.whenCloudReady();
+    await deleteCloudFriendship(friendshipId);
+    return this.refreshCloudSocial();
   }
 });

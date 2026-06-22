@@ -294,6 +294,33 @@ insert into public.app_releases (
   is_published,
   published_at
 ) values (
+  'v0.7.0',
+  '微信小程序功能迁移',
+  '小程序端补齐 PWA 已验证的训练记录、好友排行、反馈和更新公告能力。',
+  '["记录页升级为训练助手，支持当前动作、休息倒计时和动作详情", "我的页补齐好友码、好友请求、稳定榜和结构化反馈", "小程序端发布公告支持多版本展示和已读状态"]'::jsonb,
+  '这次更新重点是让微信小程序端和 PWA 的可用功能保持一致，方便朋友直接在微信里体验和反馈。',
+  'feature',
+  true,
+  '2026-06-22 00:00:00+08'
+) on conflict (version) do update set
+  title = excluded.title,
+  summary = excluded.summary,
+  highlights = excluded.highlights,
+  details = excluded.details,
+  release_type = excluded.release_type,
+  is_published = excluded.is_published,
+  published_at = excluded.published_at;
+
+insert into public.app_releases (
+  version,
+  title,
+  summary,
+  highlights,
+  details,
+  release_type,
+  is_published,
+  published_at
+) values (
   'v0.6.0',
   '动作详情和训练中辅助',
   '训练动作可以点进详情，记录页也升级成边练边看的训练助手。',
