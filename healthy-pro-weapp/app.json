@@ -4,6 +4,7 @@
     "pages/assessment/assessment",
     "pages/plan/plan",
     "pages/plan-editor/plan-editor",
+    "pages/exercise-detail/exercise-detail",
     "pages/log/log",
     "pages/equipment/equipment",
     "pages/profile/profile"
@@ -42,5 +43,6 @@
       }
     ]
   },
-  "style": "v2"
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents"
 }

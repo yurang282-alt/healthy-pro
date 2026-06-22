@@ -1,6 +1,7 @@
 const {
   adjustPlanFromLogs,
   canRestoreOriginalPlan,
+  decoratePlanForWeapp,
   getPreviousPlan,
   restoreOriginalPlan,
   restorePreviousPlan
@@ -27,11 +28,15 @@ Page({
   refresh(options = {}) {
     const app = getApp();
     const context = app.getTrainingContext();
-    const plan = context.user.plan;
     const selectedWeek = options.keepSelected
       ? this.data.selectedWeek
       : context.week;
     const safeWeek = Math.max(1, Math.min(4, Number(selectedWeek || context.week || 1)));
+    const plan = decoratePlanForWeapp(context.user.plan, {
+      assessment: context.user.assessment,
+      logs: context.logs,
+      week: safeWeek
+    });
     const previousPlan = getPreviousPlan(plan);
     const workouts = plan && Array.isArray(plan.workouts) ? plan.workouts : [];
     const fallbackWorkoutId = context.workout && context.workout.id
@@ -56,9 +61,21 @@ Page({
 
   chooseWeek(event) {
     const selectedWeek = Number(event.currentTarget.dataset.week);
+    const store = getApp().getStore();
+    const plan = decoratePlanForWeapp(store.user && store.user.plan, {
+      assessment: store.user && store.user.assessment,
+      logs: store.logs || [],
+      week: selectedWeek
+    });
+    const workouts = plan && Array.isArray(plan.workouts) ? plan.workouts : [];
+    const expandedWorkoutId = workouts.some((item) => item.id === this.data.expandedWorkoutId)
+      ? this.data.expandedWorkoutId
+      : workouts[0] && workouts[0].id || "";
     this.setData({
+      plan,
       selectedWeek,
-      selectedWeekInfo: this.data.plan && this.data.plan.weeks ? this.data.plan.weeks[selectedWeek - 1] : null
+      selectedWeekInfo: plan && plan.weeks ? plan.weeks[selectedWeek - 1] : null,
+      expandedWorkoutId
     });
   },
 
@@ -77,6 +94,14 @@ Page({
     wx.navigateTo({ url: "/pages/plan-editor/plan-editor" });
   },
 
+  viewExercise(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({
+      url: `/pages/exercise-detail/exercise-detail?id=${encodeURIComponent(id)}&returnPath=${encodeURIComponent("/pages/plan/plan")}`
+    });
+  },
+
   togglePreviousPlan() {
     this.setData({
       showPreviousPlan: !this.data.showPreviousPlan
@@ -86,7 +111,7 @@ Page({
   adjustPlan() {
     const app = getApp();
     const store = app.getStore();
-    const result = adjustPlanFromLogs(store.user && store.user.plan, store.logs || []);
+    const result = adjustPlanFromLogs(store.user && store.user.plan, store.logs || [], store.user && store.user.assessment);
 
     if (!result.plan || result.signal.status === "empty") {
       wx.showModal({

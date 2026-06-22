@@ -1,6 +1,7 @@
 const {
   buildCustomPlan,
   createExerciseFromKey,
+  decoratePlanForWeapp,
   getExerciseOptions
 } = require("../../utils/coach");
 
@@ -23,8 +24,14 @@ Page({
   },
 
   onLoad() {
-    const store = getApp().getStore();
-    const plan = store.user && store.user.plan;
+    const app = getApp();
+    const store = app.getStore();
+    const context = app.getTrainingContext();
+    const plan = decoratePlanForWeapp(context.user && context.user.plan, {
+      assessment: store.user && store.user.assessment,
+      logs: store.logs || [],
+      week: context.week || 1
+    });
     if (!plan) {
       wx.showToast({ title: "暂无计划", icon: "none" });
       wx.navigateBack();
@@ -48,7 +55,7 @@ Page({
         const source = workouts[workouts.length - 1] || workouts[0] || {
           title: "补充训练",
           focus: "从已有训练日复制，请确认动作和恢复安排。",
-          exercises: [createExerciseFromKey("chestPress")]
+          exercises: [createExerciseFromKey("chest-press")]
         };
         draft.workouts.push({
           ...clone(source),
@@ -93,7 +100,7 @@ Page({
   addExercise(event) {
     const workoutIndex = Number(event.currentTarget.dataset.workoutIndex);
     const draft = clone(this.data.draft);
-    draft.workouts[workoutIndex].exercises.push(createExerciseFromKey("chestPress"));
+    draft.workouts[workoutIndex].exercises.push(createExerciseFromKey("chest-press"));
     this.setData({ draft });
   },
 

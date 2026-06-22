@@ -167,6 +167,18 @@ button::after {
   line-height: 60rpx;
 }
 
+.detail-button {
+  width: auto;
+  min-height: 50rpx;
+  margin-top: 10rpx;
+  padding: 0 18rpx;
+  border-color: rgba(21, 122, 85, 0.28);
+  color: #157a55;
+  background: #f2faf6;
+  font-size: 22rpx;
+  line-height: 50rpx;
+}
+
 .primary-button {
   color: #ffffff;
   background: #111827;

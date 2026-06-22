@@ -8,12 +8,13 @@
   </view>
 
   <view class="list">
-    <view wx:for="{{visibleEquipment}}" wx:key="id" class="equipment-row">
+    <view wx:for="{{visibleEquipment}}" wx:key="id" class="equipment-row" data-id="{{item.id}}" bindtap="viewEquipmentExercise">
       <image class="thumb" src="{{item.image}}" mode="aspectFit" />
       <view class="item-body">
         <text class="item-title">{{item.name}}</text>
         <text class="item-meta">{{item.category}} · {{item.muscles}}</text>
         <text class="item-help">{{item.setup}}</text>
+        <text class="item-meta">点开看动作说明</text>
       </view>
     </view>
   </view>
