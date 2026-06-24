@@ -2,218 +2,268 @@
   <view class="eyebrow">Healthy Pro</view>
   <view class="title">我的</view>
 
-  <view wx:if="{{user && user.plan}}" class="card">
+  <view wx:if="{{user && user.plan}}" class="card profile-identity">
     <view class="eyebrow">训练档案</view>
     <text class="card-title">当前计划执行中</text>
     <view class="muted">当前目标：{{user.plan.goal.type}} · {{user.plan.frequency.sessionsPerWeek}} 次/周</view>
-    <view class="metric-grid">
-      <view class="metric light-metric">
-        <text>本周训练</text>
-        <text class="metric-value">{{logs.length}}/{{user.plan.frequency.sessionsPerWeek}}</text>
-      </view>
-      <view class="metric light-metric">
-        <text>完成率</text>
-        <text class="metric-value">{{completionRate}}%</text>
-      </view>
-      <view class="metric light-metric">
-        <text>数据</text>
-        <text class="metric-value">{{syncStatusText}}</text>
-      </view>
+    <view class="profile-chip-row">
+      <text>本周 {{insights.thisWeekCount}}/{{insights.weekTargetText}} 次</text>
+      <text>{{dataModeText}}</text>
+      <text>{{releaseChipText}}</text>
     </view>
   </view>
 
-  <view wx:elif="{{user}}" class="card">
+  <view wx:elif="{{user}}" class="card profile-identity">
     <view class="eyebrow">训练档案</view>
     <text class="card-title">先完成基础评估</text>
     <view class="muted">当前微信用户还没有训练计划。完成评估后，数据会绑定到你的微信身份。</view>
     <button class="primary-button profile-button" bindtap="goAssessment">开始评估</button>
   </view>
 
-  <view wx:if="{{insights}}" class="card weekly-card">
-    <view class="row">
-      <view>
-        <view class="eyebrow">周报</view>
-        <text class="card-title">本周完成 {{insights.thisWeekCount}}/{{insights.weekTargetText}} 次</text>
-      </view>
-      <text class="pill">{{insights.weekCompletionRate}}%</text>
-    </view>
-    <view class="progress-track">
-      <view class="progress-fill" style="width: {{insights.weekCompletionRate}}%;"></view>
-    </view>
-    <view class="metric-grid">
-      <view class="metric light-metric">
-        <text>完成动作</text>
-        <text class="metric-value">{{insights.thisWeekCompleted}}</text>
-      </view>
-      <view class="metric light-metric">
-        <text>最近感觉</text>
-        <text class="metric-value">{{insights.intensity.feelingLabel}}</text>
-      </view>
-      <view class="metric light-metric">
-        <text>最近体重</text>
-        <text class="metric-value">{{insights.latestWeightText}}</text>
-      </view>
-    </view>
-    <view class="coach-message">{{insights.coachMessage}}</view>
-
-    <view class="trend-list">
-      <view wx:for="{{insights.weeklyBuckets}}" wx:key="label" class="trend-row">
-        <view class="trend-meta">
-          <text>{{item.label}}</text>
-          <text>{{item.count}} 次</text>
-        </view>
-        <view class="trend-track"><view class="trend-fill soft" style="width: {{item.rate}}%;"></view></view>
-      </view>
+  <view wx:if="{{profileMode != 'hub'}}" class="profile-subhead">
+    <button class="small-button subtle" bindtap="backProfileHome">返回</button>
+    <view>
+      <view class="eyebrow">我的</view>
+      <text class="card-title">{{profileModeTitle}}</text>
+      <view class="muted">{{profileModeSummary}}</view>
     </view>
   </view>
 
-  <view wx:if="{{insights}}" class="card">
-    <view class="eyebrow">个人记录</view>
-    <text class="card-title">训练和身体趋势</text>
-    <view class="record-grid">
-      <view wx:for="{{insights.records}}" wx:key="label" class="record-cell">
-        <text>{{item.label}}</text>
-        <text class="record-value">{{item.value}}</text>
-        <text class="record-note">{{item.note}}</text>
-      </view>
-    </view>
-  </view>
-
-  <view wx:if="{{user && socialView}}" class="card">
-    <view class="row">
-      <view>
-        <view class="eyebrow">好友</view>
-        <text class="card-title">好友与排行</text>
-      </view>
-      <text class="pill">{{socialView.leaderboardCount}} 人</text>
-    </view>
-    <view class="friend-code-card">
-      <view>
-        <text>我的好友码</text>
-        <text class="friend-code">{{socialView.friendProfile.friendCode || "同步后生成"}}</text>
-      </view>
-      <button class="small-button" bindtap="copyFriendCode">复制</button>
-    </view>
-
-    <view class="form-block">
-      <text class="field-label">昵称</text>
-      <input class="text-input" maxlength="16" value="{{socialNickname}}" bindinput="setSocialNickname" placeholder="输入好友看到的昵称" />
-    </view>
-    <view class="share-grid">
-      <view wx:for="{{socialView.shareOptions}}" wx:key="key" class="check-card {{item.checked ? 'selected' : ''}}" data-key="{{item.key}}" bindtap="toggleShareOption">
-        <text>{{item.label}}</text>
-        <text>{{item.note}}</text>
-      </view>
-    </view>
-    <button class="secondary-button profile-button" bindtap="saveSocialProfile">保存昵称和共享设置</button>
-
-    <view class="add-friend-row">
-      <input class="text-input" maxlength="12" value="{{friendCodeInput}}" bindinput="setFriendCodeInput" placeholder="输入好友码" />
-      <button class="small-button" bindtap="addFriend">发送请求</button>
-    </view>
-
-    <view class="leaderboard" wx:if="{{socialView.leaderboard.length}}">
-      <view wx:for="{{socialView.leaderboard}}" wx:key="rank" class="leaderboard-row {{item.isSelf ? 'self' : ''}}">
-        <text>{{item.rank}}</text>
+  <block wx:if="{{profileMode == 'hub'}}">
+    <view wx:if="{{insights && user && user.plan}}" class="card weekly-card profile-summary-card">
+      <view class="row">
         <view>
-          <text>{{item.displayName}}</text>
-          <text>{{item.displaySummary}}</text>
+          <view class="eyebrow">周报</view>
+          <text class="card-title">本周完成 {{insights.thisWeekCount}}/{{insights.weekTargetText}} 次</text>
+        </view>
+        <text class="pill">{{insights.weekCompletionRate}}%</text>
+      </view>
+      <view class="progress-track">
+        <view class="progress-fill" style="width: {{insights.weekCompletionRate}}%;"></view>
+      </view>
+      <view class="metric-grid">
+        <view class="metric light-metric">
+          <text>本周训练</text>
+          <text class="metric-value">{{insights.thisWeekCount}}/{{insights.weekTargetText}}</text>
+        </view>
+        <view class="metric light-metric">
+          <text>完成动作</text>
+          <text class="metric-value">{{insights.thisWeekCompleted}}</text>
+        </view>
+        <view class="metric light-metric">
+          <text>最近感觉</text>
+          <text class="metric-value">{{insights.intensity.feelingLabel}}</text>
+        </view>
+      </view>
+      <view class="coach-message">{{insights.coachMessage}}</view>
+    </view>
+
+    <view wx:if="{{user}}" class="card profile-hub">
+      <view class="eyebrow">更多</view>
+      <text class="card-title">选择你要看的内容</text>
+      <view class="profile-entry-list">
+        <view wx:for="{{profileEntries}}" wx:key="mode" class="profile-entry-card" data-mode="{{item.mode}}" bindtap="openProfileMode">
+          <text class="entry-eyebrow">{{item.eyebrow}}</text>
+          <text class="entry-title">{{item.title}}</text>
+          <text class="entry-summary">{{item.summary}}</text>
         </view>
       </view>
     </view>
-    <view wx:else class="muted empty-inline">打开好友排行并添加好友后，这里会显示本周榜单。</view>
+  </block>
 
-    <view wx:if="{{socialView.incoming.length || socialView.outgoing.length}}" class="friend-list">
-      <view wx:for="{{socialView.incoming}}" wx:for-item="friend" wx:key="id" class="friend-card">
+  <block wx:elif="{{profileMode == 'weekly'}}">
+    <view wx:if="{{insights}}" class="card weekly-card profile-summary-card">
+      <view class="row">
         <view>
-          <text>{{friend.nickname}}</text>
-          <text>请求添加你为好友</text>
+          <view class="eyebrow">周报</view>
+          <text class="card-title">本周完成 {{insights.thisWeekCount}}/{{insights.weekTargetText}} 次</text>
         </view>
-        <view class="friend-actions">
-          <button class="small-button" data-id="{{friend.id}}" data-status="accepted" bindtap="respondFriend">确认</button>
-          <button class="small-button subtle" data-id="{{friend.id}}" data-status="declined" bindtap="respondFriend">拒绝</button>
+        <text class="pill">{{insights.weekCompletionRate}}%</text>
+      </view>
+      <view class="progress-track">
+        <view class="progress-fill" style="width: {{insights.weekCompletionRate}}%;"></view>
+      </view>
+      <view class="metric-grid">
+        <view class="metric light-metric">
+          <text>本周训练</text>
+          <text class="metric-value">{{insights.thisWeekCount}}/{{insights.weekTargetText}}</text>
+        </view>
+        <view class="metric light-metric">
+          <text>完成动作</text>
+          <text class="metric-value">{{insights.thisWeekCompleted}}</text>
+        </view>
+        <view class="metric light-metric">
+          <text>最近感觉</text>
+          <text class="metric-value">{{insights.intensity.feelingLabel}}</text>
         </view>
       </view>
-      <view wx:for="{{socialView.outgoing}}" wx:for-item="friend" wx:key="id" class="friend-card">
-        <view>
-          <text>{{friend.nickname}}</text>
-          <text>等待对方确认</text>
-        </view>
-        <text class="pill muted-pill">待确认</text>
-      </view>
-    </view>
+      <view class="coach-message">{{insights.coachMessage}}</view>
 
-    <view wx:if="{{socialView.accepted.length}}" class="friend-list">
-      <view wx:for="{{socialView.accepted}}" wx:for-item="friend" wx:key="id" class="friend-card">
-        <view>
-          <text>{{friend.nickname}}</text>
-          <text>{{friend.displaySummary}}</text>
-        </view>
-        <button class="small-button subtle" data-id="{{friend.id}}" bindtap="removeFriend">移除</button>
-      </view>
-    </view>
-    <view class="muted empty-inline">排行只展示完成率、训练次数和连续记录周数，不展示体重、体脂和训练重量。</view>
-  </view>
-
-  <view wx:if="{{user}}" class="card">
-    <view class="eyebrow">微信云同步</view>
-    <text class="card-title">{{profile.syncMessage}}</text>
-    <view wx:if="{{lastSyncedLabel}}" class="muted">上次同步：{{lastSyncedLabel}}</view>
-    <view wx:elif="{{profile.error}}" class="muted">错误信息：{{profile.error}}</view>
-    <view wx:else class="muted">训练计划和记录会保存到当前微信账号。</view>
-    <button class="secondary-button profile-button" bindtap="syncCloud">立即同步</button>
-  </view>
-
-  <view wx:if="{{user && releaseState}}" class="card">
-    <view class="eyebrow">更新公告</view>
-    <view class="row">
-      <text class="card-title">最近更新</text>
-      <text class="pill">{{releaseState.unreadLabel}}</text>
-    </view>
-    <view class="release-list">
-      <view wx:for="{{releaseState.releases}}" wx:key="id" class="release-card {{item.isRead ? 'read' : 'unread'}}">
-        <view class="release-head">
-          <view>
-            <text>{{item.version}} · {{item.dateLabel}}</text>
-            <text>{{item.title}}</text>
+      <view class="trend-list">
+        <view wx:for="{{insights.weeklyBuckets}}" wx:key="label" class="trend-row">
+          <view class="trend-meta">
+            <text>{{item.label}}</text>
+            <text>{{item.count}} 次</text>
           </view>
-          <text>{{item.typeLabel}}</text>
+          <view class="trend-track"><view class="trend-fill soft" style="width: {{item.rate}}%;"></view></view>
         </view>
-        <view class="muted">{{item.summary}}</view>
-        <view wx:if="{{item.highlights.length}}" class="release-highlights">
-          <text wx:for="{{item.highlights}}" wx:for-item="highlight" wx:key="*this">· {{highlight}}</text>
-        </view>
-        <button wx:if="{{!item.isRead}}" class="secondary-button profile-button compact-button" data-id="{{item.id}}" bindtap="markReleaseRead">我知道了</button>
-        <text wx:else class="read-mark">已读</text>
       </view>
     </view>
-  </view>
 
-  <view wx:if="{{user}}" class="card">
-    <view class="eyebrow">反馈</view>
-    <text class="card-title">给我提建议</text>
-    <view class="choice-grid rating-grid">
-      <view wx:for="{{feedbackRatingOptions}}" wx:key="value" class="choice-card {{feedbackRating == item.value ? 'selected' : ''}}" data-value="{{item.value}}" bindtap="chooseFeedbackRating">
-        <text>{{item.label}}</text>
-        <text>{{item.note}}</text>
+    <view wx:if="{{insights}}" class="card">
+      <view class="eyebrow">个人记录</view>
+      <text class="card-title">训练和身体趋势</text>
+      <view class="record-grid">
+        <view wx:for="{{insights.records}}" wx:key="label" class="record-cell">
+          <text>{{item.label}}</text>
+          <text class="record-value">{{item.value}}</text>
+          <text class="record-note">{{item.note}}</text>
+        </view>
       </view>
     </view>
-    <view class="choice-grid category-grid">
-      <view wx:for="{{feedbackCategoryOptions}}" wx:key="value" class="choice-card {{feedbackCategory == item.value ? 'selected' : ''}}" data-value="{{item.value}}" bindtap="chooseFeedbackCategory">{{item.label}}</view>
-    </view>
-    <textarea class="textarea feedback-textarea" value="{{feedbackText}}" bindinput="setFeedbackText" placeholder="哪里难用、哪里看不懂、计划哪里不合理，都可以写这里" />
-    <button class="secondary-button profile-button" bindtap="saveFeedback">提交反馈</button>
-    <view wx:if="{{feedbacks.length}}" class="muted">已保存 {{feedbacks.length}} 条反馈，会随微信云数据同步。</view>
-  </view>
+  </block>
 
-  <view wx:if="{{user}}" class="card">
-    <view class="eyebrow">设置</view>
-    <text class="card-title">训练设置</text>
-    <view class="profile-actions">
-      <button class="secondary-button" bindtap="goAssessment">重新评估</button>
-      <button class="ghost-button" bindtap="goPlan">训练计划</button>
-      <button class="ghost-button" bindtap="goLog">训练记录</button>
-      <button class="ghost-button" bindtap="resetDemo">重置数据</button>
+  <block wx:elif="{{profileMode == 'friends'}}">
+    <view wx:if="{{user && socialView}}" class="card">
+      <view class="row">
+        <view>
+          <view class="eyebrow">好友</view>
+          <text class="card-title">好友与排行</text>
+        </view>
+        <text class="pill">{{socialView.leaderboardCount}} 人</text>
+      </view>
+      <view class="friend-code-card">
+        <view>
+          <text>我的好友码</text>
+          <text class="friend-code">{{socialView.friendProfile.friendCode || "同步后生成"}}</text>
+        </view>
+        <button class="small-button" bindtap="copyFriendCode">复制</button>
+      </view>
+
+      <view class="form-block">
+        <text class="field-label">昵称</text>
+        <input class="text-input" maxlength="16" value="{{socialNickname}}" bindinput="setSocialNickname" placeholder="输入好友看到的昵称" />
+      </view>
+      <view class="share-grid">
+        <view wx:for="{{socialView.shareOptions}}" wx:key="key" class="check-card {{item.checked ? 'selected' : ''}}" data-key="{{item.key}}" bindtap="toggleShareOption">
+          <text>{{item.label}}</text>
+          <text>{{item.note}}</text>
+        </view>
+      </view>
+      <button class="secondary-button profile-button" bindtap="saveSocialProfile">保存昵称和共享设置</button>
+
+      <view class="add-friend-row">
+        <input class="text-input" maxlength="12" value="{{friendCodeInput}}" bindinput="setFriendCodeInput" placeholder="输入好友码" />
+        <button class="small-button" bindtap="addFriend">发送请求</button>
+      </view>
+
+      <view class="leaderboard" wx:if="{{socialView.leaderboard.length}}">
+        <view wx:for="{{socialView.leaderboard}}" wx:key="rank" class="leaderboard-row {{item.isSelf ? 'self' : ''}}">
+          <text>{{item.rank}}</text>
+          <view>
+            <text>{{item.displayName}}</text>
+            <text>{{item.displaySummary}}</text>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="muted empty-inline">打开好友排行并添加好友后，这里会显示本周榜单。</view>
+
+      <view wx:if="{{socialView.incoming.length || socialView.outgoing.length}}" class="friend-list">
+        <view wx:for="{{socialView.incoming}}" wx:for-item="friend" wx:key="id" class="friend-card">
+          <view>
+            <text>{{friend.nickname}}</text>
+            <text>请求添加你为好友</text>
+          </view>
+          <view class="friend-actions">
+            <button class="small-button" data-id="{{friend.id}}" data-status="accepted" bindtap="respondFriend">确认</button>
+            <button class="small-button subtle" data-id="{{friend.id}}" data-status="declined" bindtap="respondFriend">拒绝</button>
+          </view>
+        </view>
+        <view wx:for="{{socialView.outgoing}}" wx:for-item="friend" wx:key="id" class="friend-card">
+          <view>
+            <text>{{friend.nickname}}</text>
+            <text>等待对方确认</text>
+          </view>
+          <text class="pill muted-pill">待确认</text>
+        </view>
+      </view>
+
+      <view wx:if="{{socialView.accepted.length}}" class="friend-list">
+        <view wx:for="{{socialView.accepted}}" wx:for-item="friend" wx:key="id" class="friend-card">
+          <view>
+            <text>{{friend.nickname}}</text>
+            <text>{{friend.displaySummary}}</text>
+          </view>
+          <button class="small-button subtle" data-id="{{friend.id}}" bindtap="removeFriend">移除</button>
+        </view>
+      </view>
+      <view class="muted empty-inline">排行只展示完成率、训练次数和连续记录周数，不展示体重、体脂和训练重量。</view>
     </view>
-  </view>
+  </block>
+
+  <block wx:elif="{{profileMode == 'releases'}}">
+    <view wx:if="{{user && releaseState}}" class="card">
+      <view class="eyebrow">更新公告</view>
+      <view class="row">
+        <text class="card-title">最近更新</text>
+        <text class="pill">{{releaseState.unreadLabel}}</text>
+      </view>
+      <view class="release-list">
+        <view wx:for="{{releaseState.releases}}" wx:key="id" class="release-card {{item.isRead ? 'read' : 'unread'}}">
+          <view class="release-head">
+            <view>
+              <text>{{item.version}} · {{item.dateLabel}}</text>
+              <text>{{item.title}}</text>
+            </view>
+            <text>{{item.typeLabel}}</text>
+          </view>
+          <view class="muted">{{item.summary}}</view>
+          <view wx:if="{{item.highlights.length}}" class="release-highlights">
+            <text wx:for="{{item.highlights}}" wx:for-item="highlight" wx:key="*this">· {{highlight}}</text>
+          </view>
+          <button wx:if="{{!item.isRead}}" class="secondary-button profile-button compact-button" data-id="{{item.id}}" bindtap="markReleaseRead">我知道了</button>
+          <text wx:else class="read-mark">已读</text>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <block wx:elif="{{profileMode == 'settings'}}">
+    <view wx:if="{{user}}" class="card">
+      <view class="eyebrow">微信云同步</view>
+      <text class="card-title">{{profile.syncMessage}}</text>
+      <view wx:if="{{lastSyncedLabel}}" class="muted">上次同步：{{lastSyncedLabel}}</view>
+      <view wx:elif="{{profile.error}}" class="muted">错误信息：{{profile.error}}</view>
+      <view wx:else class="muted">训练计划和记录会保存到当前微信账号。</view>
+      <button class="secondary-button profile-button" bindtap="syncCloud">立即同步</button>
+    </view>
+
+    <view wx:if="{{user}}" class="card">
+      <view class="eyebrow">反馈</view>
+      <text class="card-title">给我提建议</text>
+      <view class="choice-grid rating-grid">
+        <view wx:for="{{feedbackRatingOptions}}" wx:key="value" class="choice-card {{feedbackRating == item.value ? 'selected' : ''}}" data-value="{{item.value}}" bindtap="chooseFeedbackRating">
+          <text>{{item.label}}</text>
+          <text>{{item.note}}</text>
+        </view>
+      </view>
+      <view class="choice-grid category-grid">
+        <view wx:for="{{feedbackCategoryOptions}}" wx:key="value" class="choice-card {{feedbackCategory == item.value ? 'selected' : ''}}" data-value="{{item.value}}" bindtap="chooseFeedbackCategory">{{item.label}}</view>
+      </view>
+      <textarea class="textarea feedback-textarea" value="{{feedbackText}}" bindinput="setFeedbackText" placeholder="哪里难用、哪里看不懂、计划哪里不合理，都可以写这里" />
+      <button class="secondary-button profile-button" bindtap="saveFeedback">提交反馈</button>
+      <view wx:if="{{feedbacks.length}}" class="muted">已保存 {{feedbacks.length}} 条反馈，会随微信云数据同步。</view>
+    </view>
+
+    <view wx:if="{{user}}" class="card">
+      <view class="eyebrow">设置</view>
+      <text class="card-title">训练设置</text>
+      <view class="profile-actions">
+        <button class="secondary-button" bindtap="goAssessment">重新评估</button>
+        <button class="ghost-button" bindtap="goPlan">训练计划</button>
+        <button class="ghost-button" bindtap="goLog">训练记录</button>
+        <button class="ghost-button" bindtap="resetDemo">重置数据</button>
+      </view>
+    </view>
+  </block>
 </view>

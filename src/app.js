@@ -96,6 +96,20 @@ const LOCAL_RELEASES = [
     details: "这次修复解决体验版里不同用户先看到相同默认数据的问题。云端仍按微信 openid 分用户保存，已有误同步的纯 demo seed 会被识别并清理。",
     releaseType: "fix",
     publishedAt: "2026-06-22T12:00:00+08:00"
+  },
+  {
+    id: "local-v0.7.2",
+    version: "v0.7.2",
+    title: "小程序我的页简化",
+    summary: "微信小程序我的页改为训练档案、周报摘要和更多入口，减少首屏信息堆叠。",
+    highlights: [
+      "首屏保留训练状态和本周周报摘要",
+      "好友排行、更新公告、设置与反馈改为入口卡片",
+      "保留原有好友、反馈、同步和公告能力，不改变数据逻辑"
+    ],
+    details: "这次更新重点是减少我的页默认展示的信息量，让朋友打开后更容易知道自己当前计划状态，再按需进入周报、好友、更新或设置详情。",
+    releaseType: "improvement",
+    publishedAt: "2026-06-24T00:00:00+08:00"
   }
 ];
 const app = document.querySelector("#app");

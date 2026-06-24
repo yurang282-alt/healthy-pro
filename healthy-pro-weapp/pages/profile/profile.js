@@ -36,6 +36,15 @@ const LOCAL_RELEASES = [
     highlights: ["启动时自动读取微信身份并按 openid 加载云端数据", "新用户先进入基础评估，不再共用默认 demo 计划", "本地训练草稿和身体草稿按微信用户隔离"],
     releaseType: "fix",
     publishedAt: "2026-06-22T12:00:00+08:00"
+  },
+  {
+    id: "weapp-v0.3.2",
+    version: "v0.3.2",
+    title: "我的页信息层级简化",
+    summary: "我的页改为训练档案、周报摘要和更多入口，减少首屏信息堆叠。",
+    highlights: ["首屏保留训练状态和本周周报摘要", "好友排行、更新公告、设置与反馈改为入口卡片", "原有好友、反馈、同步和公告能力都保留在详情页"],
+    releaseType: "improvement",
+    publishedAt: "2026-06-24T00:00:00+08:00"
   }
 ];
 
@@ -311,6 +320,63 @@ function buildSocialView(store, insights) {
   };
 }
 
+function getSocialEntrySummary(socialView) {
+  if (!socialView) return "添加好友后查看本周排行";
+  if (socialView.incoming && socialView.incoming.length) return `${socialView.incoming.length} 个好友请求待确认`;
+  if (socialView.accepted && socialView.accepted.length) return `${socialView.accepted.length} 个好友 · 榜单 ${socialView.leaderboardCount || 0} 人`;
+  if (socialView.leaderboardCount) return `榜单 ${socialView.leaderboardCount} 人`;
+  return "添加好友后查看本周排行";
+}
+
+function getDataModeText(profile = {}) {
+  if (profile.mode === "cloud" || profile.syncStatus === "synced" || profile.syncStatus === "syncing" || profile.syncStatus === "connecting") {
+    return "云端数据";
+  }
+  return "本地数据";
+}
+
+function buildProfileEntries(insights, socialView, releaseState) {
+  return [
+    {
+      mode: "weekly",
+      eyebrow: "周报",
+      title: "周报与趋势",
+      summary: `本周 ${insights.thisWeekCount}/${insights.weekTargetText} 次 · ${insights.intensity.feelingLabel}`
+    },
+    {
+      mode: "friends",
+      eyebrow: "好友",
+      title: "好友与排行",
+      summary: getSocialEntrySummary(socialView)
+    },
+    {
+      mode: "releases",
+      eyebrow: "更新",
+      title: "更新公告",
+      summary: releaseState.unreadCount ? `${releaseState.unreadCount} 条未读` : "查看最近版本变化"
+    },
+    {
+      mode: "settings",
+      eyebrow: "设置",
+      title: "设置与反馈",
+      summary: "同步、评估、反馈与重置"
+    }
+  ];
+}
+
+function getProfileModeMeta(mode) {
+  const meta = {
+    weekly: ["周报与趋势", "训练、身体和感觉变化"],
+    friends: ["好友与排行", "昵称、好友码和本周稳定榜"],
+    releases: ["更新公告", "看看最近改了什么"],
+    settings: ["设置与反馈", "同步、评估和体验反馈"]
+  }[mode] || ["我的", ""];
+  return {
+    title: meta[0],
+    summary: meta[1]
+  };
+}
+
 Page({
   data: {
     user: null,
@@ -327,8 +393,14 @@ Page({
     socialNickname: "",
     friendCodeInput: "",
     releaseState: null,
+    profileMode: "hub",
+    profileModeTitle: "",
+    profileModeSummary: "",
+    profileEntries: [],
     completionRate: 0,
     syncStatusText: "本地",
+    dataModeText: "本地数据",
+    releaseChipText: "已是最新",
     lastSyncedLabel: ""
   },
 
@@ -345,6 +417,8 @@ Page({
     const lastSyncedAt = profile.lastSyncedAt || (store.cloud && store.cloud.lastPushedAt) || "";
     const insights = getProfileInsights(store.user, store.logs || [], store.bodyLogs || []);
     const socialView = buildSocialView(store, insights);
+    const releaseState = buildReleaseState(store);
+    const modeMeta = getProfileModeMeta(this.data.profileMode);
     this.setData({
       user: store.user,
       profile,
@@ -353,10 +427,33 @@ Page({
       insights,
       socialView,
       socialNickname: socialView.friendProfile.nickname || profile.nickname || "微信用户",
-      releaseState: buildReleaseState(store),
+      releaseState,
+      profileModeTitle: modeMeta.title,
+      profileModeSummary: modeMeta.summary,
+      profileEntries: buildProfileEntries(insights, socialView, releaseState),
       completionRate: target ? Math.min(100, Math.round((count / target) * 100)) : 0,
       syncStatusText: this.getSyncStatusText(profile),
+      dataModeText: getDataModeText(profile),
+      releaseChipText: releaseState.unreadCount ? releaseState.unreadLabel : "已是最新",
       lastSyncedLabel: lastSyncedAt ? formatDateTime(lastSyncedAt) : ""
+    });
+  },
+
+  openProfileMode(event) {
+    const mode = event.currentTarget.dataset.mode || "hub";
+    const modeMeta = getProfileModeMeta(mode);
+    this.setData({
+      profileMode: mode,
+      profileModeTitle: modeMeta.title,
+      profileModeSummary: modeMeta.summary
+    });
+  },
+
+  backProfileHome() {
+    this.setData({
+      profileMode: "hub",
+      profileModeTitle: "",
+      profileModeSummary: ""
     });
   },
 

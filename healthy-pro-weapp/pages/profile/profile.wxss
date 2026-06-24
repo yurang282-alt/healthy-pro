@@ -4,6 +4,97 @@
   margin-right: auto;
 }
 
+.profile-identity .card-title {
+  margin-top: 4rpx;
+}
+
+.profile-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.profile-chip-row text {
+  min-height: 48rpx;
+  padding: 9rpx 16rpx;
+  border-radius: 999rpx;
+  color: #18385e;
+  background: rgba(40, 79, 130, 0.09);
+  font-size: 23rpx;
+  font-weight: 900;
+  line-height: 30rpx;
+}
+
+.profile-summary-card {
+  border-color: rgba(21, 122, 85, 0.22);
+}
+
+.profile-hub .card-title {
+  margin-top: 4rpx;
+}
+
+.profile-entry-list {
+  display: grid;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.profile-entry-card {
+  min-height: 116rpx;
+  padding: 18rpx;
+  border: 1rpx solid #e1e7ee;
+  border-radius: 14rpx;
+  background: #ffffff;
+}
+
+.profile-entry-card text {
+  display: block;
+}
+
+.entry-eyebrow {
+  color: #157a55;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.entry-title {
+  margin-top: 5rpx;
+  color: #111827;
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.entry-summary {
+  margin-top: 6rpx;
+  color: #667085;
+  font-size: 23rpx;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.profile-entry-card:active {
+  border-color: rgba(21, 122, 85, 0.46);
+  background: #f2faf6;
+}
+
+.profile-subhead {
+  display: grid;
+  gap: 14rpx;
+  margin-bottom: 18rpx;
+  padding: 20rpx;
+  border: 1rpx solid #e1e7ee;
+  border-radius: 16rpx;
+  background: #ffffff;
+}
+
+.profile-subhead .small-button {
+  width: 132rpx;
+  min-height: 56rpx;
+  line-height: 56rpx;
+}
+
 .profile-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

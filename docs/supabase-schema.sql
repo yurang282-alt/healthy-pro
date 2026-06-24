@@ -294,6 +294,33 @@ insert into public.app_releases (
   is_published,
   published_at
 ) values (
+  'v0.7.2',
+  '小程序我的页简化',
+  '微信小程序我的页改为训练档案、周报摘要和更多入口，减少首屏信息堆叠。',
+  '["首屏保留训练状态和本周周报摘要", "好友排行、更新公告、设置与反馈改为入口卡片", "保留原有好友、反馈、同步和公告能力，不改变数据逻辑"]'::jsonb,
+  '这次更新重点是减少我的页默认展示的信息量，让朋友打开后更容易知道自己当前计划状态，再按需进入周报、好友、更新或设置详情。',
+  'improvement',
+  true,
+  '2026-06-24 00:00:00+08'
+) on conflict (version) do update set
+  title = excluded.title,
+  summary = excluded.summary,
+  highlights = excluded.highlights,
+  details = excluded.details,
+  release_type = excluded.release_type,
+  is_published = excluded.is_published,
+  published_at = excluded.published_at;
+
+insert into public.app_releases (
+  version,
+  title,
+  summary,
+  highlights,
+  details,
+  release_type,
+  is_published,
+  published_at
+) values (
   'v0.7.1',
   '小程序用户数据隔离修复',
   '微信小程序启动时会自动绑定当前微信用户，新用户不再默认进入同一套演示计划。',
