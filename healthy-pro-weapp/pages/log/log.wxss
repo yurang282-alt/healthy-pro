@@ -228,6 +228,28 @@
   background: #fbfefd;
 }
 
+.history-coach-feedback {
+  display: grid;
+  gap: 4rpx;
+  margin-top: 10rpx;
+  padding: 12rpx;
+  border-radius: 12rpx;
+  background: #eef8f2;
+}
+
+.history-coach-feedback text:first-child {
+  color: #157a55;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.history-coach-feedback text:last-child {
+  color: #245442;
+  font-size: 22rpx;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
 .record-head {
   display: flex;
   gap: 14rpx;

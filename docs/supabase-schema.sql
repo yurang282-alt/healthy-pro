@@ -46,8 +46,12 @@ create table if not exists public.training_logs (
   intensity_feedback text,
   note text,
   exercises jsonb not null default '[]'::jsonb,
+  coach_feedback jsonb,
   created_at timestamptz not null default now()
 );
+
+alter table public.training_logs
+  add column if not exists coach_feedback jsonb;
 
 create table if not exists public.body_logs (
   id uuid primary key default gen_random_uuid(),
@@ -256,6 +260,33 @@ create policy "Users can update own release reads" on public.user_release_reads
   for update to authenticated
   using ((select auth.uid()) is not null and (select auth.uid()) = user_id)
   with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
+
+insert into public.app_releases (
+  version,
+  title,
+  summary,
+  highlights,
+  details,
+  release_type,
+  is_published,
+  published_at
+) values (
+  'v0.8.0',
+  '训练反馈和好友动态',
+  '保存训练后会给即时教练反馈，新用户首次进入会看到开始顺序，好友页新增最近训练动态。',
+  '["训练记录保存后生成一句教练反馈，并随记录保存", "首页新增首次使用引导，帮助新用户知道先看什么、先做什么", "好友页新增最近训练动态，只展示昵称、训练时间和本周次数"]'::jsonb,
+  '这次更新继续把 App 从记录器变成训练助手：训练后立刻告诉你下一次该稳住、补齐还是小幅进阶，同时让好友之间更容易看到彼此是否在持续训练。',
+  'feature',
+  true,
+  '2026-06-24 20:00:00+08'
+) on conflict (version) do update set
+  title = excluded.title,
+  summary = excluded.summary,
+  highlights = excluded.highlights,
+  details = excluded.details,
+  release_type = excluded.release_type,
+  is_published = excluded.is_published,
+  published_at = excluded.published_at;
 
 insert into public.app_releases (
   version,

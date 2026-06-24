@@ -226,6 +226,67 @@
   margin-top: 18rpx;
 }
 
+.friend-activity {
+  margin-top: 22rpx;
+}
+
+.friend-activity-head,
+.activity-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14rpx;
+}
+
+.friend-activity-head {
+  color: #111827;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.friend-activity-head text:last-child {
+  color: #667085;
+  font-size: 22rpx;
+}
+
+.activity-list {
+  display: grid;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.activity-row {
+  padding: 16rpx;
+  border: 1rpx solid #e1e7ee;
+  border-radius: 14rpx;
+  background: #ffffff;
+}
+
+.activity-row text {
+  display: block;
+}
+
+.activity-row view text:first-child {
+  color: #111827;
+  font-size: 25rpx;
+  font-weight: 900;
+}
+
+.activity-row view text:last-child {
+  margin-top: 5rpx;
+  color: #667085;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.activity-row > text {
+  flex: 0 0 auto;
+  color: #667085;
+  font-size: 22rpx;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .feedback-textarea {
   min-height: 150rpx;
   margin-top: 16rpx;

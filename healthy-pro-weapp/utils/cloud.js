@@ -255,7 +255,8 @@ async function readCloudSocial(openid, store = {}) {
       currentWeekCount: Number(ownSummary.currentWeekCount || 0),
       currentWeekCompleted: Number(ownSummary.currentWeekCompleted || 0),
       currentWeekCompletionRate: Number(ownSummary.currentWeekCompletionRate || 0),
-      streakWeeks: Number(ownSummary.streakWeeks || 0)
+      streakWeeks: Number(ownSummary.streakWeeks || 0),
+      latestTrainingAt: ownSummary.latestTrainingAt || ""
     } : null,
     ...friendships
       .filter((item) => item.status === "accepted" && item.shareLeaderboard)

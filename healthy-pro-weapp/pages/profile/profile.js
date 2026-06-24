@@ -45,6 +45,15 @@ const LOCAL_RELEASES = [
     highlights: ["首屏保留训练状态和本周周报摘要", "好友排行、更新公告、设置与反馈改为入口卡片", "原有好友、反馈、同步和公告能力都保留在详情页"],
     releaseType: "improvement",
     publishedAt: "2026-06-24T00:00:00+08:00"
+  },
+  {
+    id: "weapp-v0.4.0",
+    version: "v0.4.0",
+    title: "训练反馈和好友动态",
+    summary: "保存训练后会给即时教练反馈，新用户首次进入会看到开始顺序，好友页新增最近训练动态。",
+    highlights: ["训练记录保存后生成一句教练反馈，并随记录保存", "首页新增首次使用引导", "好友页新增最近训练动态，只展示昵称、训练时间和本周次数"],
+    releaseType: "feature",
+    publishedAt: "2026-06-24T20:00:00+08:00"
   }
 ];
 
@@ -276,13 +285,52 @@ function buildLocalLeaderboard(social, insights) {
     currentWeekCount: insights.thisWeekCount || 0,
     currentWeekCompleted: insights.thisWeekCompleted || 0,
     currentWeekCompletionRate: insights.weekCompletionRate || 0,
-    streakWeeks: Number(String(insights.streakText || "0").replace(/[^\d]/g, "") || 0)
+    streakWeeks: Number(String(insights.streakText || "0").replace(/[^\d]/g, "") || 0),
+    latestTrainingAt: insights.latestLog && insights.latestLog.createdAt || ""
   }] : [];
   return self.concat(accepted.filter((item) => item.shareLeaderboard !== false)).sort((left, right) => (
     Number(right.currentWeekCompletionRate || 0) - Number(left.currentWeekCompletionRate || 0) ||
     Number(right.currentWeekCount || 0) - Number(left.currentWeekCount || 0) ||
     Number(right.streakWeeks || 0) - Number(left.streakWeeks || 0)
   ));
+}
+
+function getRelativeTimeLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return formatDateTime(value);
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "昨天";
+  if (days < 7) return `${days} 天前`;
+  return formatDateTime(value);
+}
+
+function buildFriendActivities(leaderboard, accepted) {
+  const seen = {};
+  return [...(leaderboard || []), ...(accepted || [])]
+    .filter((item) => item && !item.isSelf && item.latestTrainingAt)
+    .map((item) => {
+      const key = item.openid || item.userId || item.id || `${item.nickname}-${item.latestTrainingAt}`;
+      if (seen[key]) return null;
+      seen[key] = true;
+      const count = Number(item.currentWeekCount || 0);
+      return {
+        key,
+        nickname: item.nickname || "训练伙伴",
+        summary: count ? `最近完成一次训练，本周已记录 ${count} 次` : "最近完成一次训练",
+        timeLabel: getRelativeTimeLabel(item.latestTrainingAt),
+        createdAt: item.latestTrainingAt
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
+    .slice(0, 6);
 }
 
 function buildSocialView(store, insights) {
@@ -314,6 +362,7 @@ function buildSocialView(store, insights) {
       displayName: `${item.nickname || "微信用户"}${item.isSelf ? " · 我" : ""}`,
       displaySummary: `完成率 ${item.currentWeekCompletionRate || 0}% · 本周 ${item.currentWeekCount || 0} 次 · 连续 ${item.streakWeeks || 0} 周`
     })),
+    activities: buildFriendActivities(leaderboard, accepted),
     leaderboardCount: leaderboard.length,
     lastSyncedLabel: social.lastSyncedAt ? formatDateTime(social.lastSyncedAt) : "",
     summary: social.summary || {}

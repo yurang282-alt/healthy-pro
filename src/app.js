@@ -110,6 +110,20 @@ const LOCAL_RELEASES = [
     details: "这次更新重点是减少我的页默认展示的信息量，让朋友打开后更容易知道自己当前计划状态，再按需进入周报、好友、更新或设置详情。",
     releaseType: "improvement",
     publishedAt: "2026-06-24T00:00:00+08:00"
+  },
+  {
+    id: "local-v0.8.0",
+    version: "v0.8.0",
+    title: "训练反馈和好友动态",
+    summary: "保存训练后会给即时教练反馈，新用户首次进入会看到开始顺序，好友页新增最近训练动态。",
+    highlights: [
+      "训练记录保存后生成一句教练反馈，并随记录保存",
+      "首页新增首次使用引导，帮助新用户知道先看什么、先做什么",
+      "好友页新增最近训练动态，只展示昵称、训练时间和本周次数"
+    ],
+    details: "这次更新继续把 App 从记录器变成训练助手：训练后立刻告诉你下一次该稳住、补齐还是小幅进阶，同时让好友之间更容易看到彼此是否在持续训练。",
+    releaseType: "feature",
+    publishedAt: "2026-06-24T20:00:00+08:00"
   }
 ];
 const app = document.querySelector("#app");
@@ -184,6 +198,17 @@ app.addEventListener("click", async (event) => {
   if (action === "dismiss-install") {
     installPromptDismissed = true;
     localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
+    render({ keepScroll: true });
+  }
+
+  if (action === "dismiss-onboarding") {
+    const user = getUser();
+    if (!user) return;
+    user.onboarding = {
+      ...(user.onboarding || {}),
+      firstUseGuideDismissed: true
+    };
+    saveStore();
     render({ keepScroll: true });
   }
 
@@ -673,6 +698,7 @@ async function handleTrainingLog(form) {
     intensityFeedback: String(formData.get("intensityFeedback") || "right"),
     note: String(formData.get("note") || "").trim()
   };
+  logRecord.coachFeedback = getPostTrainingCoachFeedback(user, logRecord, workout);
 
   if (useCloudMode()) {
     try {
@@ -697,7 +723,7 @@ async function handleTrainingLog(form) {
   }
 
   saveStore();
-  notice = "训练已记录。";
+  notice = logRecord.coachFeedback.summary || "训练已记录。";
   activeView = "home";
   render();
 }
@@ -1242,6 +1268,7 @@ function renderHome(user) {
   const focusText = getFocusText(plan);
   const previewExercises = workout.exercises.slice(0, 3);
   const remainingCount = Math.max(0, workout.exercises.length - previewExercises.length);
+  const latestFeedback = getLatestTrainingFeedback(user);
 
   return `
     <section class="today-hero">
@@ -1261,6 +1288,10 @@ function renderHome(user) {
       <button class="primary-button hero-action" type="button" data-action="start-training">开始训练</button>
       <button class="link-button compact-link" type="button" data-action="nav" data-view="plan">查看完整计划</button>
     </section>
+
+    ${renderFirstUseGuide(user)}
+
+    ${latestFeedback ? renderCoachFeedbackCard(latestFeedback) : ""}
 
     <section class="section-block quiet-section">
       <div class="section-head">
@@ -1302,6 +1333,38 @@ function renderHome(user) {
         <div><span>最近体重</span><strong>${latestBody ? `${latestBody.weight}kg` : "未记录"}</strong></div>
       </div>
       <p class="coach-note">${plan.review.recommendation}</p>
+    </section>
+  `;
+}
+
+function renderFirstUseGuide(user) {
+  if (!user?.plan || (user.logs || []).length || user.onboarding?.firstUseGuideDismissed) return "";
+  return `
+    <section class="section-block onboarding-card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">第一次使用</p>
+          <h2>按这个顺序开始</h2>
+        </div>
+        <button class="small-button subtle" type="button" data-action="dismiss-onboarding">知道了</button>
+      </div>
+      <div class="onboarding-steps">
+        <div><span>1</span><strong>看今天训练</strong><p>先确认主题、动作和预计时长。</p></div>
+        <div><span>2</span><strong>开始训练</strong><p>按顺序完成动作，不用一次记完所有细节。</p></div>
+        <div><span>3</span><strong>保存记录</strong><p>训练后会给你一句教练反馈。</p></div>
+        <div><span>4</span><strong>看周报</strong><p>我的页会汇总频次、感觉和趋势。</p></div>
+      </div>
+    </section>
+  `;
+}
+
+function renderCoachFeedbackCard(feedback) {
+  return `
+    <section class="section-block coach-feedback-card">
+      <p class="eyebrow">最近训练反馈</p>
+      <h2>${escapeHtml(feedback.title)}</h2>
+      <p>${escapeHtml(feedback.summary)}</p>
+      ${feedback.tips?.length ? `<div class="feedback-tip-list">${feedback.tips.map((tip) => `<span>${escapeHtml(tip)}</span>`).join("")}</div>` : ""}
     </section>
   `;
 }
@@ -2643,10 +2706,36 @@ function renderFriendsSection(user, insights) {
       </form>
 
       ${renderLeaderboard(social.leaderboard || [], profile)}
+      ${renderFriendActivity(user)}
       ${renderFriendRequests(incoming, outgoing)}
       ${renderAcceptedFriends(accepted)}
       <p class="empty-note">排行只展示完成率、训练次数和连续记录周数，不展示体重、体脂和训练重量。</p>
     </section>
+  `;
+}
+
+function renderFriendActivity(user) {
+  const activities = getFriendActivities(user).slice(0, 6);
+  if (!activities.length) {
+    return `<p class="empty-note">好友完成训练后，这里会出现最近动态。</p>`;
+  }
+
+  return `
+    <div class="friend-activity">
+      <div class="friend-activity-head">
+        <strong>好友动态</strong>
+        <span>最近训练</span>
+      </div>
+      ${activities.map((item) => `
+        <article class="activity-row">
+          <div>
+            <strong>${escapeHtml(item.nickname)}</strong>
+            <p>${escapeHtml(item.summary)}</p>
+          </div>
+          <span>${escapeHtml(item.timeLabel)}</span>
+        </article>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -3742,6 +3831,96 @@ function getFriendSummary(user) {
     streakWeeks: getCurrentTrainingWeekStreak(logs),
     latestTrainingAt: latestLog?.createdAt || null
   };
+}
+
+function getPostTrainingCoachFeedback(user, logRecord, workout) {
+  const exercises = Array.isArray(logRecord?.exercises) ? logRecord.exercises : [];
+  const completedExercises = exercises.filter((exercise) => exercise.done);
+  const completedCount = completedExercises.length;
+  const totalCount = workout?.exercises?.length || exercises.length || completedCount;
+  const intensityFeedback = logRecord?.intensityFeedback || "right";
+  const highFeelingCount = completedExercises.filter((exercise) => Number(exercise.feeling || 0) >= 6).length;
+  const lowFeelingCount = completedExercises.filter((exercise) => Number(exercise.feeling || 0) <= 2).length;
+  const partial = totalCount > completedCount;
+  const target = user?.plan?.goal?.type || "当前目标";
+
+  let title = "完成得不错，继续保持节奏";
+  let summary = `完成 ${completedCount}/${totalCount} 个动作，强度刚好。下次维持重量，把动作轨迹做稳定。`;
+  const tips = [];
+
+  if (intensityFeedback === "too-hard" || highFeelingCount >= 2) {
+    title = "今天强度偏高，先稳住恢复";
+    summary = `完成 ${completedCount}/${totalCount} 个动作，反馈偏吃力。下一次先保持重量，必要时每个主动作少做 1 组。`;
+    tips.push("下一次不要追重量，优先动作稳定和恢复");
+  } else if (intensityFeedback === "too-easy" || lowFeelingCount >= Math.max(2, Math.ceil(completedCount / 2))) {
+    title = "今天偏轻松，下次小幅进阶";
+    summary = `完成 ${completedCount}/${totalCount} 个动作，整体偏轻松。下次只给 1-2 个主动作小幅加重量，不要整套一起加。`;
+    tips.push("优先给主动作加 5% 左右，仍以动作稳定为准");
+  } else if (partial) {
+    title = "先把计划做完整";
+    summary = `完成 ${completedCount}/${totalCount} 个动作，先把计划动作补齐比额外加量更重要。`;
+    tips.push("下次优先完成没做完的动作，再考虑加重量");
+  }
+
+  if (!tips.length) tips.push("主动作先稳定轨迹，再考虑加重量");
+  tips.push(`${target}阶段更看重连续记录和可恢复进步`);
+
+  return {
+    title,
+    summary,
+    tips: tips.slice(0, 3),
+    createdAt: logRecord?.createdAt || new Date().toISOString()
+  };
+}
+
+function getLatestTrainingFeedback(user) {
+  const logs = sortRecords(user?.logs || []);
+  const latestLog = getLatest(logs);
+  if (!latestLog) return null;
+  if (latestLog.coachFeedback?.title) return latestLog.coachFeedback;
+  const workout = (user?.plan?.workouts || []).find((item) => item.id === latestLog.workoutId);
+  return getPostTrainingCoachFeedback(user, latestLog, workout);
+}
+
+function getFriendActivities(user) {
+  const social = user?.social || {};
+  const source = [
+    ...(social.leaderboard || []),
+    ...(social.friendships || [])
+  ];
+  const seen = new Set();
+  return source
+    .filter((item) => item && !item.isSelf && item.latestTrainingAt)
+    .map((item) => {
+      const key = item.userId || item.openid || item.friendId || `${item.nickname}-${item.latestTrainingAt}`;
+      if (seen.has(key)) return null;
+      seen.add(key);
+      const count = Number(item.currentWeekCount || 0);
+      return {
+        nickname: item.nickname || "训练伙伴",
+        createdAt: item.latestTrainingAt,
+        timeLabel: getRelativeTimeLabel(item.latestTrainingAt),
+        summary: count ? `最近完成一次训练，本周已记录 ${count} 次` : "最近完成一次训练"
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt));
+}
+
+function getRelativeTimeLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return formatDate(value);
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "昨天";
+  if (days < 7) return `${days} 天前`;
+  return formatDate(value);
 }
 
 function getProfileCoachMessage({ logs, weekTarget, thisWeekCount, intensity, bodyTrend }) {

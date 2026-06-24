@@ -97,7 +97,7 @@ function getCurrentTrainingWeekStreak(logs = [], now = new Date()) {
 }
 
 function buildSocialSummary(store) {
-  const logs = Array.isArray(store.logs) ? store.logs : [];
+  const logs = sortRecords(Array.isArray(store.logs) ? store.logs : []);
   const now = new Date();
   const weekStart = getStartOfLocalWeek(now);
   const currentWeekLogs = logs.filter((log) => {
@@ -166,6 +166,7 @@ App({
       bodyLogs: [],
       feedbacks: [],
       releaseReads: {},
+      onboarding: {},
       social: null,
       profile: {
         nickname: "微信用户",
@@ -211,6 +212,7 @@ App({
     }));
     store.feedbacks = Array.isArray(store.feedbacks) ? store.feedbacks : [];
     store.releaseReads = store.releaseReads || {};
+    store.onboarding = store.onboarding || {};
     if (store.user.plan && shouldRegeneratePlan(store.user.plan)) {
       store.user.plan = generatePlan(assessment, store.logs);
       store.user.needsAssessment = false;

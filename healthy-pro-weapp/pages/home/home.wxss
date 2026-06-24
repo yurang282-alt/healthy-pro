@@ -15,3 +15,63 @@
   border-color: rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.08);
 }
+
+.onboarding-card {
+  border-color: rgba(21, 122, 85, 0.22);
+  background: #fbfefd;
+}
+
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.onboarding-steps view {
+  min-width: 0;
+  padding: 16rpx;
+  border: 1rpx solid #e1e7ee;
+  border-radius: 14rpx;
+  background: #ffffff;
+}
+
+.onboarding-steps text {
+  display: block;
+}
+
+.onboarding-steps text:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42rpx;
+  height: 42rpx;
+  margin-bottom: 10rpx;
+  border-radius: 999rpx;
+  color: #ffffff;
+  background: #157a55;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.onboarding-steps text:nth-child(2) {
+  color: #111827;
+  font-size: 25rpx;
+  font-weight: 900;
+}
+
+.onboarding-steps text:last-child {
+  margin-top: 6rpx;
+  color: #667085;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.coach-feedback-card {
+  border-color: rgba(21, 122, 85, 0.25);
+  background: #eef8f2;
+}
+
+.coach-feedback-card .card-title {
+  margin-top: 4rpx;
+}

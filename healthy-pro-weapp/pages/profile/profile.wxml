@@ -168,6 +168,23 @@
       </view>
       <view wx:else class="muted empty-inline">打开好友排行并添加好友后，这里会显示本周榜单。</view>
 
+      <view class="friend-activity">
+        <view class="friend-activity-head">
+          <text>好友动态</text>
+          <text>最近训练</text>
+        </view>
+        <view wx:if="{{socialView.activities.length}}" class="activity-list">
+          <view wx:for="{{socialView.activities}}" wx:key="key" class="activity-row">
+            <view>
+              <text>{{item.nickname}}</text>
+              <text>{{item.summary}}</text>
+            </view>
+            <text>{{item.timeLabel}}</text>
+          </view>
+        </view>
+        <view wx:else class="muted empty-inline">好友完成训练后，这里会出现最近动态。</view>
+      </view>
+
       <view wx:if="{{socialView.incoming.length || socialView.outgoing.length}}" class="friend-list">
         <view wx:for="{{socialView.incoming}}" wx:for-item="friend" wx:key="id" class="friend-card">
           <view>

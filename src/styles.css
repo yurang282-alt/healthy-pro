@@ -480,6 +480,83 @@ input[type="range"] {
   background: #f9fafb;
 }
 
+.onboarding-card {
+  border-color: rgba(34, 122, 90, 0.2);
+  background: #fbfefd;
+}
+
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.onboarding-steps div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.onboarding-steps span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.onboarding-steps strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.onboarding-steps p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.coach-feedback-card {
+  border-color: rgba(34, 122, 90, 0.24);
+  background: rgba(34, 122, 90, 0.08);
+}
+
+.coach-feedback-card h2 {
+  margin-bottom: 6px;
+}
+
+.coach-feedback-card > p:not(.eyebrow) {
+  margin: 0;
+  color: #245442;
+  font-weight: 750;
+}
+
+.feedback-tip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.feedback-tip-list span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #245442;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 850;
+}
+
 .coach-summary-card h2,
 .coach-summary-card p {
   margin-top: 0;
@@ -884,6 +961,59 @@ input[type="range"] {
 
 .leaderboard-row p {
   margin: 2px 0 0;
+}
+
+.friend-activity {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.friend-activity-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.friend-activity-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.activity-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.activity-row strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.activity-row p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.activity-row > span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
 }
 
 .social-settings {
@@ -2120,6 +2250,10 @@ input[type="range"] {
   .intensity-summary,
   .record-grid,
   .share-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-steps {
     grid-template-columns: 1fr;
   }
 

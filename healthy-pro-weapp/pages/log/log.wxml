@@ -208,6 +208,10 @@
           <view wx:if="{{log.detailLines.length}}" class="history-detail">
             <text wx:for="{{log.detailLines}}" wx:for-item="detail" wx:key="*this">{{detail}}</text>
           </view>
+          <view wx:if="{{log.coachFeedbackSummary}}" class="history-coach-feedback">
+            <text>{{log.coachFeedbackTitle}}</text>
+            <text>{{log.coachFeedbackSummary}}</text>
+          </view>
           <text wx:if="{{log.note}}" class="item-help">{{log.note}}</text>
         </view>
       </view>

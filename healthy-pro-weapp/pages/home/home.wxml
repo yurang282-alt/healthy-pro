@@ -33,9 +33,47 @@
     </view>
   </view>
 
+  <view wx:if="{{showFirstUseGuide}}" class="card onboarding-card">
+    <view class="row">
+      <view>
+        <view class="eyebrow">第一次使用</view>
+        <text class="card-title">按这个顺序开始</text>
+      </view>
+      <button class="small-button subtle" bindtap="dismissOnboarding">知道了</button>
+    </view>
+    <view class="onboarding-steps">
+      <view>
+        <text>1</text>
+        <text>看今天训练</text>
+        <text>先确认主题、动作和预计时长。</text>
+      </view>
+      <view>
+        <text>2</text>
+        <text>开始训练</text>
+        <text>按顺序完成动作，不用一次记完。</text>
+      </view>
+      <view>
+        <text>3</text>
+        <text>保存记录</text>
+        <text>训练后会给你一句教练反馈。</text>
+      </view>
+      <view>
+        <text>4</text>
+        <text>看周报</text>
+        <text>我的页会汇总频次和趋势。</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{latestFeedback}}" class="card coach-feedback-card">
+    <view class="eyebrow">最近训练反馈</view>
+    <text class="card-title">{{latestFeedback.title}}</text>
+    <view class="muted">{{latestFeedback.summary}}</view>
+  </view>
+
   <view wx:if="{{workout}}" class="card">
     <view class="eyebrow">今日顺序</view>
-    <text class="card-title">先做前 2 项</text>
+    <text class="card-title">先做前 3 项</text>
     <view class="list">
       <view wx:for="{{previewExercises}}" wx:key="id" class="exercise-row">
         <image class="thumb" src="{{item.image}}" mode="aspectFit" />

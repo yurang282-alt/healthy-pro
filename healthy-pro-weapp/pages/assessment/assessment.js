@@ -1,20 +1,41 @@
 const { generatePlan, normalizeAssessment, validateAssessment } = require("../../utils/coach");
 
+const DEFAULT_DRAFT = {
+  age: 28,
+  gender: "male",
+  height: 170,
+  weight: 65,
+  bodyFat: 14,
+  targetPreference: "auto",
+  trainingExperience: "familiar",
+  weeklyLimit: "3",
+  injury: "none",
+  sessionBudget: 75,
+  focusAreas: ["chest", "back"]
+};
+
+function cloneDraft(draft) {
+  return {
+    ...draft,
+    focusAreas: Array.isArray(draft.focusAreas) ? draft.focusAreas.slice() : []
+  };
+}
+
+function getInitialDraft() {
+  const app = getApp();
+  const store = app && app.getStore ? app.getStore() : {};
+  const saved = store.user && store.user.assessment;
+  if (!saved) return cloneDraft(DEFAULT_DRAFT);
+  return cloneDraft(normalizeAssessment({
+    ...DEFAULT_DRAFT,
+    ...saved,
+    focusAreas: Array.isArray(saved.focusAreas) ? saved.focusAreas : DEFAULT_DRAFT.focusAreas
+  }));
+}
+
 Page({
   data: {
-    draft: {
-      age: 28,
-      gender: "male",
-      height: 170,
-      weight: 65,
-      bodyFat: 14,
-      targetPreference: "auto",
-      trainingExperience: "familiar",
-      weeklyLimit: "3",
-      injury: "none",
-      sessionBudget: 75,
-      focusAreas: ["chest", "back"]
-    },
+    draft: cloneDraft(DEFAULT_DRAFT),
     focusOptions: [
       { id: "chest", label: "胸", checked: true },
       { id: "back", label: "背", checked: true },
@@ -57,6 +78,18 @@ Page({
       { value: "shoulder", label: "肩颈疼痛" },
       { value: "heart", label: "心血管限制" }
     ]
+  },
+
+  onLoad() {
+    this.hydrateDraft();
+  },
+
+  hydrateDraft() {
+    const draft = getInitialDraft();
+    this.setData({
+      draft,
+      focusOptions: this.syncFocusOptions(draft.focusAreas)
+    });
   },
 
   syncFocusOptions(focusAreas) {

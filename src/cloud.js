@@ -295,23 +295,40 @@ export async function saveCloudPlan(assessmentId, plan) {
 
 export async function saveCloudTrainingLog(planId, log) {
   const session = await requireSession();
-  const rows = await restRequest("/training_logs", {
-    method: "POST",
-    body: {
-      user_id: session.user.id,
-      plan_id: planId || null,
-      workout_id: log.workoutId,
-      workout_title: log.workoutTitle,
-      week: log.week,
-      completed_count: log.completedCount,
-      intensity_feedback: log.intensityFeedback || "right",
-      note: log.note || null,
-      exercises: log.exercises || [],
-      created_at: log.createdAt
-    },
-    prefer: "return=representation"
-  });
-  return fromTrainingLogRow(rows[0]);
+  const body = {
+    user_id: session.user.id,
+    plan_id: planId || null,
+    workout_id: log.workoutId,
+    workout_title: log.workoutTitle,
+    week: log.week,
+    completed_count: log.completedCount,
+    intensity_feedback: log.intensityFeedback || "right",
+    note: log.note || null,
+    exercises: log.exercises || [],
+    coach_feedback: log.coachFeedback || null,
+    created_at: log.createdAt
+  };
+  let rows;
+  try {
+    rows = await restRequest("/training_logs", {
+      method: "POST",
+      body,
+      prefer: "return=representation"
+    });
+  } catch (error) {
+    const message = String(error?.message || error || "");
+    if (!message.includes("coach_feedback")) throw error;
+    const { coach_feedback, ...fallbackBody } = body;
+    rows = await restRequest("/training_logs", {
+      method: "POST",
+      body: fallbackBody,
+      prefer: "return=representation"
+    });
+  }
+  return {
+    ...fromTrainingLogRow(rows[0]),
+    coachFeedback: log.coachFeedback || rows[0]?.coach_feedback || null
+  };
 }
 
 export async function saveCloudBodyLog(record) {
@@ -484,6 +501,7 @@ function fromTrainingLogRow(row) {
     week: Number(row.week),
     completedCount: Number(row.completed_count || 0),
     exercises: row.exercises || [],
+    coachFeedback: row.coach_feedback || null,
     intensityFeedback: row.intensity_feedback || "right",
     note: row.note || ""
   };
