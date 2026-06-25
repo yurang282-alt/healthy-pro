@@ -109,6 +109,30 @@
     </view>
   </view>
 
+  <view wx:if="{{plan}}" class="card coach-details-card">
+    <view class="eyebrow">教练解释</view>
+    <text class="card-title">{{plan.goal.type}}</text>
+    <view class="coach-note">{{plan.rationale}}</view>
+    <view wx:if="{{coachDecisionSummary}}" class="adjust-explainer">{{coachDecisionSummary}}</view>
+    <view wx:if="{{coachReview}}" class="plan-review {{coachReview.level == 'warning' ? 'warning' : ''}}">
+      <text>{{coachReview.level == 'warning' ? '自定义计划风险' : '自定义计划审核'}}</text>
+      <view>{{coachReview.summary}}</view>
+      <view wx:if="{{coachReviewItems.length}}" class="review-list">
+        <view wx:for="{{coachReviewItems}}" wx:key="text" class="review-row {{item.type}}">
+          <text>{{item.label}}</text>
+          <text>{{item.text}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="fact-list">
+      <view wx:for="{{coachFacts}}" wx:key="label">
+        <text>{{item.label}}</text>
+        <text>{{item.value}}</text>
+      </view>
+    </view>
+    <view class="empty-note coach-guide">{{plan.adjustmentGuide}}</view>
+  </view>
+
   <view wx:else class="card">
     <text class="card-title">还没有训练计划</text>
     <view class="muted">先完成基础评估。</view>

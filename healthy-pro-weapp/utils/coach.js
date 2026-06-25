@@ -2711,9 +2711,29 @@ function cleanExerciseForPlan(exercise) {
   });
 }
 
-function buildCustomPlan(plan, draft) {
+function getAssessmentFrequencyCapForWeapp(assessment) {
+  const value = String((assessment || {}).weeklyLimit || '');
+  if (value === '2') return 2;
+  if (value === '3') return 3;
+  if (value === '4') return 4;
+  return 4;
+}
+
+function getWorkoutMainAreaForWeapp(workout) {
+  const counts = {};
+  for (const exercise of (workout && workout.exercises) || []) {
+    const area = exercise.type === 'cardio' ? '心肺' : getExerciseAreaForWeapp(exercise);
+    counts[area] = (counts[area] || 0) + Number(exercise.baseSets || 1);
+  }
+  const sorted = Object.entries(counts).sort(function (left, right) {
+    return right[1] - left[1];
+  });
+  return sorted[0] && sorted[0][0] || '';
+}
+
+function normalizeCustomWorkouts(draft) {
   const safeDraft = draft || {};
-  const workouts = (safeDraft.workouts || []).map(function (workout, index) {
+  return (safeDraft.workouts || []).map(function (workout, index) {
     return {
       id: workout.id || createId('workout'),
       title: String(workout.title || ('训练日 ' + (index + 1))).slice(0, 18),
@@ -2721,7 +2741,107 @@ function buildCustomPlan(plan, draft) {
       exercises: (workout.exercises || []).map(cleanExerciseForPlan).filter(function (exercise) { return exercise.name; })
     };
   }).filter(function (workout) { return workout.exercises.length; });
+}
+
+function reviewCustomPlanDraft(plan, draft, assessment) {
+  const safeAssessment = assessment || getAssessmentFromPlan(plan);
+  const warnings = [];
+  const suggestions = [];
+  const positives = [];
+  const budget = Number(safeAssessment.sessionBudget || (plan && plan.duration && plan.duration.budget) || 60);
+  const maxFrequency = getAssessmentFrequencyCapForWeapp(safeAssessment);
+  const workouts = normalizeCustomWorkouts(draft);
+  const weekRules = plan && plan.weeks || WEEK_RULES;
+  const areaSets = {};
+  let totalCardio = 0;
+  let totalStrength = 0;
+
+  if (workouts.length > maxFrequency) {
+    warnings.push('你评估里选择的每周上限更接近 ' + maxFrequency + ' 次，现在改成 ' + workouts.length + ' 次，注意恢复。');
+  }
+
+  workouts.forEach(function (workout, index) {
+    const title = workout.title || ('训练日 ' + (index + 1));
+    const duration = getWorkoutDuration(workout, 2, weekRules);
+    const strengthExercises = (workout.exercises || []).filter(function (exercise) { return exercise.type !== 'cardio'; });
+    const cardioExercises = (workout.exercises || []).filter(function (exercise) { return exercise.type === 'cardio'; });
+    totalCardio += cardioExercises.length;
+    totalStrength += strengthExercises.length;
+
+    if (duration.max > budget) {
+      warnings.push(title + ' 预计 ' + duration.label + '，可能超过你单次 ' + budget + ' 分钟上限。');
+    }
+    if (strengthExercises.length > 6) {
+      warnings.push(title + ' 力量动作偏多，手机记录和实际训练都容易拖长。');
+    }
+    if (!cardioExercises.length || workout.exercises[0] && workout.exercises[0].type !== 'cardio') {
+      suggestions.push(title + ' 建议保留 5-8 分钟热身，尤其是下肢或大重量动作前。');
+    }
+
+    const seen = {};
+    for (const exercise of workout.exercises || []) {
+      const baseId = getBaseExerciseIdForWeapp(exercise);
+      if (seen[baseId]) {
+        suggestions.push(title + ' 里重复出现了「' + exercise.name + '」，确认不是误加。');
+      }
+      seen[baseId] = true;
+
+      if (exercise.type !== 'cardio') {
+        const area = getExerciseAreaForWeapp(exercise);
+        const sets = Number(exercise.baseSets || 1);
+        areaSets[area] = (areaSets[area] || 0) + sets;
+      }
+    }
+  });
+
+  Object.keys(areaSets).forEach(function (area) {
+    const sets = areaSets[area];
+    if (sets >= 18) {
+      warnings.push(area + ' 每周约 ' + sets + ' 组，已经接近高容量，恢复一般时容易过量。');
+    }
+    if (sets <= 2 && workouts.length >= 3 && ['胸', '背', '腿'].indexOf(area) >= 0) {
+      suggestions.push(area + ' 训练量偏少，如果这是重点部位，可以加 1 个动作或 1-2 组。');
+    }
+  });
+
+  for (let index = 1; index < workouts.length; index += 1) {
+    const previousArea = getWorkoutMainAreaForWeapp(workouts[index - 1]);
+    const currentArea = getWorkoutMainAreaForWeapp(workouts[index]);
+    if (previousArea && previousArea === currentArea && currentArea !== '心肺') {
+      suggestions.push('连续两个训练日都偏向' + currentArea + '，中间最好至少休息 1 天或换部位。');
+    }
+  }
+
+  if (safeAssessment.targetPreference === 'gain' && totalCardio > totalStrength) {
+    suggestions.push('你的目标偏增肌，但有氧动作比例偏高，建议有氧主要保留热身或短收尾。');
+  }
+
+  if (!warnings.length && !suggestions.length) {
+    positives.push('训练频次、单次时长和动作数量看起来都比较稳。');
+  }
+  if (workouts.length === Number(plan && plan.frequency && plan.frequency.sessionsPerWeek || workouts.length)) {
+    positives.push('每周频次和当前计划结构一致，执行成本较低。');
+  }
+  positives.push('原始 AI 计划和上一版都会保留。');
+
+  return {
+    level: warnings.length ? 'warning' : 'ok',
+    summary: warnings.length
+      ? '可以保存，但建议先处理下面的风险点，或训练时降低重量和组数。'
+      : '这个自定义计划整体可以执行，先用训练记录观察 1-2 周。',
+    warnings: warnings.slice(0, 5),
+    suggestions: Array.from(new Set(suggestions)).slice(0, 5),
+    positives: positives.slice(0, 3)
+  };
+}
+
+function buildCustomPlan(plan, draft, options) {
+  const safeOptions = options || {};
+  const safeDraft = draft || {};
+  const workouts = normalizeCustomWorkouts(safeDraft);
   const safeWorkouts = workouts.length ? workouts : cloneForWeapp(plan.workouts || []);
+  const assessment = safeOptions.assessment || getAssessmentFromPlan(plan);
+  const review = safeOptions.review || reviewCustomPlanDraft(plan, { workouts: safeWorkouts }, assessment);
   return createPlanVersionForWeapp(plan, {
     mode: 'custom',
     label: '手动编辑 · ' + formatShortDateForWeapp(new Date()),
@@ -2732,14 +2852,8 @@ function buildCustomPlan(plan, draft) {
         pattern: safeWorkouts.map(function (item) { return item.title; }).join(' / ')
       })
     },
-    assessment: getAssessmentFromPlan(plan),
-    review: {
-      level: 'ok',
-      summary: '你已基于 AI 计划手动编辑。建议先按新版本完成 1 次训练，再看恢复和动作质量。',
-      warnings: safeWorkouts.length >= 4 ? ['每周 4 次以上对恢复要求更高，睡眠和饮食要跟上。'] : [],
-      suggestions: ['只从现有动作库调整，暂不支持用户自建动作。'],
-      positives: ['原始 AI 计划和上一版都会保留。']
-    }
+    assessment: assessment,
+    review: review
   });
 }
 
@@ -2772,6 +2886,7 @@ module.exports = {
   getPreviousPlan: getPreviousPlan,
   getWorkoutDuration: getWorkoutDuration,
   normalizeAssessment: normalizeAssessment,
+  reviewCustomPlanDraft: reviewCustomPlanDraft,
   restoreOriginalPlan: restoreOriginalPlan,
   restorePreviousPlan: restorePreviousPlan,
   shouldRegeneratePlan: shouldRegeneratePlan,

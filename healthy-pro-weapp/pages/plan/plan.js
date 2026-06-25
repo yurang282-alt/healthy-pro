@@ -7,6 +7,59 @@ const {
   restorePreviousPlan
 } = require("../../utils/coach");
 
+function getVolumeTierLabel(value) {
+  const labels = {
+    compressed: "压缩训练量",
+    base: "基础训练量",
+    "moderate-hypertrophy": "中等增肌容量",
+    hypertrophy: "增肌容量"
+  };
+  return labels[value] || "基础训练量";
+}
+
+function formatWeeklySetAnchor(anchor) {
+  if (!anchor) return "未计算";
+  return `每肌群 ${anchor.min}-${anchor.max} 组/周`;
+}
+
+function buildReviewItems(review) {
+  if (!review) return [];
+  const warnings = (review.warnings || []).map((text) => ({ type: "warning", label: "风险", text }));
+  const suggestions = (review.suggestions || []).map((text) => ({ type: "suggestion", label: "建议", text }));
+  const positives = (review.positives || []).map((text) => ({ type: "positive", label: "通过", text }));
+  return warnings.concat(suggestions, positives);
+}
+
+function getCoachDetails(plan) {
+  if (!plan) {
+    return {
+      coachFacts: [],
+      coachReview: null,
+      coachReviewItems: [],
+      coachDecisionSummary: ""
+    };
+  }
+  const review = plan.customization && plan.customization.review;
+  const focusText = plan.focusText ||
+    (plan.focusAreas || []).map((item) => item && item.label).filter(Boolean).join("、") ||
+    "全身均衡";
+  return {
+    coachFacts: [
+      { label: "目标阶段", value: plan.goal && plan.goal.type || "未评估" },
+      { label: "时间上限", value: plan.frequency && plan.frequency.limitLabel || "教练安排" },
+      { label: "训练经验", value: plan.experience && plan.experience.label || "未填写" },
+      { label: "重点部位", value: focusText },
+      { label: "容量判断", value: getVolumeTierLabel(plan.trainingProfile && plan.trainingProfile.volumeTier) },
+      { label: "有效组数", value: formatWeeklySetAnchor(plan.trainingProfile && plan.trainingProfile.weeklySetAnchor) },
+      { label: "恢复安排", value: plan.frequency && plan.frequency.restDays || "每次间隔至少 1 天" },
+      { label: "时间分配", value: plan.duration && plan.duration.split || "已计入热身、休息和换器械时间" }
+    ],
+    coachReview: review || null,
+    coachReviewItems: buildReviewItems(review),
+    coachDecisionSummary: plan.decisionSummary && !review ? plan.decisionSummary : ""
+  };
+}
+
 Page({
   data: {
     plan: null,
@@ -18,7 +71,11 @@ Page({
     showPreviousPlan: false,
     expandedWorkoutId: "",
     canRestoreOriginal: false,
-    versionLabel: "AI 计划"
+    versionLabel: "AI 计划",
+    coachFacts: [],
+    coachReview: null,
+    coachReviewItems: [],
+    coachDecisionSummary: ""
   },
 
   onShow() {
@@ -39,7 +96,11 @@ Page({
         showPreviousPlan: false,
         expandedWorkoutId: "",
         canRestoreOriginal: false,
-        versionLabel: "AI 计划"
+        versionLabel: "AI 计划",
+        coachFacts: [],
+        coachReview: null,
+        coachReviewItems: [],
+        coachDecisionSummary: ""
       });
       return;
     }
@@ -61,6 +122,7 @@ Page({
     const expandedWorkoutId = workouts.some((item) => item.id === currentExpandedId)
       ? currentExpandedId
       : fallbackWorkoutId || "";
+    const coachDetails = getCoachDetails(plan);
     this.setData({
       plan,
       selectedWeek: safeWeek,
@@ -70,7 +132,8 @@ Page({
       previousPlan,
       expandedWorkoutId,
       canRestoreOriginal: canRestoreOriginalPlan(plan),
-      versionLabel: plan && plan.customization && plan.customization.label ? plan.customization.label : "AI 计划"
+      versionLabel: plan && plan.customization && plan.customization.label ? plan.customization.label : "AI 计划",
+      ...coachDetails
     });
   },
 
@@ -87,11 +150,13 @@ Page({
     const expandedWorkoutId = workouts.some((item) => item.id === this.data.expandedWorkoutId)
       ? this.data.expandedWorkoutId
       : workouts[0] && workouts[0].id || "";
+    const coachDetails = getCoachDetails(plan);
     this.setData({
       plan,
       selectedWeek,
       selectedWeekInfo: plan && plan.weeks ? plan.weeks[selectedWeek - 1] : null,
-      expandedWorkoutId
+      expandedWorkoutId,
+      ...coachDetails
     });
   },
 

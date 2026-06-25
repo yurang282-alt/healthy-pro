@@ -42,6 +42,20 @@ const STORAGE_KEY = "healthy-pro-store-v3";
 const INSTALL_DISMISSED_KEY = "healthy-pro-install-dismissed-v1";
 const LOCAL_RELEASES = [
   {
+    id: "local-v0.8.1",
+    version: "v0.8.1",
+    title: "PWA 与小程序功能对齐",
+    summary: "补齐小程序和 PWA 的计划解释、计划编辑审核、趋势、训练历史、器械分组和反馈记录差异。",
+    highlights: [
+      "小程序计划页新增教练解释，编辑计划前会提示风险和建议",
+      "小程序我的页补齐强度趋势和身体趋势，器械页按今日器械和训练区分组",
+      "PWA 历史训练补齐动作明细和训练后教练反馈"
+    ],
+    details: "这次更新目标是让已经在 PWA 验证过的功能完整迁移到微信小程序，同时把小程序里更细的训练历史体验同步回 PWA。",
+    releaseType: "improvement",
+    publishedAt: "2026-06-25T00:00:00+08:00"
+  },
+  {
     id: "local-v0.5.0",
     version: "v0.5.0",
     title: "界面和训练流程简化",
@@ -1971,6 +1985,26 @@ function renderWorkoutCard(workout, week, user, index = 0) {
   `;
 }
 
+function formatHistoryExerciseDetail(exercise) {
+  if (!exercise || !exercise.done) return "";
+  if (exercise.type === "cardio") {
+    const parts = [
+      exercise.durationMinutes ? `${exercise.durationMinutes} 分钟` : "",
+      exercise.speed ? `速度 ${exercise.speed}` : "",
+      exercise.incline ? `坡度 ${exercise.incline}%` : "",
+      exercise.resistance ? `阻力 ${exercise.resistance}` : ""
+    ].filter(Boolean);
+    return `${exercise.name}${parts.length ? `：${parts.join(" · ")}` : ""}`;
+  }
+
+  const parts = [
+    exercise.setsDone ? `${exercise.setsDone} 组` : "",
+    exercise.weight ? `${exercise.weight}kg/档` : "",
+    exercise.reps ? `${exercise.reps} 次` : ""
+  ].filter(Boolean);
+  return `${exercise.name}${parts.length ? `：${parts.join(" · ")}` : ""}`;
+}
+
 function renderTrainingHistory(logs = []) {
   const recentLogs = [...logs].reverse().slice(0, 12);
 
@@ -1991,6 +2025,11 @@ function renderTrainingHistory(logs = []) {
                 .filter((exercise) => exercise.done)
                 .map((exercise) => exercise.name)
                 .slice(0, 4);
+              const detailLines = log.exercises
+                .filter((exercise) => exercise.done)
+                .map(formatHistoryExerciseDetail)
+                .filter(Boolean)
+                .slice(0, 4);
 
               return `
                 <article class="history-card">
@@ -2002,6 +2041,17 @@ function renderTrainingHistory(logs = []) {
                     <span>${getIntensityLabel(log.intensityFeedback)}</span>
                   </div>
                   <p>完成 ${log.completedCount} 个动作${completedExercises.length ? `：${completedExercises.join("、")}` : ""}</p>
+                  ${detailLines.length ? `
+                    <div class="history-detail">
+                      ${detailLines.map((line) => `<span>${escapeHtml(line)}</span>`).join("")}
+                    </div>
+                  ` : ""}
+                  ${log.coachFeedback?.summary ? `
+                    <div class="history-coach-feedback">
+                      <strong>${escapeHtml(log.coachFeedback.title || "训练反馈")}</strong>
+                      <span>${escapeHtml(log.coachFeedback.summary)}</span>
+                    </div>
+                  ` : ""}
                   ${log.note ? `<p class="history-note">${escapeHtml(log.note)}</p>` : ""}
                 </article>
               `;

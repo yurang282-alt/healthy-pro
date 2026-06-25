@@ -2,6 +2,15 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.4.1",
+    version: "v0.4.1",
+    title: "与 PWA 功能对齐",
+    summary: "补齐小程序和 PWA 的计划解释、计划编辑审核、趋势、训练历史、器械分组和反馈记录差异。",
+    highlights: ["计划页新增教练解释", "编辑计划前提示风险和建议", "我的页补齐强度趋势和身体趋势", "器械页按今日器械和训练区分组"],
+    releaseType: "improvement",
+    publishedAt: "2026-06-25T00:00:00+08:00"
+  },
+  {
     id: "weapp-v0.1.0",
     version: "v0.1.0",
     title: "小程序端 MVP 启动",
@@ -210,6 +219,17 @@ function getProfileInsights(user, logs = [], bodyLogs = []) {
   const intensity = getIntensityInsights(sortedLogs);
   const bodyTrend = getBodyTrend(sortedBodyLogs);
   const weeklyBuckets = getRecentWeekBuckets(sortedLogs, weekTarget, now);
+  const intensityTotal = Math.max(1, intensity.recentCount || 0);
+  const intensityRows = [
+    { label: "偏轻松", count: intensity.tooEasy, rate: Math.round((intensity.tooEasy / intensityTotal) * 100) },
+    { label: "刚刚好", count: intensity.right, rate: Math.round((intensity.right / intensityTotal) * 100) },
+    { label: "偏吃力", count: intensity.tooHard, rate: Math.round((intensity.tooHard / intensityTotal) * 100) }
+  ];
+  const bodyTrendRows = sortedBodyLogs.slice(-4).reverse().map((record) => ({
+    label: formatDateTime(record.createdAt),
+    weight: Number.isFinite(Number(record.weight)) ? `${record.weight}kg` : "未记",
+    bodyFat: record.bodyFat ? `${record.bodyFat}%` : "未记体脂"
+  }));
   const bestWorkout = Math.max(0, ...sortedLogs.map((log) => Number(log.completedCount || 0)));
   const totalCompleted = sortedLogs.reduce((sum, log) => sum + Number(log.completedCount || 0), 0);
   const weekCompletionRate = weekTarget ? Math.min(100, Math.round((thisWeekLogs.length / weekTarget) * 100)) : 0;
@@ -222,7 +242,9 @@ function getProfileInsights(user, logs = [], bodyLogs = []) {
     latestWeightText: bodyTrend.latest ? `${bodyTrend.latest.weight}kg` : "未记",
     streakText: `${getCurrentTrainingWeekStreak(sortedLogs, now)} 周`,
     intensity,
+    intensityRows,
     bodyTrend,
+    bodyTrendRows,
     weeklyBuckets,
     latestLog: getLatest(sortedLogs),
     coachMessage: getProfileCoachMessage({ logs: sortedLogs, weekTarget, thisWeekCount: thisWeekLogs.length, intensity, bodyTrend }),
@@ -547,7 +569,7 @@ Page({
     const app = getApp();
     const store = app.getStore();
     store.feedbacks = Array.isArray(store.feedbacks) ? store.feedbacks : [];
-    store.feedbacks.push({
+    const feedback = {
       id: `feedback_${Date.now()}`,
       createdAt: new Date().toISOString(),
       content,
@@ -556,8 +578,10 @@ Page({
       category: this.data.feedbackCategory || "other",
       page: "profile",
       source: "weapp"
-    });
+    };
+    store.feedbacks.push(feedback);
     app.setStore(store);
+    app.syncFeedback(feedback);
     this.setData({ feedbackText: "" });
     this.refresh();
     wx.showToast({ title: "已保存反馈", icon: "success" });

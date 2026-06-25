@@ -2,7 +2,8 @@ const {
   buildCustomPlan,
   createExerciseFromKey,
   decoratePlanForWeapp,
-  getExerciseOptions
+  getExerciseOptions,
+  reviewCustomPlanDraft
 } = require("../../utils/coach");
 
 function clone(value) {
@@ -16,9 +17,19 @@ function createDraft(plan) {
   };
 }
 
+function buildReviewItems(review) {
+  if (!review) return [];
+  const warnings = (review.warnings || []).map((text) => ({ type: "warning", label: "风险", text }));
+  const suggestions = (review.suggestions || []).map((text) => ({ type: "suggestion", label: "建议", text }));
+  const positives = (review.positives || []).map((text) => ({ type: "positive", label: "通过", text }));
+  return warnings.concat(suggestions, positives);
+}
+
 Page({
   data: {
     draft: null,
+    review: null,
+    reviewItems: [],
     exerciseOptions: [],
     frequencyOptions: [2, 3, 4]
   },
@@ -38,9 +49,30 @@ Page({
       return;
     }
 
+    this.setDraft(createDraft(plan));
+    this.setData({ exerciseOptions: getExerciseOptions() });
+  },
+
+  getCurrentPlan() {
+    const app = getApp();
+    const store = app.getStore();
+    const context = app.getTrainingContext();
+    return decoratePlanForWeapp(context.user && context.user.plan, {
+      assessment: store.user && store.user.assessment,
+      logs: store.logs || [],
+      week: context.week || 1
+    });
+  },
+
+  setDraft(draft) {
+    const app = getApp();
+    const store = app.getStore();
+    const plan = this.getCurrentPlan();
+    const review = reviewCustomPlanDraft(plan, draft, store.user && store.user.assessment);
     this.setData({
-      draft: createDraft(plan),
-      exerciseOptions: getExerciseOptions()
+      draft,
+      review,
+      reviewItems: buildReviewItems(review)
     });
   },
 
@@ -65,7 +97,7 @@ Page({
       }
     }
     draft.frequency = frequency;
-    this.setData({ draft });
+    this.setDraft(draft);
   },
 
   setWorkoutField(event) {
@@ -73,7 +105,7 @@ Page({
     const key = event.currentTarget.dataset.key;
     const draft = clone(this.data.draft);
     draft.workouts[index][key] = event.detail.value;
-    this.setData({ draft });
+    this.setDraft(draft);
   },
 
   setExerciseField(event) {
@@ -82,7 +114,7 @@ Page({
     const key = event.currentTarget.dataset.key;
     const draft = clone(this.data.draft);
     draft.workouts[workoutIndex].exercises[exerciseIndex][key] = event.detail.value;
-    this.setData({ draft });
+    this.setDraft(draft);
   },
 
   replaceExercise(event) {
@@ -94,14 +126,14 @@ Page({
 
     const draft = clone(this.data.draft);
     draft.workouts[workoutIndex].exercises[exerciseIndex] = createExerciseFromKey(option.key);
-    this.setData({ draft });
+    this.setDraft(draft);
   },
 
   addExercise(event) {
     const workoutIndex = Number(event.currentTarget.dataset.workoutIndex);
     const draft = clone(this.data.draft);
     draft.workouts[workoutIndex].exercises.push(createExerciseFromKey("chest-press"));
-    this.setData({ draft });
+    this.setDraft(draft);
   },
 
   removeExercise(event) {
@@ -113,7 +145,7 @@ Page({
       return;
     }
     draft.workouts[workoutIndex].exercises.splice(exerciseIndex, 1);
-    this.setData({ draft });
+    this.setDraft(draft);
   },
 
   savePlan() {
@@ -122,7 +154,10 @@ Page({
     const currentPlan = store.user && store.user.plan;
     if (!currentPlan) return;
 
-    store.user.plan = buildCustomPlan(currentPlan, this.data.draft);
+    store.user.plan = buildCustomPlan(currentPlan, this.data.draft, {
+      assessment: store.user && store.user.assessment,
+      review: this.data.review
+    });
     app.setStore(store);
     wx.showToast({ title: "已保存", icon: "success" });
     wx.switchTab({ url: "/pages/plan/plan" });

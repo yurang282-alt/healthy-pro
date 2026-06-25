@@ -39,6 +39,10 @@ function logDocId(openid, logId) {
   return `log_${openid}_${String(logId || Date.now()).replace(/[^\w-]/g, "_")}`;
 }
 
+function feedbackDocId(openid, feedbackId) {
+  return `feedback_${openid}_${String(feedbackId || Date.now()).replace(/[^\w-]/g, "_")}`;
+}
+
 function friendshipDocId(leftOpenid, rightOpenid) {
   return `friendship_${[leftOpenid, rightOpenid].sort().join("_")}`.replace(/[^\w-]/g, "_");
 }
@@ -295,6 +299,28 @@ async function writeCloudLog(log, identity, syncedAt) {
   });
 }
 
+async function writeCloudFeedback(feedback, identity, syncedAt) {
+  const openid = identity && identity.openid;
+  if (!openid || !feedback) throw new Error("缺少反馈或微信身份");
+
+  const now = syncedAt || new Date().toISOString();
+  return getDatabase().collection("feedbacks").doc(feedbackDocId(openid, feedback.id)).set({
+    data: {
+      schema: CLOUD_STORE_SCHEMA,
+      appId: APP_ID,
+      openid,
+      feedback: compact(feedback),
+      rating: Number(feedback.rating || 0),
+      category: feedback.category || "other",
+      message: feedback.message || feedback.content || "",
+      page: feedback.page || "",
+      source: feedback.source || "weapp",
+      createdAt: feedback.createdAt || now,
+      updatedAt: now
+    }
+  });
+}
+
 module.exports = {
   APP_ID,
   CLOUD_ENV_ID,
@@ -309,6 +335,7 @@ module.exports = {
   respondCloudFriendship,
   sendCloudFriendRequest,
   userDocId,
+  writeCloudFeedback,
   writeCloudLog,
   writeCloudStore
 };
