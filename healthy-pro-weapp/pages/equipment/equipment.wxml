@@ -7,15 +7,38 @@
     <input class="input" type="text" value="{{query}}" bindinput="search" placeholder="搜索胸、背、跑步机、史密斯" />
   </view>
 
-  <view class="list">
-    <view wx:for="{{visibleEquipment}}" wx:key="id" class="equipment-row" data-id="{{item.id}}" bindtap="viewEquipmentExercise">
-      <image class="thumb" src="{{item.image}}" mode="aspectFit" />
-      <view class="item-body">
-        <text class="item-title">{{item.name}}</text>
-        <text class="item-meta">{{item.category}} · {{item.muscles}}</text>
-        <text class="item-help">{{item.setup}}</text>
-        <text class="item-meta">点开看动作说明</text>
+  <view wx:if="{{currentEquipment.length}}" class="card equipment-section">
+    <view class="eyebrow">今天会用到</view>
+    <text class="card-title">先找这几台</text>
+    <view class="list compact-list">
+      <view wx:for="{{currentEquipment}}" wx:key="id" class="equipment-row" data-id="{{item.id}}" bindtap="viewEquipmentExercise">
+        <image class="thumb" src="{{item.image}}" mode="aspectFit" />
+        <view class="item-body">
+          <text class="item-title">{{item.name}}</text>
+          <text class="item-meta">{{item.category}} · {{item.muscles}}</text>
+          <text class="item-help">{{item.setup}}</text>
+        </view>
       </view>
     </view>
   </view>
+
+  <view wx:if="{{visibleEquipment.length}}" class="equipment-group-stack">
+    <view wx:for="{{equipmentGroups}}" wx:key="category" class="card equipment-section">
+      <view class="eyebrow">{{item.category}}</view>
+      <text class="card-title">器械说明</text>
+      <view class="list compact-list">
+        <view wx:for="{{item.items}}" wx:for-item="equipmentItem" wx:key="id" class="equipment-row" data-id="{{equipmentItem.id}}" bindtap="viewEquipmentExercise">
+          <image class="thumb" src="{{equipmentItem.image}}" mode="aspectFit" />
+          <view class="item-body">
+            <text class="item-title">{{equipmentItem.name}}</text>
+            <text class="item-meta">{{equipmentItem.muscles}}</text>
+            <text class="item-help">{{equipmentItem.setup}}</text>
+            <text class="item-meta">点开看动作说明</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{!visibleEquipment.length}}" class="card empty-note">没有找到匹配器械。</view>
 </view>

@@ -1654,6 +1654,47 @@ input[type="range"] {
   color: #18385e;
 }
 
+.history-detail {
+  display: grid;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.history-detail span {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--soft);
+  color: #18385e;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.history-coach-feedback {
+  display: grid;
+  gap: 4px;
+  margin-top: 9px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #eef7f2;
+  color: var(--green-dark);
+}
+
+.history-coach-feedback strong,
+.history-coach-feedback span {
+  display: block;
+}
+
+.history-coach-feedback strong {
+  font-size: 13px;
+}
+
+.history-coach-feedback span {
+  color: #315844;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .workout-stack.compact {
   margin-top: 10px;
 }

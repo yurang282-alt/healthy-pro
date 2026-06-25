@@ -10,6 +10,18 @@
     </view>
   </view>
 
+  <view wx:if="{{draft && review}}" class="card review-card {{review.level == 'warning' ? 'warning' : ''}}">
+    <view class="eyebrow">教练建议</view>
+    <text class="card-title">{{review.level == 'warning' ? '先看这些风险' : '这版可以执行'}}</text>
+    <view class="muted">{{review.summary}}</view>
+    <view wx:if="{{reviewItems.length}}" class="review-list">
+      <view wx:for="{{reviewItems}}" wx:key="text" class="review-row {{item.type}}">
+        <text>{{item.label}}</text>
+        <text>{{item.text}}</text>
+      </view>
+    </view>
+  </view>
+
   <view wx:if="{{draft}}" class="editor-stack">
     <view wx:for="{{draft.workouts}}" wx:for-item="workout" wx:for-index="workoutIndex" wx:key="id" class="card editor-workout">
       <view class="eyebrow">训练日 {{workoutIndex + 1}}</view>

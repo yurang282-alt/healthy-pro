@@ -17,6 +17,7 @@ const {
   respondCloudFriendship,
   sendCloudFriendRequest,
   userDocId,
+  writeCloudFeedback,
   writeCloudLog,
   writeCloudStore
 } = require("./utils/cloud");
@@ -552,6 +553,23 @@ App({
       const openid = store.cloud && store.cloud.openid;
       if (!openid) return;
       await writeCloudLog(log, { openid });
+    } catch (error) {
+      const store = this.getStore();
+      store.cloud = {
+        ...(store.cloud || {}),
+        error: error && (error.errMsg || error.message) || "unknown error"
+      };
+      this.setStore(store, { sync: false, touch: false });
+    }
+  },
+
+  async syncFeedback(feedback) {
+    try {
+      await this.whenCloudReady();
+      const store = this.getStore();
+      const openid = store.cloud && store.cloud.openid;
+      if (!openid) return;
+      await writeCloudFeedback(feedback, { openid });
     } catch (error) {
       const store = this.getStore();
       store.cloud = {

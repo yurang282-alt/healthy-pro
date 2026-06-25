@@ -111,6 +111,35 @@
     </view>
 
     <view wx:if="{{insights}}" class="card">
+      <view class="eyebrow">强度趋势</view>
+      <text class="card-title">最近 {{insights.intensity.recentCount}} 次感觉</text>
+      <view class="muted">动作平均感觉：{{insights.intensity.feelingLabel}} · 最近一次：{{insights.intensity.latestFeedbackLabel}}</view>
+      <view class="trend-list">
+        <view wx:for="{{insights.intensityRows}}" wx:key="label" class="trend-row">
+          <view class="trend-meta">
+            <text>{{item.label}}</text>
+            <text>{{item.count}} 次</text>
+          </view>
+          <view class="trend-track"><view class="trend-fill {{item.label == '偏吃力' ? 'warm' : ''}}" style="width: {{item.rate}}%;"></view></view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{insights}}" class="card">
+      <view class="eyebrow">身体趋势</view>
+      <text class="card-title">最近身体记录</text>
+      <view class="muted">体重变化：{{insights.bodyTrend.weightDelta}}</view>
+      <view wx:if="{{insights.bodyTrendRows.length}}" class="body-trend-list">
+        <view wx:for="{{insights.bodyTrendRows}}" wx:key="label" class="body-trend-row">
+          <text>{{item.label}}</text>
+          <text>{{item.weight}}</text>
+          <text>{{item.bodyFat}}</text>
+        </view>
+      </view>
+      <view wx:if="{{!insights.bodyTrendRows.length}}" class="empty-note">还没有身体记录。训练记录页保存一次身体数据后会出现在这里。</view>
+    </view>
+
+    <view wx:if="{{insights}}" class="card">
       <view class="eyebrow">个人记录</view>
       <text class="card-title">训练和身体趋势</text>
       <view class="record-grid">

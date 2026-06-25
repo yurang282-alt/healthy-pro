@@ -271,6 +271,33 @@ insert into public.app_releases (
   is_published,
   published_at
 ) values (
+  'v0.8.1',
+  'PWA 与小程序功能对齐',
+  '补齐小程序和 PWA 的计划解释、计划编辑审核、趋势、训练历史、器械分组和反馈记录差异。',
+  '["小程序计划页新增教练解释，编辑计划前会提示风险和建议", "小程序我的页补齐强度趋势和身体趋势，器械页按今日器械和训练区分组", "PWA 历史训练补齐动作明细和训练后教练反馈"]'::jsonb,
+  '这次更新目标是让已经在 PWA 验证过的功能完整迁移到微信小程序，同时把小程序里更细的训练历史体验同步回 PWA。',
+  'improvement',
+  true,
+  '2026-06-25 00:00:00+08'
+) on conflict (version) do update set
+  title = excluded.title,
+  summary = excluded.summary,
+  highlights = excluded.highlights,
+  details = excluded.details,
+  release_type = excluded.release_type,
+  is_published = excluded.is_published,
+  published_at = excluded.published_at;
+
+insert into public.app_releases (
+  version,
+  title,
+  summary,
+  highlights,
+  details,
+  release_type,
+  is_published,
+  published_at
+) values (
   'v0.8.0',
   '训练反馈和好友动态',
   '保存训练后会给即时教练反馈，新用户首次进入会看到开始顺序，好友页新增最近训练动态。',
