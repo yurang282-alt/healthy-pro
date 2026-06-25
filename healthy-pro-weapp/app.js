@@ -85,6 +85,10 @@ function getWeekKey(dateValue) {
   return `${start.getFullYear()}-${start.getMonth() + 1}-${start.getDate()}`;
 }
 
+function sortRecords(records = []) {
+  return records.slice().sort((left, right) => new Date(left.createdAt) - new Date(right.createdAt));
+}
+
 function getCurrentTrainingWeekStreak(logs = [], now = new Date()) {
   if (!logs.length) return 0;
   const weeks = new Set(logs.map((log) => getWeekKey(log.createdAt)));

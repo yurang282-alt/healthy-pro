@@ -271,6 +271,33 @@ insert into public.app_releases (
   is_published,
   published_at
 ) values (
+  'v0.8.2',
+  '小程序评估生成计划修复',
+  '修复小程序重新评估后计划没有更新的问题，评估结果会正确写入并刷新首页计划。',
+  '["补齐小程序全局状态排序函数，避免评估提交后状态整理异常", "重新评估后会按最新目标、频次、时长和重点部位生成计划", "减少运行异常导致的开发工具重连和红色报错"]'::jsonb,
+  '这次是小程序端稳定性修复。PWA 功能不变，但同步记录这次发布，方便之后从更新公告里追踪朋友体验版拿到的版本。',
+  'fix',
+  true,
+  '2026-06-25 18:00:00+08'
+) on conflict (version) do update set
+  title = excluded.title,
+  summary = excluded.summary,
+  highlights = excluded.highlights,
+  details = excluded.details,
+  release_type = excluded.release_type,
+  is_published = excluded.is_published,
+  published_at = excluded.published_at;
+
+insert into public.app_releases (
+  version,
+  title,
+  summary,
+  highlights,
+  details,
+  release_type,
+  is_published,
+  published_at
+) values (
   'v0.8.1',
   'PWA 与小程序功能对齐',
   '补齐小程序和 PWA 的计划解释、计划编辑审核、趋势、训练历史、器械分组和反馈记录差异。',
