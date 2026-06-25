@@ -2,6 +2,15 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.4.2",
+    version: "v0.4.2",
+    title: "评估生成计划修复",
+    summary: "修复小程序重新评估后计划没有更新的问题，评估结果会正确写入并刷新首页计划。",
+    highlights: ["补齐全局状态排序函数，避免评估提交后状态整理异常", "重新评估后会按最新目标、频次、时长和重点部位生成计划", "减少运行异常导致的开发工具重连和红色报错"],
+    releaseType: "fix",
+    publishedAt: "2026-06-25T18:00:00+08:00"
+  },
+  {
     id: "weapp-v0.4.1",
     version: "v0.4.1",
     title: "与 PWA 功能对齐",

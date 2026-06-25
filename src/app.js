@@ -42,6 +42,20 @@ const STORAGE_KEY = "healthy-pro-store-v3";
 const INSTALL_DISMISSED_KEY = "healthy-pro-install-dismissed-v1";
 const LOCAL_RELEASES = [
   {
+    id: "local-v0.8.2",
+    version: "v0.8.2",
+    title: "小程序评估生成计划修复",
+    summary: "修复小程序重新评估后计划没有更新的问题，评估结果会正确写入并刷新首页计划。",
+    highlights: [
+      "补齐小程序全局状态排序函数，避免评估提交后状态整理异常",
+      "重新评估后会按最新目标、频次、时长和重点部位生成计划",
+      "减少运行异常导致的开发工具重连和红色报错"
+    ],
+    details: "这次是小程序端稳定性修复。PWA 功能不变，但同步记录这次发布，方便之后从更新公告里追踪朋友体验版拿到的版本。",
+    releaseType: "fix",
+    publishedAt: "2026-06-25T18:00:00+08:00"
+  },
+  {
     id: "local-v0.8.1",
     version: "v0.8.1",
     title: "PWA 与小程序功能对齐",
