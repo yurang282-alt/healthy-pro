@@ -9,6 +9,15 @@
     <button class="primary-button" bindtap="goAssessment">开始评估</button>
   </view>
 
+  <view wx:if="{{showCompletionPrompt}}" class="completion-save-pop">
+    <view class="completion-copy">
+      <text class="completion-kicker">本次训练已完成</text>
+      <text class="completion-title">保存本次记录</text>
+      <text class="completion-desc">已完成 {{completedCount}} 个动作，保存后会进入历史并用于后续计划调整。</text>
+    </view>
+    <button class="completion-save-button" bindtap="saveLog">保存</button>
+  </view>
+
   <view wx:if="{{workout}}" class="card">
     <view class="row">
       <view>

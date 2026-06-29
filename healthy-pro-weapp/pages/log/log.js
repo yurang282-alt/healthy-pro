@@ -66,6 +66,10 @@ function getFeelingLabel(value) {
   return matched ? matched.label : "刚好";
 }
 
+function isSessionComplete(exerciseRecords = []) {
+  return exerciseRecords.length > 0 && exerciseRecords.every((item) => item.done);
+}
+
 function formatExerciseDetail(exercise) {
   if (!exercise || !exercise.done) return "";
   if (exercise.type === "cardio") {
@@ -167,6 +171,7 @@ Page({
     restRemainingText: "0:00",
     feelingChoices: FEELING_CHOICES,
     completedCount: 0,
+    showCompletionPrompt: false,
     intensityFeedback: "right",
     note: "",
     bodyDraft: {
@@ -206,6 +211,7 @@ Page({
       activeRecord: exerciseRecords[activeExerciseIndex] || null,
       activeMeta: getActiveTrainingMeta(exerciseRecords[activeExerciseIndex], activeExerciseIndex, exerciseRecords.length),
       completedCount: exerciseRecords.filter((item) => item.done).length,
+      showCompletionPrompt: isSessionComplete(exerciseRecords),
       intensityFeedback: draft.intensityFeedback || this.data.intensityFeedback || "right",
       note: draft.note || "",
       bodyDraft,
@@ -325,15 +331,26 @@ Page({
 
   applyExerciseRecords(exerciseRecords, activeExerciseIndex = this.data.activeExerciseIndex) {
     const safeIndex = Math.max(0, Math.min(exerciseRecords.length - 1, Number(activeExerciseIndex || 0)));
+    const wasComplete = this.data.showCompletionPrompt;
+    const showCompletionPrompt = isSessionComplete(exerciseRecords);
     this.setData({
       exerciseRecords,
       activeExerciseIndex: safeIndex,
       activeRecord: exerciseRecords[safeIndex] || null,
       activeMeta: getActiveTrainingMeta(exerciseRecords[safeIndex], safeIndex, exerciseRecords.length),
-      completedCount: exerciseRecords.filter((item) => item.done).length
+      completedCount: exerciseRecords.filter((item) => item.done).length,
+      showCompletionPrompt
     });
     this.persistTrainingDraft({ exerciseRecords, activeExerciseIndex: safeIndex });
     this.refreshRestTimer();
+    if (!wasComplete && showCompletionPrompt) {
+      this.notifySessionComplete();
+    }
+  },
+
+  notifySessionComplete() {
+    if (!wx.vibrateShort) return;
+    wx.vibrateShort({ type: "light" });
   },
 
   refreshRestTimer() {

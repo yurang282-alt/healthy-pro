@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Healthy Pro 小程序 MVP 验收清单</title>
+  <style>
+    :root {
+      --bg: #f5f7f8;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #667085;
+      --line: #dfe7ee;
+      --green: #157a55;
+      --green-soft: #eaf4ef;
+      --warn: #8a4b0b;
+      --warn-soft: #fff7ed;
+      --shadow: 0 16px 46px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.5;
+    }
+
+    .page {
+      width: min(920px, 100%);
+      margin: 0 auto;
+      padding: 28px 18px 72px;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      margin: -28px -18px 20px;
+      padding: 22px 18px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(245, 247, 248, 0.92);
+      backdrop-filter: blur(14px);
+    }
+
+    .header-inner {
+      width: min(920px, 100%);
+      margin: 0 auto;
+    }
+
+    .brand {
+      color: var(--green);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 2px 0 8px;
+      font-size: clamp(30px, 6vw, 44px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      margin-top: 18px;
+    }
+
+    .progress-wrap {
+      min-width: 0;
+    }
+
+    .progress-line {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e7edf2;
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: var(--green);
+      transition: width 180ms ease;
+    }
+
+    .progress-text {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    button {
+      min-height: 42px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      font: inherit;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: #111827;
+      background: #111827;
+      color: #ffffff;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .notice {
+      margin: 18px 0;
+      padding: 14px 16px;
+      border: 1px solid #f0d7b4;
+      border-radius: 12px;
+      background: var(--warn-soft);
+      color: var(--warn);
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .section {
+      margin-top: 16px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .section-head {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .eyebrow {
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    h2 {
+      margin: 2px 0 0;
+      font-size: 24px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    .section-count {
+      flex: 0 0 auto;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .check-item {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfcfd;
+    }
+
+    .check-item.done {
+      border-color: rgba(21, 122, 85, 0.35);
+      background: #fbfefd;
+    }
+
+    input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      margin: 2px 0 0;
+      accent-color: var(--green);
+      cursor: pointer;
+    }
+
+    .item-title {
+      display: block;
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 850;
+    }
+
+    .item-note {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .notes {
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+    }
+
+    .notes textarea {
+      width: 100%;
+      min-height: 150px;
+      margin-top: 12px;
+      padding: 12px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: var(--text);
+      font: inherit;
+      font-size: 15px;
+    }
+
+    .footer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 640px) {
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .section {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="header-inner">
+        <div class="brand">Healthy Pro</div>
+        <h1>小程序 MVP 验收清单</h1>
+        <p class="lead">用于验证微信小程序体验版是否达到“我和朋友可稳定使用”的标准。勾选状态会自动保存在当前浏览器。</p>
+        <div class="toolbar">
+          <div class="progress-wrap">
+            <div class="progress-line"><div class="progress-bar" id="progressBar"></div></div>
+            <span class="progress-text" id="progressText">0/0 已完成</span>
+          </div>
+          <button class="primary" id="copySummary">复制验收摘要</button>
+          <button id="resetAll">清空勾选</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="notice">
+      验收建议：至少用两个不同微信账号测试一次。重点不是“页面能打开”，而是数据隔离、重新评估、训练记录、云同步这些核心路径能连续跑通。
+    </div>
+
+    <main id="checklistRoot"></main>
+
+    <section class="notes">
+      <div class="eyebrow">问题记录</div>
+      <h2>验证过程中的问题</h2>
+      <textarea id="testerNotes" placeholder="记录问题：页面、操作路径、实际结果、期望结果、截图说明。"></textarea>
+      <div class="footer-actions">
+        <button id="copyNotes">复制问题记录</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "healthy-pro-weapp-mvp-checklist-v1";
+    const NOTES_KEY = "healthy-pro-weapp-mvp-notes-v1";
+
+    const sections = [
+      {
+        id: "new-user",
+        label: "A",
+        title: "新用户首次使用",
+        items: [
+          ["新微信用户首次打开小程序", "应进入基础评估或可明确进入评估，不出现白屏或旧用户数据。"],
+          ["填写基础评估信息", "年龄、性别、身高、体重、体脂、目标、经验、频次、单次时长都能填写。"],
+          ["生成训练计划", "提交评估后能生成训练计划，并进入首页/计划页。"],
+          ["退出后重新进入", "计划仍然存在，不需要重新评估。"]
+        ]
+      },
+      {
+        id: "plan",
+        label: "B",
+        title: "计划合理性",
+        items: [
+          ["不同目标会影响计划", "增肌、减脂、塑形不应该生成完全一样的计划。"],
+          ["每周频次生效", "最多 2 次、3 次、4 次以上应影响训练日数量。"],
+          ["单次时长生效", "45/60/75 分钟应影响动作数量和容量，不应写死。"],
+          ["重新评估保留上次输入", "点击重新评估后，表单应回显用户上一次填写的值。"],
+          ["重点部位影响训练结构", "选择胸、背、腿等重点后，计划主题和动作应对应变化。"]
+        ]
+      },
+      {
+        id: "log",
+        label: "C",
+        title: "训练记录",
+        items: [
+          ["逐个完成动作", "记录页能按顺序完成每个动作，不需要用户自己找路径。"],
+          ["全部完成后出现顶部保存入口", "完成最后一个动作后，顶部出现“保存本次记录”提示。"],
+          ["保存后进入历史记录", "保存本次训练后，历史训练能看到这条记录。"],
+          ["部分完成也可保存", "未全部完成时，仍可保存已完成训练。"],
+          ["跑步机类动作字段正确", "有氧动作能填写时长、速度、坡度、阻力，不要求重量/次数。"],
+          ["每个动作感觉可保存", "动作级感觉选项能选择并保存。"],
+          ["训练后整体感觉可保存", "太轻松、刚刚好、太吃力能保存并影响记录摘要。"]
+        ]
+      },
+      {
+        id: "data-isolation",
+        label: "D",
+        title: "数据隔离",
+        items: [
+          ["两个微信账号分别使用", "你和朋友各自生成计划。"],
+          ["计划不互相覆盖", "朋友重新评估或生成计划，不影响你的计划。"],
+          ["记录不互相混入", "朋友保存训练记录，不出现在你的历史记录里。"],
+          ["重新进入后数据仍隔离", "两个账号退出再进，仍只看到自己的数据。"]
+        ]
+      },
+      {
+        id: "cloud",
+        label: "E",
+        title: "云同步与异常",
+        items: [
+          ["正常网络保存成功", "训练记录、身体记录、评估数据能保存。"],
+          ["重新进入后云端数据恢复", "关闭小程序再打开，数据仍存在。"],
+          ["弱网不白屏", "网络慢或临时失败时，页面不应卡死或白屏。"],
+          ["同步失败不丢本地操作", "失败时至少保留当前页面输入或给出可重试路径。"]
+        ]
+      },
+      {
+        id: "ux",
+        label: "F",
+        title: "UI 与体验",
+        items: [
+          ["首页能看懂今天做什么", "用户不用理解模型规则，也能知道今天练什么。"],
+          ["计划页能看懂本周结构", "训练日、周次、频次、重点部位清晰。"],
+          ["记录页关键操作明显", "保存训练、完成动作、看动作详情都容易找到。"],
+          ["我的页信息不过载", "周报、好友、更新、设置有层级，不堆满页面。"],
+          ["小屏手机不遮挡", "按钮、底部导航、输入框、浮层不互相遮挡。"],
+          ["器械图文匹配", "动作里的器械图片和文字一致，不出现跑步机配史密斯等问题。"]
+        ]
+      }
+    ];
+
+    function loadState() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      } catch (error) {
+        return {};
+      }
+    }
+
+    function saveState(state) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function render() {
+      const state = loadState();
+      const root = document.getElementById("checklistRoot");
+      root.innerHTML = sections.map((section) => {
+        const items = section.items.map((item, index) => {
+          const key = `${section.id}-${index}`;
+          const checked = Boolean(state[key]);
+          return `
+            <label class="check-item ${checked ? "done" : ""}">
+              <input type="checkbox" data-key="${key}" ${checked ? "checked" : ""} />
+              <span>
+                <span class="item-title">${item[0]}</span>
+                <span class="item-note">${item[1]}</span>
+              </span>
+            </label>
+          `;
+        }).join("");
+
+        const done = section.items.filter((_, index) => state[`${section.id}-${index}`]).length;
+        return `
+          <section class="section" data-section="${section.id}">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow">${section.label}. ${section.title}</div>
+                <h2>${section.title}</h2>
+              </div>
+              <div class="section-count">${done}/${section.items.length}</div>
+            </div>
+            <div class="checklist">${items}</div>
+          </section>
+        `;
+      }).join("");
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const state = loadState();
+      const total = sections.reduce((sum, section) => sum + section.items.length, 0);
+      const done = sections.reduce((sum, section) => {
+        return sum + section.items.filter((_, index) => state[`${section.id}-${index}`]).length;
+      }, 0);
+      const percent = total ? Math.round((done / total) * 100) : 0;
+      document.getElementById("progressBar").style.width = `${percent}%`;
+      document.getElementById("progressText").textContent = `${done}/${total} 已完成 · ${percent}%`;
+    }
+
+    function buildSummary() {
+      const state = loadState();
+      const lines = ["Healthy Pro 小程序 MVP 验收摘要", ""];
+      sections.forEach((section) => {
+        const done = section.items.filter((_, index) => state[`${section.id}-${index}`]).length;
+        lines.push(`${section.label}. ${section.title}: ${done}/${section.items.length}`);
+        section.items.forEach((item, index) => {
+          const checked = state[`${section.id}-${index}`] ? "已通过" : "未验证";
+          lines.push(`- [${checked}] ${item[0]}`);
+        });
+        lines.push("");
+      });
+      const notes = document.getElementById("testerNotes").value.trim();
+      if (notes) {
+        lines.push("问题记录:");
+        lines.push(notes);
+      }
+      return lines.join("\n");
+    }
+
+    async function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+      return false;
+    }
+
+    document.addEventListener("change", (event) => {
+      if (!event.target.matches("input[type='checkbox'][data-key]")) return;
+      const state = loadState();
+      state[event.target.dataset.key] = event.target.checked;
+      saveState(state);
+      render();
+    });
+
+    document.getElementById("resetAll").addEventListener("click", () => {
+      if (!confirm("确认清空所有勾选状态？")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      render();
+    });
+
+    document.getElementById("copySummary").addEventListener("click", async () => {
+      const ok = await copyText(buildSummary());
+      alert(ok ? "验收摘要已复制" : "当前浏览器不支持自动复制，请手动选择复制。");
+    });
+
+    document.getElementById("copyNotes").addEventListener("click", async () => {
+      const notes = document.getElementById("testerNotes").value.trim();
+      const ok = await copyText(notes || "暂无问题记录");
+      alert(ok ? "问题记录已复制" : "当前浏览器不支持自动复制，请手动选择复制。");
+    });
+
+    const notesEl = document.getElementById("testerNotes");
+    notesEl.value = localStorage.getItem(NOTES_KEY) || "";
+    notesEl.addEventListener("input", () => {
+      localStorage.setItem(NOTES_KEY, notesEl.value);
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 .tools/
 .vercel
 dist/
+.DS_Store
 .env
 .env.*
 !.env.example
