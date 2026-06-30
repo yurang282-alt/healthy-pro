@@ -2,6 +2,15 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.4.3",
+    version: "v0.4.3",
+    title: "训练记录流程优化",
+    summary: "记录页改成训练中流程，用户按当前动作逐项完成，全部完成后会在顶部提示保存本次训练。",
+    highlights: ["当前动作成为主入口，不再同时展示长表单", "完成动作后自动跳到下一个待完成动作", "支持保存草稿、继续修改和保存第 N 次训练"],
+    releaseType: "improvement",
+    publishedAt: "2026-06-30T12:00:00+08:00"
+  },
+  {
     id: "weapp-v0.4.2",
     version: "v0.4.2",
     title: "评估生成计划修复",

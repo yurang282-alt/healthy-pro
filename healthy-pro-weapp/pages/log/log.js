@@ -70,6 +70,17 @@ function isSessionComplete(exerciseRecords = []) {
   return exerciseRecords.length > 0 && exerciseRecords.every((item) => item.done);
 }
 
+function getNextPendingIndex(exerciseRecords = [], currentIndex = 0) {
+  const start = Number(currentIndex || 0) + 1;
+  for (let index = start; index < exerciseRecords.length; index += 1) {
+    if (!exerciseRecords[index].done) return index;
+  }
+  for (let index = 0; index < start; index += 1) {
+    if (!exerciseRecords[index].done) return index;
+  }
+  return -1;
+}
+
 function formatExerciseDetail(exercise) {
   if (!exercise || !exercise.done) return "";
   if (exercise.type === "cardio") {
@@ -140,15 +151,12 @@ function getActiveTrainingMeta(record, index, total) {
   }
   const doneCount = Number(record.setsDone || 0);
   const targetSets = Math.max(1, Number(record.targetSets || 1));
-  const nextSet = Math.min(targetSets, doneCount + 1);
   const progressPercent = total ? Math.round(((Number(index || 0) + (record.done ? 1 : 0)) / total) * 100) : 0;
   return {
     indexText: `第 ${Number(index || 0) + 1}/${total || 1} 项`,
     progressPercent,
-    actionLabel: record.isCardio
-      ? (record.done ? "本段已完成" : "完成这段有氧")
-      : (record.done ? "本动作已完成" : `完成第 ${nextSet} 组`),
-    targetText: record.isCardio ? record.reps : `${doneCount}/${targetSets} 组`
+    actionLabel: record.done ? "已完成" : "完成当前动作",
+    targetText: record.done ? "已完成" : (record.isCardio ? record.reps : `${doneCount}/${targetSets} 组`)
   };
 }
 
@@ -170,8 +178,11 @@ Page({
     restRemaining: 0,
     restRemainingText: "0:00",
     feelingChoices: FEELING_CHOICES,
+    sessionNumber: 1,
     completedCount: 0,
+    sessionComplete: false,
     showCompletionPrompt: false,
+    completionPromptDismissed: false,
     intensityFeedback: "right",
     note: "",
     bodyDraft: {
@@ -203,6 +214,9 @@ Page({
     const exerciseRecords = this.buildExerciseRecords(workout, draft);
     const activeExerciseIndex = Math.max(0, Math.min(exerciseRecords.length - 1, Number(draft.activeExerciseIndex || 0)));
     const bodyDraft = wx.getStorageSync(getBodyDraftKey(draftScope)) || this.data.bodyDraft;
+    const sourceLogs = context.logs || [];
+    const completedCount = exerciseRecords.filter((item) => item.done).length;
+    const sessionComplete = isSessionComplete(exerciseRecords);
     this.setData({
       workout,
       week,
@@ -210,12 +224,15 @@ Page({
       activeExerciseIndex,
       activeRecord: exerciseRecords[activeExerciseIndex] || null,
       activeMeta: getActiveTrainingMeta(exerciseRecords[activeExerciseIndex], activeExerciseIndex, exerciseRecords.length),
-      completedCount: exerciseRecords.filter((item) => item.done).length,
-      showCompletionPrompt: isSessionComplete(exerciseRecords),
+      sessionNumber: sourceLogs.length + 1,
+      completedCount,
+      sessionComplete,
+      completionPromptDismissed: sessionComplete ? this.data.completionPromptDismissed : false,
+      showCompletionPrompt: sessionComplete && !this.data.completionPromptDismissed,
       intensityFeedback: draft.intensityFeedback || this.data.intensityFeedback || "right",
       note: draft.note || "",
       bodyDraft,
-      logs: (context.logs || []).slice().reverse().map((item) => this.formatHistoryLog(item)),
+      logs: sourceLogs.map((item, index) => this.formatHistoryLog(item, index)).reverse(),
       bodyLogs: (context.bodyLogs || []).slice().reverse().map((item) => ({
         ...item,
         createdLabel: formatDateTime(item.createdAt)
@@ -278,10 +295,13 @@ Page({
     });
   },
 
-  formatHistoryLog(log) {
+  formatHistoryLog(log, index = 0) {
     const completed = (log.exercises || []).filter((exercise) => exercise.done);
+    const sessionNumber = Number(log.sessionNumber || index + 1);
     return {
       ...log,
+      sessionNumber,
+      sessionLabel: `第 ${sessionNumber} 次训练`,
       createdLabel: formatDateTime(log.createdAt),
       feedbackLabel: getIntensityLabel(log.intensityFeedback),
       coachFeedbackTitle: log.coachFeedback && log.coachFeedback.title || "",
@@ -332,13 +352,15 @@ Page({
   applyExerciseRecords(exerciseRecords, activeExerciseIndex = this.data.activeExerciseIndex) {
     const safeIndex = Math.max(0, Math.min(exerciseRecords.length - 1, Number(activeExerciseIndex || 0)));
     const wasComplete = this.data.showCompletionPrompt;
-    const showCompletionPrompt = isSessionComplete(exerciseRecords);
+    const sessionComplete = isSessionComplete(exerciseRecords);
+    const showCompletionPrompt = sessionComplete && !this.data.completionPromptDismissed;
     this.setData({
       exerciseRecords,
       activeExerciseIndex: safeIndex,
       activeRecord: exerciseRecords[safeIndex] || null,
       activeMeta: getActiveTrainingMeta(exerciseRecords[safeIndex], safeIndex, exerciseRecords.length),
       completedCount: exerciseRecords.filter((item) => item.done).length,
+      sessionComplete,
       showCompletionPrompt
     });
     this.persistTrainingDraft({ exerciseRecords, activeExerciseIndex: safeIndex });
@@ -351,6 +373,18 @@ Page({
   notifySessionComplete() {
     if (!wx.vibrateShort) return;
     wx.vibrateShort({ type: "light" });
+  },
+
+  dismissCompletionPrompt() {
+    this.setData({
+      completionPromptDismissed: true,
+      showCompletionPrompt: false
+    });
+  },
+
+  saveDraft() {
+    this.persistTrainingDraft();
+    wx.showToast({ title: "草稿已保存", icon: "success" });
   },
 
   refreshRestTimer() {
@@ -411,21 +445,18 @@ Page({
     const index = Number(this.data.activeExerciseIndex || 0);
     const exerciseRecords = this.data.exerciseRecords.map((item, itemIndex) => {
       if (itemIndex !== index) return item;
-      const nextSetsDone = Math.min(Number(item.targetSets || 1), Number(item.setsDone || 0) + 1);
-      const done = nextSetsDone >= Number(item.targetSets || 1);
+      const targetSets = Math.max(1, Number(item.targetSets || 1));
       return {
         ...item,
-        done,
-        setsDone: String(nextSetsDone),
-        restUntil: done ? "" : String(Date.now() + parseRestSeconds(item.rest) * 1000)
+        done: true,
+        setsDone: item.setsDone || String(targetSets),
+        restUntil: ""
       };
     });
     this.applyExerciseRecords(exerciseRecords, index);
-    const activeRecord = exerciseRecords[index];
-    if (activeRecord && activeRecord.done && index < exerciseRecords.length - 1) {
-      setTimeout(() => this.jumpToIndex(index + 1), 250);
-    } else {
-      this.startRestTimer();
+    const nextIndex = getNextPendingIndex(exerciseRecords, index);
+    if (nextIndex >= 0) {
+      setTimeout(() => this.jumpToIndex(nextIndex), 250);
     }
   },
 
@@ -440,9 +471,19 @@ Page({
       };
     });
     this.applyExerciseRecords(exerciseRecords, index);
-    if (index < exerciseRecords.length - 1) {
-      setTimeout(() => this.jumpToIndex(index + 1), 250);
+    const nextIndex = getNextPendingIndex(exerciseRecords, index);
+    if (nextIndex >= 0) {
+      setTimeout(() => this.jumpToIndex(nextIndex), 250);
     }
+  },
+
+  markActiveIncomplete() {
+    const index = Number(this.data.activeExerciseIndex || 0);
+    const exerciseRecords = this.data.exerciseRecords.map((item, itemIndex) => (
+      itemIndex === index ? { ...item, done: false } : item
+    ));
+    this.setData({ completionPromptDismissed: false });
+    this.applyExerciseRecords(exerciseRecords, index);
   },
 
   chooseIntensity(event) {
@@ -485,8 +526,7 @@ Page({
       if (itemIndex !== index) return item;
       return {
         ...item,
-        [key]: value,
-        done: value !== "" ? true : item.done
+        [key]: value
       };
     });
     this.applyExerciseRecords(exerciseRecords);
@@ -496,7 +536,7 @@ Page({
     const index = Number(event.currentTarget.dataset.index);
     const feeling = Number(event.currentTarget.dataset.value);
     const exerciseRecords = this.data.exerciseRecords.map((item, itemIndex) => (
-      itemIndex === index ? { ...item, feeling, done: true } : item
+      itemIndex === index ? { ...item, feeling } : item
     ));
     this.applyExerciseRecords(exerciseRecords);
   },
@@ -548,6 +588,7 @@ Page({
     const nextLog = {
       id: `log_${Date.now()}`,
       createdAt: new Date().toISOString(),
+      sessionNumber: store.logs.length + 1,
       workoutId: workout.id,
       workoutTitle: workout.title,
       week: this.data.week,
@@ -562,11 +603,11 @@ Page({
     store.logs.push(nextLog);
     app.setStore(store);
     app.syncTrainingLog(nextLog);
-    this.setData({ note: "", intensityFeedback: "right" });
+    this.setData({ note: "", intensityFeedback: "right", completionPromptDismissed: false });
     wx.removeStorageSync(getDraftKey(workout, this.data.week, getDraftScope()));
     this.refresh();
     wx.showModal({
-      title: nextLog.coachFeedback.title,
+      title: `已保存第 ${nextLog.sessionNumber} 次训练`,
       content: nextLog.coachFeedback.summary,
       showCancel: false,
       confirmText: "知道了"

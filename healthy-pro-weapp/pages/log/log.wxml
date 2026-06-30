@@ -1,7 +1,7 @@
 <view class="page">
   <view class="eyebrow">训练记录</view>
-  <view class="title">{{workout.title}}</view>
-  <view class="muted">{{workout.focus}}</view>
+  <view class="title">第 {{sessionNumber}} 次训练</view>
+  <view class="muted">{{workout.title}} · {{workout.focus}}</view>
 
   <view wx:if="{{!workout}}" class="card">
     <text class="card-title">先完成基础评估</text>
@@ -12,21 +12,27 @@
   <view wx:if="{{showCompletionPrompt}}" class="completion-save-pop">
     <view class="completion-copy">
       <text class="completion-kicker">本次训练已完成</text>
-      <text class="completion-title">保存本次记录</text>
-      <text class="completion-desc">已完成 {{completedCount}} 个动作，保存后会进入历史并用于后续计划调整。</text>
+      <text class="completion-title">保存本次训练</text>
+      <text class="completion-desc">已完成 {{completedCount}} 个动作，保存后会进入历史记录，并用于后续计划调整。</text>
     </view>
-    <button class="completion-save-button" bindtap="saveLog">保存</button>
+    <view class="completion-actions">
+      <button class="completion-edit-button" bindtap="dismissCompletionPrompt">继续修改</button>
+      <button class="completion-save-button" bindtap="saveLog">保存</button>
+    </view>
   </view>
 
   <view wx:if="{{workout}}" class="card">
     <view class="row">
       <view>
         <view class="eyebrow">本次训练</view>
-        <text class="card-title">逐项记录</text>
+        <text class="card-title">{{workout.title}}</text>
       </view>
-      <text class="pill">{{completedCount}}/{{exerciseRecords.length}}</text>
+      <view class="session-actions">
+        <text class="pill">{{completedCount}}/{{exerciseRecords.length}}</text>
+        <button class="small-button draft-button" bindtap="saveDraft">保存草稿</button>
+      </view>
     </view>
-    <view class="muted session-hint">第 {{week}} 周 · 可以只保存实际完成的动作，没做的不用勾选。</view>
+    <view class="muted session-hint">第 {{sessionNumber}} 次训练 · 第 {{week}} 周 · 按顺序完成，临时离开可保存草稿。</view>
 
     <view wx:if="{{activeRecord}}" class="training-card">
       <view class="training-progress-line">
@@ -35,7 +41,7 @@
       <view class="record-head active-head">
         <image class="training-visual" src="{{activeRecord.image}}" mode="aspectFit" />
         <view class="item-body">
-          <text class="eyebrow">{{activeMeta.indexText}}</text>
+          <text class="eyebrow">{{activeMeta.indexText}} · {{activeRecord.done ? '已完成' : '待完成'}}</text>
           <text class="card-title">{{activeRecord.name}}</text>
           <text class="item-meta">{{activeRecord.equipmentName}} · {{activeRecord.sets}} · {{activeRecord.reps}}</text>
           <text wx:if="{{activeRecord.load}}" class="load-line">建议起步：{{activeRecord.load}}</text>
@@ -52,7 +58,7 @@
           <text>{{activeRecord.rest}}</text>
         </view>
         <view>
-          <text>{{activeRecord.isCardio ? '目标时长' : '完成组数'}}</text>
+          <text>{{activeRecord.isCardio ? '目标时长' : '当前状态'}}</text>
           <text>{{activeMeta.targetText}}</text>
         </view>
       </view>
@@ -109,8 +115,12 @@
         </view>
       </view>
 
-      <button wx:if="{{activeRecord.isStrength}}" class="primary-button training-main-button" disabled="{{activeRecord.done}}" bindtap="completeActiveStrengthSet">{{activeMeta.actionLabel}}</button>
-      <button wx:if="{{activeRecord.isCardio}}" class="primary-button training-main-button" disabled="{{activeRecord.done}}" bindtap="completeActiveCardio">{{activeMeta.actionLabel}}</button>
+      <button wx:if="{{activeRecord.isStrength && !activeRecord.done}}" class="primary-button training-main-button" bindtap="completeActiveStrengthSet">{{activeMeta.actionLabel}}</button>
+      <button wx:if="{{activeRecord.isCardio && !activeRecord.done}}" class="primary-button training-main-button" bindtap="completeActiveCardio">{{activeMeta.actionLabel}}</button>
+      <view wx:if="{{activeRecord.done}}" class="done-panel">
+        <text>这个动作已完成。可以继续修改重量、次数或感觉。</text>
+        <button class="small-button" bindtap="markActiveIncomplete">改为待完成</button>
+      </view>
 
       <view class="training-controls">
         <button class="small-button" disabled="{{activeExerciseIndex <= 0}}" bindtap="previousExercise">上一项</button>
@@ -118,75 +128,17 @@
       </view>
 
       <view class="training-queue">
+        <view class="queue-title">今日动作</view>
         <view wx:for="{{exerciseRecords}}" wx:for-index="recordIndex" wx:key="id" class="queue-item {{recordIndex == activeExerciseIndex ? 'active' : ''}} {{item.done ? 'done' : ''}}" data-index="{{recordIndex}}" bindtap="jumpExercise">
-          <text>{{recordIndex + 1}}</text>
-          <text>{{item.name}}</text>
-        </view>
-      </view>
-    </view>
-
-    <view class="subsection-title">完整记录</view>
-    <view class="list record-list">
-      <view wx:for="{{exerciseRecords}}" wx:for-item="record" wx:for-index="recordIndex" wx:key="id" class="record-card {{record.done ? 'done' : ''}}">
-        <view class="record-head">
-          <image class="thumb" src="{{record.image}}" mode="aspectFit" />
-          <view class="item-body">
-            <text class="item-title">{{recordIndex + 1}}. {{record.name}}</text>
-            <text class="item-meta">{{record.equipmentName}} · {{record.sets}} · {{record.reps}}</text>
-            <text wx:if="{{record.load}}" class="load-line">建议起步：{{record.load}}</text>
-            <text class="item-help">吃力程度 {{record.effort}}：{{record.cue}}</text>
-            <button class="small-button detail-button" data-id="{{record.sourceExerciseId || record.id}}" bindtap="viewExercise">看动作详情</button>
-          </view>
-          <button class="done-toggle {{record.done ? 'active' : ''}}" data-index="{{recordIndex}}" bindtap="toggleRecord">
-            {{record.done ? '已完成' : '未完成'}}
-          </button>
-        </view>
-
-        <view wx:if="{{record.isStrength}}" class="record-grid strength-grid">
-          <view class="mini-field">
-            <text>组数</text>
-            <input type="number" value="{{record.setsDone}}" placeholder="{{record.targetSets}}" data-index="{{recordIndex}}" data-key="setsDone" bindinput="setRecordField" />
-          </view>
-          <view class="mini-field">
-            <text>重量/档位</text>
-            <input type="digit" value="{{record.weight}}" placeholder="kg" data-index="{{recordIndex}}" data-key="weight" bindinput="setRecordField" />
-          </view>
-          <view class="mini-field">
-            <text>实际次数</text>
-            <input type="text" value="{{record.actualReps}}" placeholder="12/12/10" data-index="{{recordIndex}}" data-key="actualReps" bindinput="setRecordField" />
-          </view>
-        </view>
-
-        <view wx:if="{{record.isCardio}}" class="record-grid cardio-grid">
-          <view class="mini-field">
-            <text>时长</text>
-            <input type="digit" value="{{record.durationMinutes}}" placeholder="分钟" data-index="{{recordIndex}}" data-key="durationMinutes" bindinput="setRecordField" />
-          </view>
-          <view class="mini-field">
-            <text>速度</text>
-            <input type="digit" value="{{record.speed}}" placeholder="5.5" data-index="{{recordIndex}}" data-key="speed" bindinput="setRecordField" />
-          </view>
-          <view class="mini-field">
-            <text>坡度</text>
-            <input type="digit" value="{{record.incline}}" placeholder="%" data-index="{{recordIndex}}" data-key="incline" bindinput="setRecordField" />
-          </view>
-          <view class="mini-field">
-            <text>阻力</text>
-            <input type="number" value="{{record.resistance}}" placeholder="档" data-index="{{recordIndex}}" data-key="resistance" bindinput="setRecordField" />
-          </view>
-        </view>
-
-        <view class="feeling-row">
-          <view wx:for="{{feelingChoices}}" wx:for-item="choice" wx:key="value" class="feeling-choice {{record.feeling == choice.value ? 'active' : ''}}" data-index="{{recordIndex}}" data-value="{{choice.value}}" bindtap="chooseFeeling">
-            <text class="feeling-icon">{{choice.icon}}</text>
-            <text class="feeling-label">{{choice.label}}</text>
-          </view>
+          <text class="queue-index">{{recordIndex + 1}}</text>
+          <text class="queue-name">{{item.name}}</text>
+          <text class="queue-status">{{item.done ? '已完成' : '待完成'}}</text>
         </view>
       </view>
     </view>
 
     <view class="field">
-      <text class="label">这次练完感觉</text>
+      <text class="label">本次整体感觉</text>
       <view class="choice-grid">
         <view class="choice {{intensityFeedback == 'too-easy' ? 'active' : ''}}" data-value="too-easy" bindtap="chooseIntensity">太轻松</view>
         <view class="choice {{intensityFeedback == 'right' ? 'active' : ''}}" data-value="right" bindtap="chooseIntensity">刚刚好</view>
@@ -197,7 +149,7 @@
       <text class="label">备注</text>
       <textarea class="textarea" value="{{note}}" bindinput="setNote" placeholder="器械找不到、动作不稳、重量偏轻都可以记这里" />
     </view>
-    <button class="primary-button" bindtap="saveLog">{{completedCount == exerciseRecords.length ? '保存本次训练' : '保存已完成训练'}}</button>
+    <button class="primary-button" bindtap="saveLog">{{sessionComplete ? '保存本次训练' : '保存已完成动作'}}</button>
   </view>
 
   <view class="card">
@@ -211,7 +163,7 @@
     <view wx:if="{{logs.length}}" class="list">
       <view wx:for="{{logs}}" wx:for-item="log" wx:key="id" class="history-row">
         <view class="item-body">
-          <text class="item-title">{{log.workoutTitle}}</text>
+          <text class="item-title">{{log.sessionLabel}} · {{log.workoutTitle}}</text>
           <text class="item-meta">第 {{log.week}} 周 · {{log.createdLabel}} · {{log.feedbackLabel}} · 完成 {{log.completedCount}} 个动作</text>
           <text wx:if="{{log.completedText}}" class="item-help">完成：{{log.completedText}}</text>
           <view wx:if="{{log.detailLines.length}}" class="history-detail">
