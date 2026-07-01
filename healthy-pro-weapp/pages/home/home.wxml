@@ -1,81 +1,82 @@
 <view class="page">
-  <view class="eyebrow">Healthy Pro</view>
-  <view class="title">今日训练</view>
+  <view class="cockpit-header">
+    <view>
+      <view class="eyebrow">Healthy Pro</view>
+      <view class="title">训练驾驶舱</view>
+    </view>
+    <view wx:if="{{cockpit}}" class="sync-chip">私密训练记录</view>
+  </view>
 
-  <view wx:if="{{workout}}" class="dark-card home-hero">
-    <view class="row">
+  <view wx:if="{{workout}}" class="dark-card home-hero cockpit-hero">
+    <view class="cockpit-status-row">
       <view>
-        <view class="eyebrow">今天训练</view>
+        <view class="eyebrow">今日指令</view>
         <text class="card-title">{{workout.title}}</text>
       </view>
-      <text class="pill">第 {{week}} 周</text>
+      <text class="stage-pill">{{cockpit.stageLabel}}</text>
     </view>
-    <view class="muted">{{workout.focus}}</view>
+    <view class="hero-focus">{{workout.focus}}</view>
 
-    <view class="metric-grid">
-      <view class="metric">
+    <view class="cockpit-metric-grid">
+      <view class="cockpit-metric">
         <text>预计</text>
-        <text class="metric-value">{{plan.duration.label}}</text>
+        <text class="metric-value">{{cockpit.durationLabel}}</text>
       </view>
-      <view class="metric">
+      <view class="cockpit-metric">
         <text>动作</text>
-        <text class="metric-value">{{workout.exercises.length}} 个</text>
+        <text class="metric-value">{{cockpit.exercisesLabel}}</text>
       </view>
-      <view class="metric">
-        <text>本周</text>
-        <text class="metric-value">{{logsCount}}/{{plan.frequency.sessionsPerWeek}}</text>
+      <view class="cockpit-metric">
+        <text>进度</text>
+        <text class="metric-value">{{cockpit.progressLabel}}</text>
       </view>
     </view>
 
-    <view class="action-row dark-actions">
-      <button class="primary-button" bindtap="startTraining">开始训练</button>
+    <view class="readiness-strip">
+      <view>
+        <text>{{cockpit.readinessTitle}}</text>
+        <text>{{cockpit.readinessText}}</text>
+      </view>
+    </view>
+
+    <view class="action-row dark-actions cockpit-actions">
+      <button class="primary-button" bindtap="startTraining">{{cockpit.primaryAction}}</button>
       <button class="ghost-button" bindtap="goPlan">计划</button>
     </view>
   </view>
 
-  <view wx:if="{{showFirstUseGuide}}" class="card onboarding-card">
+  <view wx:if="{{firstUseGuide.visible}}" class="card onboarding-card">
     <view class="row">
       <view>
-        <view class="eyebrow">第一次使用</view>
-        <text class="card-title">按这个顺序开始</text>
+        <view class="eyebrow">{{firstUseGuide.eyebrow}}</view>
+        <text class="card-title">{{firstUseGuide.title}}</text>
       </view>
-      <button class="small-button subtle" bindtap="dismissOnboarding">知道了</button>
+      <button class="small-button subtle" bindtap="dismissFirstUseGuide">{{firstUseGuide.dismissText}}</button>
     </view>
+    <view class="muted guide-summary">{{firstUseGuide.summary}}</view>
     <view class="onboarding-steps">
-      <view>
-        <text>1</text>
-        <text>看今天训练</text>
-        <text>先确认主题、动作和预计时长。</text>
-      </view>
-      <view>
-        <text>2</text>
-        <text>开始训练</text>
-        <text>按顺序完成动作，不用一次记完。</text>
-      </view>
-      <view>
-        <text>3</text>
-        <text>保存记录</text>
-        <text>训练后会给你一句教练反馈。</text>
-      </view>
-      <view>
-        <text>4</text>
-        <text>看周报</text>
-        <text>我的页会汇总频次和趋势。</text>
+      <view wx:for="{{firstUseGuide.steps}}" wx:key="index" class="guide-step {{item.state}}">
+        <text>{{item.index}}</text>
+        <view>
+          <text>{{item.title}}</text>
+          <text>{{item.desc}}</text>
+        </view>
       </view>
     </view>
+    <button class="secondary-button guide-button" bindtap="handleGuidePrimary">{{firstUseGuide.primaryText}}</button>
   </view>
 
-  <view wx:if="{{latestFeedback}}" class="card coach-feedback-card">
-    <view class="eyebrow">最近训练反馈</view>
-    <text class="card-title">{{latestFeedback.title}}</text>
-    <view class="muted">{{latestFeedback.summary}}</view>
-  </view>
-
-  <view wx:if="{{workout}}" class="card">
-    <view class="eyebrow">今日顺序</view>
-    <text class="card-title">先做前 3 项</text>
-    <view class="list">
-      <view wx:for="{{previewExercises}}" wx:key="id" class="exercise-row">
+  <view wx:if="{{workout}}" class="card cockpit-card">
+    <view class="section-head">
+      <view>
+        <view class="eyebrow">训练顺序</view>
+        <text class="card-title">先完成前 3 项</text>
+      </view>
+      <text class="plan-chip">{{cockpit.durationLabel}}</text>
+    </view>
+    <view class="cockpit-list">
+      <view wx:for="{{previewExercises}}" wx:for-index="exerciseIndex" wx:key="id" class="cockpit-exercise">
+        <view class="exercise-index">0{{exerciseIndex + 1}}</view>
         <image class="thumb" src="{{item.image}}" mode="aspectFit" />
         <view class="item-body">
           <text class="item-title">{{item.name}}</text>
@@ -87,13 +88,31 @@
     <view wx:if="{{remainingCount}}" class="empty-note">后面还有 {{remainingCount}} 个动作，开始训练后继续按顺序做。</view>
   </view>
 
-  <view wx:if="{{plan}}" class="card">
-    <view class="eyebrow">今日建议</view>
-    <text class="card-title">{{plan.goal.type}}</text>
-    <view class="muted">今天先完成 {{workout.title}}，动作稳定比追重量更重要。当前重点：{{plan.focusText}}。</view>
+  <view wx:if="{{cockpit}}" class="card cockpit-card progress-card">
+    <view class="section-head">
+      <view>
+        <view class="eyebrow">计划进度</view>
+        <text class="card-title">{{plan.goal.type}}</text>
+      </view>
+      <text class="plan-chip">{{cockpit.stageLabel}}</text>
+    </view>
+    <view class="progress-track">
+      <view style="width: {{cockpit.progressPercent}}%;"></view>
+    </view>
+    <view class="coach-note">
+      <text>今日重点</text>
+      <text>{{cockpit.focusText}}</text>
+      <text>{{cockpit.firstCue}}</text>
+    </view>
   </view>
 
-  <view wx:else class="card">
+  <view wx:if="{{latestFeedback}}" class="card coach-feedback-card">
+    <view class="eyebrow">最近训练反馈</view>
+    <text class="card-title">{{latestFeedback.title}}</text>
+    <view class="muted">{{latestFeedback.summary}}</view>
+  </view>
+
+  <view wx:if="{{!plan && !firstUseGuide.visible}}" class="card">
     <text class="card-title">先完成基础评估</text>
     <view class="muted">填身高、体重、体脂和目标后，系统会生成第一版训练计划。</view>
     <button class="primary-button" bindtap="goAssessment">开始评估</button>
