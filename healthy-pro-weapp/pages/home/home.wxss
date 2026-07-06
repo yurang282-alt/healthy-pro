@@ -252,6 +252,24 @@
   font-weight: 900;
 }
 
+.home-status-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 8rpx;
+}
+
+.home-status-tags text {
+  min-height: 40rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  background: #eef3f6;
+  color: #344052;
+  font-size: 21rpx;
+  font-weight: 900;
+  line-height: 28rpx;
+}
+
 .progress-card {
   background: #fbfcfd;
 }
@@ -297,4 +315,13 @@
   color: #111827;
   font-size: 28rpx;
   font-weight: 900;
+}
+
+.compact-coach-note {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.compact-coach-note text:nth-child(2) {
+  margin-top: 0;
 }

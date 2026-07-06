@@ -20,11 +20,11 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 
 ## Current Status
 
-- Stage: PWA usable; WeChat Mini Program has a working MVP surface plus CloudBase/openid sync code, but still needs CloudBase permission-rule review, real-device verification, and experience-version release validation before treating it as production-ready.
-- Working version: PWA supports assessment, coach plan, today's training, workout/body records, equipment library, Supabase auth/sync when configured, friends, feedback, and update announcements. Mini Program supports home, assessment, plan, log, equipment, profile, openid-scoped local storage, CloudBase user store sync, training log/feedback mirroring, plan editing, plan history, plan recovery, friends, feedback, and local update announcements.
+- Stage: PWA usable; WeChat Mini Program has a working MVP surface plus CloudBase/openid sync code. It is close to friend trial, but CloudBase permission-rule review, two-user real-device verification, and experience-version validation are still the release gate before treating it as production-ready.
+- Working version: PWA supports assessment, coach plan, today's training, workout/body records, equipment library, Supabase auth/sync when configured, friends, feedback, and update announcements. Mini Program supports home, assessment, plan, log, equipment, profile, openid-scoped local storage, CloudBase user store sync, training log/feedback mirroring, plan editing, plan history, plan recovery, friends, feedback, and local update announcements. Friend lookup/ranking is designed to go through the `social` cloud function so the client does not read other users' full `users` documents.
 - Local state: `npm run dev` serves the PWA at `http://127.0.0.1:5173`. `npm run dev:lan` supports same-Wi-Fi phone preview.
 - GitHub state: This Git-only release includes the Mini Program home training-cockpit redesign, assessment copy update, WeApp documentation refresh, and `PROJECT_CONTEXT.md`; check Git for the exact latest commit after publish.
-- Deployment state: PWA can build a Vercel static output with `npm run build`; Mini Program can be previewed in WeChat DevTools. This Git-only publish does not upload a Mini Program experience version and does not change CloudBase runtime resources.
+- Deployment state: PWA can build a Vercel static output with `npm run build`; Mini Program can be previewed and uploaded through WeChat DevTools. A Mini Program release is only complete after the uploaded development version is set as the experience version or passes formal WeChat review.
 - In-app/release state: Built-in update announcements exist in PWA and Mini Program; Supabase release seed exists for PWA cloud mode. User-visible Mini Program releases still need explicit experience-version upload and verification.
 
 ## Architecture
@@ -42,6 +42,7 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 - Rejected paths: Do not unify PWA/Supabase data with Mini Program/CloudBase data until cross-device continuity is proven to matter. Do not keep adding training features before cloud permissions, recovery, and release verification are closed.
 - Why: The Mini Program is the shorter path for WeChat friend distribution and domestic access; the PWA remains useful but should not drive new product surface decisions unless needed.
 - Revisit trigger: Before friend trial, experience-version upload, formal Mini Program release, PWA account linking, or any migration of user data between Supabase and CloudBase.
+- Thread ownership: code edits, CloudBase changes, release actions, and Git publishing should happen only in the Healthy Pro main project thread. Other threads may do read-only assessment, architecture review, or product planning, then hand execution back here.
 
 ## Risks
 
@@ -52,7 +53,7 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 
 ## Next Actions
 
-- Now: Review and document CloudBase collection permissions, run two-user real-device verification, and confirm Mini Program cloud sync/recovery before friend trial.
+- Now: Use `docs/friend-trial-p0-checklist.md` as the friend-trial gate; review and document CloudBase collection permissions, run two-user real-device verification, and confirm Mini Program cloud sync/recovery before expanding beyond owner testing.
 - Later: Add export/backup/delete expectations, tighten friend/privacy behavior, verify update announcements after each release, and decide whether PWA-to-Mini-Program data linking is worth doing.
 - Blocked: CloudBase database permission-rule proof, real-device verification evidence, and experience-version upload/release setup are needed for real Mini Program distribution.
 
@@ -71,7 +72,7 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 - CloudBase environment: `cloud1-d3g79qnvd808824c9`.
 - Current role: WeChat Mini Program cloud backend, not CloudBase static H5 hosting.
 - Static hosting status: no files found under `/healthy/`, `/apps/healthy/`, `/rocky/`, or `/apps/rocky/`.
-- Cloud function: `login` belongs to Healthy Pro.
+- Cloud functions: `login` and `social` belong to Healthy Pro.
 - Database collections observed by read-only metadata/count checks: `users` = 2, `plans` = 2, `training_logs` = 12, `feedback` / `feedbacks` / `friendships` = 0 at check time.
 - Privacy rule: treat these as private health/body/training records; do not inspect record contents casually.
 - Future H5 path, if needed: `/apps/healthy/`. Do not deploy Healthy to `/`.

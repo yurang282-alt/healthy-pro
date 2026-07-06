@@ -1,3 +1,84 @@
+.page-kicker {
+  color: #176b4d;
+  font-size: 24rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.command-subtitle {
+  margin-top: 10rpx;
+  color: #667085;
+  font-size: 26rpx;
+  line-height: 1.42;
+}
+
+.execution-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(145deg, rgba(24, 106, 75, 0.7), rgba(17, 24, 39, 0) 52%),
+    linear-gradient(315deg, rgba(95, 66, 32, 0.38), rgba(17, 24, 39, 0) 46%),
+    #101820;
+  box-shadow: 0 30rpx 70rpx rgba(17, 24, 39, 0.22);
+}
+
+.execution-head {
+  align-items: flex-start;
+}
+
+.execution-status {
+  display: block;
+  margin-top: 8rpx;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 24rpx;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.execution-pill {
+  flex: 0 0 auto;
+  min-height: 48rpx;
+  padding: 8rpx 16rpx;
+  border: 1rpx solid rgba(215, 247, 229, 0.22);
+  border-radius: 999rpx;
+  color: #d7f7e5;
+  background: rgba(215, 247, 229, 0.1);
+  font-size: 24rpx;
+  font-weight: 900;
+  line-height: 32rpx;
+}
+
+.execution-meter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10rpx;
+  margin-top: 22rpx;
+}
+
+.execution-meter view {
+  min-width: 0;
+  padding: 15rpx 14rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.14);
+  border-radius: 14rpx;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.execution-meter text {
+  display: block;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 21rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.execution-meter text:last-child {
+  margin-top: 5rpx;
+  color: #ffffff;
+  font-size: 25rpx;
+  font-weight: 950;
+}
+
 .choice-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10rpx;
@@ -27,6 +108,9 @@
 .draft-button {
   min-height: 54rpx;
   padding: 0 18rpx;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.09);
   font-size: 22rpx;
   line-height: 54rpx;
 }
@@ -116,9 +200,9 @@
 .training-card {
   margin-top: 18rpx;
   padding: 18rpx;
-  border: 1rpx solid #d9e2ec;
+  border: 1rpx solid rgba(255, 255, 255, 0.13);
   border-radius: 18rpx;
-  background: #fdfefe;
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .training-progress-line {
@@ -158,9 +242,9 @@
 .training-tip-grid view {
   min-width: 0;
   padding: 14rpx;
-  border: 1rpx solid #e1e7ee;
+  border: 1rpx solid #dde6ee;
   border-radius: 14rpx;
-  background: #f6f7f8;
+  background: #f8fafb;
 }
 
 .training-tip-grid text {
@@ -178,6 +262,62 @@
   color: #111827;
   font-size: 25rpx;
   font-weight: 900;
+}
+
+.status-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 16rpx;
+}
+
+.status-tag-row text {
+  min-height: 46rpx;
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: #eef3f6;
+  color: #263241;
+  font-size: 22rpx;
+  font-weight: 900;
+  line-height: 30rpx;
+}
+
+.single-cue {
+  display: grid;
+  gap: 6rpx;
+  margin-top: 14rpx;
+  padding: 14rpx;
+  border-left: 6rpx solid #157a55;
+  border-radius: 12rpx;
+  background: #eef8f2;
+}
+
+.single-cue text:first-child {
+  color: #157a55;
+  font-size: 21rpx;
+  font-weight: 900;
+}
+
+.single-cue text:last-child {
+  color: #1d3b30;
+  font-size: 24rpx;
+  font-weight: 800;
+  line-height: 1.38;
+}
+
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 12rpx;
+}
+
+.inline-actions .detail-button {
+  margin-top: 0;
+}
+
+.detail-drawer {
+  margin-top: 12rpx;
 }
 
 .cue-list {
@@ -285,6 +425,44 @@
   margin-top: 16rpx;
 }
 
+.queue-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  padding: 14rpx 16rpx;
+  border: 1rpx solid rgba(21, 122, 85, 0.24);
+  border-radius: 14rpx;
+  background: #f2faf6;
+}
+
+.queue-toggle text:first-child {
+  color: #175d43;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.queue-toggle text:last-child {
+  color: #667085;
+  font-size: 22rpx;
+  font-weight: 800;
+  text-align: right;
+}
+
+.note-toggle {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.note-toggle text:first-child {
+  color: #ffffff;
+}
+
+.note-toggle text:last-child {
+  color: rgba(255, 255, 255, 0.66);
+}
+
 .queue-title {
   color: #157a55;
   font-size: 23rpx;
@@ -344,6 +522,10 @@
 
 .record-list {
   gap: 18rpx;
+}
+
+.compact-field {
+  margin-top: 18rpx;
 }
 
 .record-card {
@@ -457,9 +639,35 @@
   font-size: 25rpx;
 }
 
+.cockpit-feedback-field .label,
+.execution-panel .field .label {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.cockpit-choice-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.execution-panel .choice {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.execution-panel .choice.active {
+  border-color: rgba(215, 247, 229, 0.42);
+  background: rgba(215, 247, 229, 0.15);
+  color: #d7f7e5;
+}
+
+.execution-panel .textarea {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.96);
+}
+
 .feeling-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8rpx;
   margin-top: 14rpx;
 }
@@ -471,7 +679,7 @@
   justify-content: center;
   gap: 3rpx;
   min-width: 0;
-  min-height: 68rpx;
+  min-height: 72rpx;
   padding: 10rpx 6rpx;
   border: 1rpx solid #e1e7ee;
   border-radius: 12rpx;
@@ -481,9 +689,17 @@
   text-align: center;
 }
 
-.feeling-icon {
-  font-size: 24rpx;
-  line-height: 1;
+.feeling-code {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34rpx;
+  height: 34rpx;
+  border-radius: 999rpx;
+  background: #eef2f5;
+  color: #45515f;
+  font-size: 18rpx;
+  line-height: 34rpx;
 }
 
 .feeling-label {
@@ -495,6 +711,21 @@
   border-color: rgba(21, 122, 85, 0.48);
   background: #eaf4ef;
   color: #157a55;
+}
+
+.feeling-choice.active .feeling-code {
+  color: #ffffff;
+  background: #157a55;
+}
+
+.execution-save-button {
+  color: #101820;
+  background: #d7f7e5;
+}
+
+.after-session-card {
+  border-color: rgba(17, 24, 39, 0.08);
+  background: #fbfcfd;
 }
 
 .history-detail {
@@ -528,6 +759,10 @@
 
   .cardio-grid,
   .feeling-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cockpit-choice-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -81,7 +81,10 @@
         <view class="item-body">
           <text class="item-title">{{item.name}}</text>
           <text class="item-meta">{{item.equipmentName}} · {{item.sets}} · {{item.reps}}</text>
-          <text class="item-help">吃力程度 {{item.effort}}：{{item.cue}}</text>
+          <view class="home-status-tags">
+            <text>吃力 {{item.effort}}</text>
+            <text>动作稳</text>
+          </view>
         </view>
       </view>
     </view>
@@ -99,10 +102,9 @@
     <view class="progress-track">
       <view style="width: {{cockpit.progressPercent}}%;"></view>
     </view>
-    <view class="coach-note">
+    <view class="coach-note compact-coach-note">
       <text>今日重点</text>
       <text>{{cockpit.focusText}}</text>
-      <text>{{cockpit.firstCue}}</text>
     </view>
   </view>
 

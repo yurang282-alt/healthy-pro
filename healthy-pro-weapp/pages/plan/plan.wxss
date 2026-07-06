@@ -1,3 +1,118 @@
+.plan-console-card {
+  overflow: hidden;
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(145deg, rgba(24, 106, 75, 0.72), rgba(17, 24, 39, 0) 52%),
+    linear-gradient(315deg, rgba(95, 66, 32, 0.34), rgba(17, 24, 39, 0) 46%),
+    #101820;
+  box-shadow: 0 30rpx 70rpx rgba(17, 24, 39, 0.22);
+}
+
+.plan-command-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.plan-command-focus {
+  display: block;
+  margin-top: 10rpx;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 25rpx;
+  line-height: 1.45;
+}
+
+.phase-tag.dark {
+  flex: 0 0 auto;
+  color: #d7f7e5;
+  border: 1rpx solid rgba(215, 247, 229, 0.22);
+  background: rgba(215, 247, 229, 0.1);
+}
+
+.plan-next-block {
+  margin-top: 22rpx;
+  padding: 20rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.16);
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.plan-next-block text {
+  display: block;
+}
+
+.plan-next-block text:first-child {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.plan-next-block text:last-child {
+  margin-top: 6rpx;
+  color: #ffffff;
+  font-size: 36rpx;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.plan-console-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10rpx;
+  margin-top: 16rpx;
+}
+
+.plan-console-metrics view {
+  min-width: 0;
+  min-height: 100rpx;
+  padding: 14rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.14);
+  border-radius: 14rpx;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.plan-console-metrics text {
+  display: block;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 21rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.plan-console-metrics text:last-child {
+  margin-top: 6rpx;
+  color: #ffffff;
+  font-size: 25rpx;
+  font-weight: 950;
+}
+
+.plan-command-progress {
+  overflow: hidden;
+  height: 10rpx;
+  margin-top: 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.plan-command-progress view {
+  height: 100%;
+  border-radius: inherit;
+  background: #d7f7e5;
+}
+
+.plan-console-card .plan-overview-actions .secondary-button {
+  color: #101820;
+  border-color: transparent;
+  background: #d7f7e5;
+}
+
+.plan-console-card .plan-overview-actions .ghost-button {
+  color: rgba(255, 255, 255, 0.88);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .plan-overview-card {
   padding-bottom: 22rpx;
 }
@@ -107,6 +222,55 @@
   margin-top: 16rpx;
 }
 
+.plan-tools-strip {
+  margin-top: 16rpx;
+  padding: 18rpx;
+  border: 1rpx solid rgba(17, 24, 39, 0.08);
+  border-radius: 18rpx;
+  background: #fbfcfd;
+}
+
+.plan-drawer-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 16rpx;
+  padding: 18rpx;
+  border: 1rpx solid rgba(17, 24, 39, 0.08);
+  border-radius: 18rpx;
+  background: #fbfcfd;
+}
+
+.plan-drawer-toggle view {
+  min-width: 0;
+}
+
+.plan-drawer-toggle view > text {
+  display: block;
+  margin-top: 4rpx;
+  color: #111827;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.plan-drawer-toggle > text {
+  flex: 0 0 auto;
+  min-height: 48rpx;
+  padding: 8rpx 15rpx;
+  border-radius: 999rpx;
+  color: #175d43;
+  background: #eaf4ef;
+  font-size: 22rpx;
+  font-weight: 900;
+  line-height: 32rpx;
+}
+
+.coach-toggle {
+  border-color: rgba(21, 122, 85, 0.14);
+}
+
 .plan-overview-actions .secondary-button,
 .plan-overview-actions .ghost-button,
 .plan-management-actions .primary-button,
@@ -119,14 +283,14 @@
   line-height: 64rpx;
 }
 
-.plan-management-card .pill {
+.plan-tools-strip .pill {
   max-width: 190rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.plan-management-card .card-title {
+.plan-tools-strip .card-title {
   font-size: 32rpx;
 }
 
@@ -138,19 +302,48 @@
   margin-top: 12rpx;
 }
 
+.plan-timeline-card {
+  border-color: rgba(17, 24, 39, 0.08);
+}
+
 .workout-stack {
-  gap: 14rpx;
+  gap: 16rpx;
 }
 
 .workout-card {
+  position: relative;
   padding: 16rpx;
   border: 1rpx solid #e1e7ee;
   border-radius: 16rpx;
-  background: #ffffff;
+  background: #fbfcfd;
+}
+
+.workout-card.active {
+  border-color: rgba(21, 122, 85, 0.36);
+  background: #f3faf6;
 }
 
 .workout-head {
   align-items: center;
+  justify-content: flex-start;
+}
+
+.workout-head .pill {
+  margin-left: auto;
+}
+
+.workout-day-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 999rpx;
+  color: #175d43;
+  background: #e7f3ec;
+  font-size: 24rpx;
+  font-weight: 950;
 }
 
 .workout-title {
@@ -159,9 +352,28 @@
 
 .workout-summary {
   margin-top: 10rpx;
+  padding-left: 70rpx;
   color: #667085;
   font-size: 24rpx;
   line-height: 1.4;
+}
+
+.exercise-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 8rpx;
+}
+
+.exercise-status-row text {
+  min-height: 42rpx;
+  padding: 7rpx 12rpx;
+  border-radius: 999rpx;
+  background: #eef3f6;
+  color: #344052;
+  font-size: 21rpx;
+  font-weight: 900;
+  line-height: 28rpx;
 }
 
 .coach-details-card {

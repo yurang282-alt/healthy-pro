@@ -43,10 +43,6 @@ function feedbackDocId(openid, feedbackId) {
   return `feedback_${openid}_${String(feedbackId || Date.now()).replace(/[^\w-]/g, "_")}`;
 }
 
-function friendshipDocId(leftOpenid, rightOpenid) {
-  return `friendship_${[leftOpenid, rightOpenid].sort().join("_")}`.replace(/[^\w-]/g, "_");
-}
-
 async function getCloudIdentity() {
   const result = await wx.cloud.callFunction({ name: "login" });
   const data = result && result.result ? result.result : {};
@@ -124,158 +120,52 @@ async function writeCloudStore(store, identity, options = {}) {
   };
 }
 
-async function findCloudUserByFriendCode(friendCode) {
-  const code = String(friendCode || "").trim().toUpperCase();
-  if (!code) throw new Error("请输入好友码");
-
-  const result = await getDatabase()
-    .collection("users")
-    .where({ friendCode: code })
-    .limit(1)
-    .get();
-  const list = result && Array.isArray(result.data) ? result.data : [];
-  return list[0] || null;
+async function callSocialFunction(action, payload = {}) {
+  const result = await wx.cloud.callFunction({
+    name: "social",
+    data: {
+      action,
+      ...payload
+    }
+  });
+  const data = result && result.result ? result.result : {};
+  if (!data.ok) {
+    throw new Error(data.message || "好友服务暂不可用");
+  }
+  return data.data || {};
 }
 
 async function sendCloudFriendRequest(friendCode, store, identity) {
   const openid = identity && identity.openid;
   if (!openid) throw new Error("缺少微信身份");
   const code = String(friendCode || "").trim().toUpperCase();
-  const target = await findCloudUserByFriendCode(code);
-  if (!target || !target.openid) throw new Error("没有找到这个好友码");
-  if (target.openid === openid) throw new Error("不能添加自己");
-
-  const now = new Date().toISOString();
-  const db = getDatabase();
-  const docId = friendshipDocId(openid, target.openid);
-  const social = store && store.social || {};
-  const profile = social.friendProfile || {};
-
-  try {
-    const existing = await db.collection("friendships").doc(docId).get();
-    const current = existing && existing.data;
-    if (current && current.status === "accepted") throw new Error("已经是好友了");
-    if (current && current.status === "pending") throw new Error("好友请求已发送，等待确认");
-  } catch (error) {
-    if (String(error && error.errMsg).indexOf("does not exist") < 0) throw error;
-  }
-
-  await db.collection("friendships").doc(docId).set({
-    data: {
-      schema: CLOUD_STORE_SCHEMA,
-      appId: APP_ID,
-      requesterOpenid: openid,
-      recipientOpenid: target.openid,
-      requesterNickname: profile.nickname || "微信用户",
-      recipientNickname: target.friendNickname || "微信用户",
-      status: "pending",
-      createdAt: now,
-      updatedAt: now
-    }
-  });
-
-  return { id: docId, targetOpenid: target.openid };
+  if (!code) throw new Error("请输入好友码");
+  return callSocialFunction("sendFriendRequest", { friendCode: code });
 }
 
 async function respondCloudFriendship(friendshipId, status) {
-  const nextStatus = status === "accepted" ? "accepted" : "declined";
-  await getDatabase().collection("friendships").doc(friendshipId).update({
-    data: {
-      status: nextStatus,
-      updatedAt: new Date().toISOString()
-    }
-  });
+  return callSocialFunction("respondFriendship", { friendshipId, status });
 }
 
 async function deleteCloudFriendship(friendshipId) {
-  await getDatabase().collection("friendships").doc(friendshipId).update({
-    data: {
-      status: "removed",
-      updatedAt: new Date().toISOString()
-    }
-  });
+  return callSocialFunction("removeFriendship", { friendshipId });
 }
 
 async function readCloudSocial(openid, store = {}) {
   if (!openid) throw new Error("缺少微信身份");
-  const db = getDatabase();
-  const [sentResult, receivedResult, ownRecord] = await Promise.all([
-    db.collection("friendships").where({ requesterOpenid: openid }).get(),
-    db.collection("friendships").where({ recipientOpenid: openid }).get(),
-    readCloudStore(openid).catch(() => null)
-  ]);
-
-  const records = [
-    ...((sentResult && sentResult.data) || []),
-    ...((receivedResult && receivedResult.data) || [])
-  ].filter((item) => item && item.status !== "removed" && item.status !== "declined");
-
-  const otherOpenids = Array.from(new Set(records.map((item) => (
-    item.requesterOpenid === openid ? item.recipientOpenid : item.requesterOpenid
-  )).filter(Boolean)));
-  const otherRecords = await Promise.all(otherOpenids.map((targetOpenid) => readCloudStore(targetOpenid).catch(() => null)));
-  const byOpenid = otherRecords.reduce((map, item) => {
-    if (item && item.openid) map[item.openid] = item;
-    return map;
-  }, {});
-
-  const ownStore = ownRecord && ownRecord.store || store;
-  const ownSocial = ownStore.social || {};
-  const ownProfile = ownSocial.friendProfile || {};
-  const friendProfile = {
-    nickname: ownRecord && ownRecord.friendNickname || ownProfile.nickname || "微信用户",
-    friendCode: ownRecord && ownRecord.friendCode || ownProfile.friendCode || "",
-    shareLeaderboard: ownRecord ? ownRecord.shareLeaderboard !== false : ownProfile.shareLeaderboard !== false,
-    shareWeeklySummary: ownRecord ? ownRecord.shareWeeklySummary !== false : ownProfile.shareWeeklySummary !== false
-  };
-
-  const friendships = records.map((item) => {
-    const isRequester = item.requesterOpenid === openid;
-    const otherOpenid = isRequester ? item.recipientOpenid : item.requesterOpenid;
-    const other = byOpenid[otherOpenid] || {};
-    const otherSummary = other.socialSummary || other.store && other.store.social && other.store.social.summary || {};
-    return {
-      id: item._id || friendshipDocId(item.requesterOpenid, item.recipientOpenid),
-      status: item.status,
-      direction: isRequester ? "outgoing" : "incoming",
-      openid: otherOpenid,
-      nickname: other.friendNickname || (isRequester ? item.recipientNickname : item.requesterNickname) || "微信用户",
-      friendCode: other.friendCode || "",
-      shareLeaderboard: other.shareLeaderboard !== false,
-      shareWeeklySummary: other.shareWeeklySummary !== false,
-      currentWeekCount: Number(otherSummary.currentWeekCount || 0),
-      currentWeekCompleted: Number(otherSummary.currentWeekCompleted || 0),
-      currentWeekCompletionRate: Number(otherSummary.currentWeekCompletionRate || 0),
-      streakWeeks: Number(otherSummary.streakWeeks || 0),
-      latestTrainingAt: otherSummary.latestTrainingAt || ""
-    };
-  });
-
-  const ownSummary = ownRecord && ownRecord.socialSummary || ownSocial.summary || {};
-  const leaderboard = [
-    friendProfile.shareLeaderboard ? {
-      isSelf: true,
-      nickname: friendProfile.nickname,
-      currentWeekCount: Number(ownSummary.currentWeekCount || 0),
-      currentWeekCompleted: Number(ownSummary.currentWeekCompleted || 0),
-      currentWeekCompletionRate: Number(ownSummary.currentWeekCompletionRate || 0),
-      streakWeeks: Number(ownSummary.streakWeeks || 0),
-      latestTrainingAt: ownSummary.latestTrainingAt || ""
-    } : null,
-    ...friendships
-      .filter((item) => item.status === "accepted" && item.shareLeaderboard)
-      .map((item) => ({ ...item, isSelf: false }))
-  ].filter(Boolean).sort((left, right) => (
-    Number(right.currentWeekCompletionRate || 0) - Number(left.currentWeekCompletionRate || 0) ||
-    Number(right.currentWeekCount || 0) - Number(left.currentWeekCount || 0) ||
-    Number(right.streakWeeks || 0) - Number(left.streakWeeks || 0)
-  ));
-
+  const result = await callSocialFunction("getSocial");
+  const localProfile = store && store.social && store.social.friendProfile || {};
   return {
-    friendProfile,
-    friendships,
-    leaderboard,
-    lastSyncedAt: new Date().toISOString()
+    friendProfile: {
+      nickname: localProfile.nickname || "微信用户",
+      friendCode: localProfile.friendCode || "",
+      shareLeaderboard: localProfile.shareLeaderboard !== false,
+      shareWeeklySummary: localProfile.shareWeeklySummary !== false,
+      ...(result.friendProfile || {})
+    },
+    friendships: Array.isArray(result.friendships) ? result.friendships : [],
+    leaderboard: Array.isArray(result.leaderboard) ? result.leaderboard : [],
+    lastSyncedAt: result.lastSyncedAt || new Date().toISOString()
   };
 }
 
@@ -327,7 +217,6 @@ module.exports = {
   CLOUD_STORE_SCHEMA,
   clone,
   deleteCloudFriendship,
-  findCloudUserByFriendCode,
   getCloudIdentity,
   initCloud,
   readCloudSocial,

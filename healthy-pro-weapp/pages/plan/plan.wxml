@@ -1,31 +1,54 @@
 <view class="page">
   <view class="eyebrow">Healthy Pro</view>
-  <view class="title">训练计划</view>
+  <view class="title">计划控制台</view>
 
-  <view wx:if="{{plan}}" class="card plan-overview-card">
-    <view class="plan-week-heading">
+  <view wx:if="{{plan}}" class="dark-card plan-console-card">
+    <view class="plan-command-head">
       <view>
-        <view class="eyebrow">本周安排</view>
-        <view class="week-title-line">
-          <text class="card-title plan-week-title">第 {{selectedWeek}} 周</text>
-          <text class="phase-tag">{{selectedWeekInfo.label}}</text>
-        </view>
+        <view class="eyebrow">本周阶段</view>
+        <text class="card-title">{{planConsole.stageLabel}}</text>
+        <text class="plan-command-focus">{{planConsole.nextWorkoutFocus}}</text>
+      </view>
+      <text class="phase-tag dark">{{versionLabel}}</text>
+    </view>
+
+    <view class="plan-next-block">
+      <text>下一次训练</text>
+      <text>{{planConsole.nextWorkoutTitle}}</text>
+    </view>
+
+    <view class="plan-console-metrics">
+      <view>
+        <text>频次</text>
+        <text>{{planConsole.frequencyLabel}}</text>
+      </view>
+      <view>
+        <text>单次时长</text>
+        <text>{{planConsole.durationLabel}}</text>
+      </view>
+      <view>
+        <text>重点</text>
+        <text>{{planConsole.focusLabel}}</text>
       </view>
     </view>
 
-    <view class="plan-brief-grid">
+    <view class="plan-command-progress">
+      <view style="width: {{planConsole.progressPercent}}%;"></view>
+    </view>
+
+    <view class="plan-overview-actions">
+      <button class="secondary-button" bindtap="adjustPlan">重新调整</button>
+      <button class="ghost-button" bindtap="goAssessment">重新评估</button>
+    </view>
+  </view>
+
+  <view wx:if="{{plan}}" class="card plan-overview-card">
+    <view class="section-head">
       <view>
-        <text>训练结构</text>
-        <text class="brief-value">{{plan.frequency.pattern}}</text>
+        <view class="eyebrow">周期选择</view>
+        <text class="card-title">4 周训练节奏</text>
       </view>
-      <view>
-        <text>频次</text>
-        <text class="brief-value">{{plan.frequency.sessionsPerWeek}} 次/周</text>
-      </view>
-      <view>
-        <text>单次上限</text>
-        <text class="brief-value">{{plan.duration.budget || 60}} 分钟</text>
-      </view>
+      <text class="plan-chip">{{selectedWeekInfo.label}}</text>
     </view>
 
     <view class="week-grid">
@@ -36,14 +59,17 @@
     </view>
 
     <view class="adjust-explainer">{{selectedWeekInfo.note}}</view>
-
-    <view class="plan-overview-actions">
-      <button class="secondary-button" bindtap="adjustPlan">重新调整</button>
-      <button class="ghost-button" bindtap="goAssessment">重新评估</button>
-    </view>
   </view>
 
-  <view wx:if="{{plan}}" class="card plan-management-card">
+  <view wx:if="{{plan}}" class="plan-drawer-toggle" bindtap="togglePlanTools">
+    <view>
+      <view class="eyebrow">计划管理</view>
+      <text>编辑、恢复或查看旧版</text>
+    </view>
+    <text>{{showPlanTools ? '收起' : '管理计划'}}</text>
+  </view>
+
+  <view wx:if="{{plan && showPlanTools}}" class="plan-tools-strip">
     <view class="row">
       <view>
         <view class="eyebrow">计划管理</view>
@@ -80,12 +106,18 @@
     </view>
   </view>
 
-  <view wx:if="{{plan}}" class="card">
-    <view class="eyebrow">动作安排</view>
-    <text class="card-title">这一周怎么练</text>
+  <view wx:if="{{plan}}" class="card plan-timeline-card">
+    <view class="section-head">
+      <view>
+        <view class="eyebrow">动作安排</view>
+        <text class="card-title">这一周怎么练</text>
+      </view>
+      <text class="plan-chip">{{planConsole.frequencyLabel}}</text>
+    </view>
     <view class="list workout-stack">
-      <view wx:for="{{plan.workouts}}" wx:key="id" class="workout-card">
+      <view wx:for="{{plan.workouts}}" wx:for-index="workoutIndex" wx:key="id" class="workout-card {{expandedWorkoutId == item.id ? 'active' : ''}}">
         <view class="row workout-head" data-id="{{item.id}}" bindtap="toggleWorkout">
+          <view class="workout-day-index">{{workoutIndex + 1}}</view>
           <view>
             <text class="card-title workout-title">{{item.title}}</text>
             <view class="muted">{{item.focus}}</view>
@@ -98,8 +130,10 @@
             <view class="item-body">
               <text class="item-title">{{exercise.name}}</text>
               <text class="item-meta">{{exercise.equipmentName}} · {{exercise.sets}} · {{exercise.reps}}</text>
-              <text wx:if="{{exercise.load}}" class="item-meta">建议起步：{{exercise.load}}</text>
-              <text class="item-help">吃力程度 {{exercise.effort}}：{{exercise.cue}}</text>
+              <view class="exercise-status-row">
+                <text wx:if="{{exercise.load}}">起步 {{exercise.load}}</text>
+                <text>吃力 {{exercise.effort}}</text>
+              </view>
               <button class="small-button detail-button" data-id="{{exercise.sourceExerciseId || exercise.id}}" bindtap="viewExercise">看动作详情</button>
             </view>
           </view>
@@ -109,8 +143,16 @@
     </view>
   </view>
 
-  <view wx:if="{{plan}}" class="card coach-details-card">
-    <view class="eyebrow">教练解释</view>
+  <view wx:if="{{plan}}" class="plan-drawer-toggle coach-toggle" bindtap="toggleCoachDetails">
+    <view>
+      <view class="eyebrow">教练说明</view>
+      <text>{{plan.goal.type}}</text>
+    </view>
+    <text>{{showCoachDetails ? '收起' : '查看原因'}}</text>
+  </view>
+
+  <view wx:if="{{plan && showCoachDetails}}" class="card coach-details-card">
+    <view class="eyebrow">为什么这样安排</view>
     <text class="card-title">{{plan.goal.type}}</text>
     <view class="coach-note">{{plan.rationale}}</view>
     <view wx:if="{{coachDecisionSummary}}" class="adjust-explainer">{{coachDecisionSummary}}</view>

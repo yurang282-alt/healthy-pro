@@ -1,7 +1,7 @@
 <view class="page">
-  <view class="eyebrow">训练记录</view>
-  <view class="title">第 {{sessionNumber}} 次训练</view>
-  <view class="muted">{{workout.title}} · {{workout.focus}}</view>
+  <view class="page-kicker">Healthy Pro</view>
+  <view class="title">训练执行舱</view>
+  <view wx:if="{{workout}}" class="command-subtitle">{{workout.title}} · {{workout.focus}}</view>
 
   <view wx:if="{{!workout}}" class="card">
     <text class="card-title">先完成基础评估</text>
@@ -21,18 +21,32 @@
     </view>
   </view>
 
-  <view wx:if="{{workout}}" class="card">
-    <view class="row">
+  <view wx:if="{{workout}}" class="dark-card execution-panel">
+    <view class="row execution-head">
       <view>
         <view class="eyebrow">本次训练</view>
-        <text class="card-title">{{workout.title}}</text>
+        <text class="card-title">{{activeMeta.indexText}}</text>
+        <text class="execution-status">{{activeRecord.name}}</text>
       </view>
       <view class="session-actions">
-        <text class="pill">{{completedCount}}/{{exerciseRecords.length}}</text>
+        <text class="execution-pill">{{completedCount}}/{{exerciseRecords.length}}</text>
         <button class="small-button draft-button" bindtap="saveDraft">保存草稿</button>
       </view>
     </view>
-    <view class="muted session-hint">第 {{sessionNumber}} 次训练 · 第 {{week}} 周 · 按顺序完成，临时离开可保存草稿。</view>
+    <view class="execution-meter">
+      <view>
+        <text>训练次数</text>
+        <text>第 {{sessionNumber}} 次</text>
+      </view>
+      <view>
+        <text>周期</text>
+        <text>第 {{week}} 周</text>
+      </view>
+      <view>
+        <text>完成</text>
+        <text>{{completedCount}}/{{exerciseRecords.length}}</text>
+      </view>
+    </view>
 
     <view wx:if="{{activeRecord}}" class="training-card">
       <view class="training-progress-line">
@@ -41,34 +55,33 @@
       <view class="record-head active-head">
         <image class="training-visual" src="{{activeRecord.image}}" mode="aspectFit" />
         <view class="item-body">
-          <text class="eyebrow">{{activeMeta.indexText}} · {{activeRecord.done ? '已完成' : '待完成'}}</text>
+          <text class="eyebrow">{{activeRecord.done ? '已完成' : '当前动作'}}</text>
           <text class="card-title">{{activeRecord.name}}</text>
           <text class="item-meta">{{activeRecord.equipmentName}} · {{activeRecord.sets}} · {{activeRecord.reps}}</text>
-          <text wx:if="{{activeRecord.load}}" class="load-line">建议起步：{{activeRecord.load}}</text>
         </view>
       </view>
 
-      <view class="training-tip-grid">
-        <view>
-          <text>吃力程度</text>
-          <text>{{activeRecord.effort}}</text>
-        </view>
-        <view>
-          <text>休息</text>
-          <text>{{activeRecord.rest}}</text>
-        </view>
-        <view>
-          <text>{{activeRecord.isCardio ? '目标时长' : '当前状态'}}</text>
-          <text>{{activeMeta.targetText}}</text>
-        </view>
+      <view class="status-tag-row">
+        <text wx:for="{{activeMeta.statusTags}}" wx:key="*this">{{item}}</text>
+        <text>{{activeRecord.isCardio ? '目标 ' + activeMeta.targetText : activeMeta.targetText}}</text>
       </view>
 
-      <view class="cue-list">
-        <text wx:for="{{activeRecord.cues}}" wx:key="*this">{{item}}</text>
+      <view wx:if="{{activeMeta.primaryCue}}" class="single-cue">
+        <text>要点</text>
+        <text>{{activeMeta.primaryCue}}</text>
       </view>
 
-      <view wx:if="{{activeRecord.loadDetail}}" class="load-note">{{activeRecord.loadDetail}} {{activeRecord.loadCaution}}</view>
-      <button class="small-button detail-button" data-id="{{activeRecord.sourceExerciseId || activeRecord.id}}" bindtap="viewExercise">看动作详情</button>
+      <view class="inline-actions">
+        <button class="small-button detail-button" data-id="{{activeRecord.sourceExerciseId || activeRecord.id}}" bindtap="viewExercise">动作详情</button>
+        <button wx:if="{{activeMeta.cueCount || activeRecord.loadDetail}}" class="small-button detail-button" bindtap="toggleActionDetails">{{showActionDetails ? '收起要点' : '更多要点'}}</button>
+      </view>
+
+      <view wx:if="{{showActionDetails}}" class="detail-drawer">
+        <view wx:if="{{activeRecord.loadDetail}}" class="load-note">{{activeRecord.loadDetail}} {{activeRecord.loadCaution}}</view>
+        <view class="cue-list">
+          <text wx:for="{{activeRecord.cues}}" wx:key="*this">{{item}}</text>
+        </view>
+      </view>
 
       <view wx:if="{{activeRecord.isStrength}}" class="record-grid active-field-grid">
         <view class="mini-field">
@@ -110,7 +123,7 @@
 
       <view class="feeling-row">
         <view wx:for="{{feelingChoices}}" wx:for-item="choice" wx:key="value" class="feeling-choice {{activeRecord.feeling == choice.value ? 'active' : ''}}" data-index="{{activeExerciseIndex}}" data-value="{{choice.value}}" bindtap="chooseFeeling">
-          <text class="feeling-icon">{{choice.icon}}</text>
+          <text class="feeling-code">{{choice.code}}</text>
           <text class="feeling-label">{{choice.label}}</text>
         </view>
       </view>
@@ -127,8 +140,11 @@
         <button class="small-button" disabled="{{activeExerciseIndex >= exerciseRecords.length - 1}}" bindtap="nextExercise">下一项</button>
       </view>
 
-      <view class="training-queue">
-        <view class="queue-title">今日动作</view>
+      <view class="queue-toggle" bindtap="toggleQueue">
+        <text>今日动作</text>
+        <text>{{showQueue ? '收起' : '展开'}} · {{completedCount}}/{{exerciseRecords.length}}</text>
+      </view>
+      <view wx:if="{{showQueue}}" class="training-queue">
         <view wx:for="{{exerciseRecords}}" wx:for-index="recordIndex" wx:key="id" class="queue-item {{recordIndex == activeExerciseIndex ? 'active' : ''}} {{item.done ? 'done' : ''}}" data-index="{{recordIndex}}" bindtap="jumpExercise">
           <text class="queue-index">{{recordIndex + 1}}</text>
           <text class="queue-name">{{item.name}}</text>
@@ -137,22 +153,27 @@
       </view>
     </view>
 
-    <view class="field">
-      <text class="label">本次整体感觉</text>
-      <view class="choice-grid">
-        <view class="choice {{intensityFeedback == 'too-easy' ? 'active' : ''}}" data-value="too-easy" bindtap="chooseIntensity">太轻松</view>
-        <view class="choice {{intensityFeedback == 'right' ? 'active' : ''}}" data-value="right" bindtap="chooseIntensity">刚刚好</view>
-        <view class="choice {{intensityFeedback == 'too-hard' ? 'active' : ''}}" data-value="too-hard" bindtap="chooseIntensity">太吃力</view>
+    <view class="field cockpit-feedback-field compact-field">
+      <text class="label">整场训练反馈</text>
+      <view class="choice-grid cockpit-choice-grid">
+        <view class="choice {{intensityFeedback == 'too-easy' ? 'active' : ''}}" data-value="too-easy" bindtap="chooseIntensity">偏轻</view>
+        <view class="choice {{intensityFeedback == 'right' ? 'active' : ''}}" data-value="right" bindtap="chooseIntensity">正好</view>
+        <view class="choice {{intensityFeedback == 'too-hard' ? 'active' : ''}}" data-value="too-hard" bindtap="chooseIntensity">偏重</view>
+        <view class="choice {{intensityFeedback == 'unstable' ? 'active' : ''}}" data-value="unstable" bindtap="chooseIntensity">动作不稳</view>
       </view>
     </view>
-    <view class="field">
+    <view class="queue-toggle note-toggle" bindtap="toggleAfterTraining">
+      <text>训练后补充</text>
+      <text>{{showAfterTraining ? '收起' : '展开备注、历史和身体记录'}}</text>
+    </view>
+    <view wx:if="{{showAfterTraining}}" class="field">
       <text class="label">备注</text>
       <textarea class="textarea" value="{{note}}" bindinput="setNote" placeholder="器械找不到、动作不稳、重量偏轻都可以记这里" />
     </view>
-    <button class="primary-button" bindtap="saveLog">{{sessionComplete ? '保存本次训练' : '保存已完成动作'}}</button>
+    <button class="primary-button execution-save-button" bindtap="saveLog">{{sessionComplete ? '保存本次训练' : '保存已完成动作'}}</button>
   </view>
 
-  <view class="card">
+  <view wx:if="{{showAfterTraining}}" class="card after-session-card">
     <view class="row">
       <view>
         <view class="eyebrow">历史</view>
@@ -180,7 +201,7 @@
     <view wx:else class="empty-note">还没有历史训练。保存一次训练后会出现在这里。</view>
   </view>
 
-  <view class="card">
+  <view wx:if="{{showAfterTraining}}" class="card after-session-card">
     <view class="row">
       <view>
         <view class="eyebrow">身体</view>

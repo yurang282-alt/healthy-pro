@@ -3,13 +3,10 @@ const { formatDateTime } = require("../../utils/format");
 const TRAINING_DRAFT_PREFIX = "healthyProTrainingDraft";
 const BODY_DRAFT_PREFIX = "healthyProBodyDraft";
 const FEELING_CHOICES = [
-  { value: 1, icon: "😄", label: "太轻松" },
-  { value: 2, icon: "🙂", label: "轻松" },
-  { value: 3, icon: "😐", label: "刚好" },
-  { value: 4, icon: "😓", label: "有点累" },
-  { value: 5, icon: "😣", label: "很吃力" },
-  { value: 6, icon: "😭", label: "太难" },
-  { value: 7, icon: "⚠️", label: "有不适" }
+  { value: 2, code: "轻", label: "偏轻" },
+  { value: 3, code: "稳", label: "正好" },
+  { value: 5, code: "重", label: "偏重" },
+  { value: 6, code: "偏", label: "动作不稳" }
 ];
 
 function parseFirstNumber(value, fallback = "") {
@@ -55,9 +52,10 @@ function getBodyDraftKey(scope) {
 }
 
 function getIntensityLabel(value) {
-  if (value === "too-easy") return "太轻松";
-  if (value === "too-hard") return "太吃力";
-  return "刚刚好";
+  if (value === "too-easy") return "偏轻";
+  if (value === "too-hard") return "偏重";
+  if (value === "unstable") return "动作不稳";
+  return "正好";
 }
 
 function getFeelingLabel(value) {
@@ -107,7 +105,8 @@ function getPostTrainingCoachFeedback(user, logRecord, workout) {
   const completedCount = completedExercises.length;
   const totalCount = workout && workout.exercises ? workout.exercises.length : exercises.length || completedCount;
   const intensityFeedback = logRecord && logRecord.intensityFeedback || "right";
-  const highFeelingCount = completedExercises.filter((exercise) => Number(exercise.feeling || 0) >= 6).length;
+  const highFeelingCount = completedExercises.filter((exercise) => Number(exercise.feeling || 0) >= 5).length;
+  const unstableFeelingCount = completedExercises.filter((exercise) => Number(exercise.feeling || 0) >= 6).length;
   const lowFeelingCount = completedExercises.filter((exercise) => Number(exercise.feeling || 0) <= 2).length;
   const target = user && user.plan && user.plan.goal && user.plan.goal.type || "当前目标";
   const partial = totalCount > completedCount;
@@ -115,7 +114,11 @@ function getPostTrainingCoachFeedback(user, logRecord, workout) {
   let summary = `完成 ${completedCount}/${totalCount} 个动作，强度刚好。下次维持重量，把动作轨迹做稳定。`;
   const tips = [];
 
-  if (intensityFeedback === "too-hard" || highFeelingCount >= 2) {
+  if (intensityFeedback === "unstable" || unstableFeelingCount >= 1) {
+    title = "动作质量优先，下一次先降难度";
+    summary = `完成 ${completedCount}/${totalCount} 个动作，但有动作不稳反馈。下一次先降低重量或档位，把轨迹和控制做稳定。`;
+    tips.push("下一次先降 5%-10% 重量，动作稳定后再恢复");
+  } else if (intensityFeedback === "too-hard" || highFeelingCount >= 2) {
     title = "今天强度偏高，先稳住恢复";
     summary = `完成 ${completedCount}/${totalCount} 个动作，反馈偏吃力。下一次先保持重量，必要时每个主动作少做 1 组。`;
     tips.push("下一次不要追重量，优先动作稳定和恢复");
@@ -156,7 +159,15 @@ function getActiveTrainingMeta(record, index, total) {
     indexText: `第 ${Number(index || 0) + 1}/${total || 1} 项`,
     progressPercent,
     actionLabel: record.done ? "已完成" : "完成当前动作",
-    targetText: record.done ? "已完成" : (record.isCardio ? record.reps : `${doneCount}/${targetSets} 组`)
+    targetText: record.done ? "已完成" : (record.isCardio ? record.reps : `${doneCount}/${targetSets} 组`),
+    nextText: record.done ? "检查后继续下一项" : "完成当前动作",
+    primaryCue: Array.isArray(record.cues) && record.cues[0] ? record.cues[0] : record.cue || "",
+    cueCount: Array.isArray(record.cues) ? Math.max(0, record.cues.length - 1) : 0,
+    statusTags: [
+      record.load ? `起步 ${record.load}` : "",
+      record.effort ? `吃力 ${record.effort}` : "",
+      record.rest ? `休息 ${record.rest}` : ""
+    ].filter(Boolean)
   };
 }
 
@@ -185,6 +196,9 @@ Page({
     completionPromptDismissed: false,
     intensityFeedback: "right",
     note: "",
+    showQueue: false,
+    showActionDetails: false,
+    showAfterTraining: false,
     bodyDraft: {
       weight: "",
       bodyFat: "",
@@ -380,6 +394,18 @@ Page({
       completionPromptDismissed: true,
       showCompletionPrompt: false
     });
+  },
+
+  toggleQueue() {
+    this.setData({ showQueue: !this.data.showQueue });
+  },
+
+  toggleActionDetails() {
+    this.setData({ showActionDetails: !this.data.showActionDetails });
+  },
+
+  toggleAfterTraining() {
+    this.setData({ showAfterTraining: !this.data.showAfterTraining });
   },
 
   saveDraft() {

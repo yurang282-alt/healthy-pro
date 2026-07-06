@@ -98,6 +98,25 @@ button::after {
   gap: 12rpx;
 }
 
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.plan-chip {
+  flex: 0 0 auto;
+  min-height: 44rpx;
+  padding: 8rpx 15rpx;
+  border-radius: 999rpx;
+  color: #175d43;
+  background: #eef8f2;
+  font-size: 22rpx;
+  font-weight: 900;
+  line-height: 28rpx;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

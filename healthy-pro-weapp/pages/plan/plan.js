@@ -60,6 +60,34 @@ function getCoachDetails(plan) {
   };
 }
 
+function getPlanConsole(plan, selectedWeekInfo, selectedWeek, expandedWorkoutId) {
+  if (!plan) {
+    return {
+      stageLabel: "",
+      nextWorkoutTitle: "",
+      nextWorkoutFocus: "",
+      frequencyLabel: "",
+      durationLabel: "",
+      focusLabel: "",
+      progressPercent: 0
+    };
+  }
+  const workouts = Array.isArray(plan.workouts) ? plan.workouts : [];
+  const nextWorkout = workouts.find((item) => item.id === expandedWorkoutId) || workouts[0] || {};
+  const focusLabel = plan.focusText ||
+    (plan.focusAreas || []).map((item) => item && item.label).filter(Boolean).slice(0, 3).join("、") ||
+    "全身均衡";
+  return {
+    stageLabel: `第 ${selectedWeek} 周 · ${selectedWeekInfo && selectedWeekInfo.label || "训练周"}`,
+    nextWorkoutTitle: nextWorkout.title || "下一次训练",
+    nextWorkoutFocus: nextWorkout.focus || "按计划完成本周训练",
+    frequencyLabel: `${plan.frequency && plan.frequency.sessionsPerWeek || workouts.length || 0} 次/周`,
+    durationLabel: plan.duration && plan.duration.label || `${plan.duration && plan.duration.budget || 60} 分钟`,
+    focusLabel,
+    progressPercent: Math.max(8, Math.min(100, Math.round((Number(selectedWeek || 1) / 4) * 100)))
+  };
+}
+
 Page({
   data: {
     plan: null,
@@ -75,7 +103,10 @@ Page({
     coachFacts: [],
     coachReview: null,
     coachReviewItems: [],
-    coachDecisionSummary: ""
+    coachDecisionSummary: "",
+    planConsole: getPlanConsole(null),
+    showPlanTools: false,
+    showCoachDetails: false
   },
 
   onShow() {
@@ -100,7 +131,10 @@ Page({
         coachFacts: [],
         coachReview: null,
         coachReviewItems: [],
-        coachDecisionSummary: ""
+        coachDecisionSummary: "",
+        planConsole: getPlanConsole(null),
+        showPlanTools: false,
+        showCoachDetails: false
       });
       return;
     }
@@ -123,16 +157,18 @@ Page({
       ? currentExpandedId
       : fallbackWorkoutId || "";
     const coachDetails = getCoachDetails(plan);
+    const selectedWeekInfo = plan && plan.weeks ? plan.weeks[safeWeek - 1] : null;
     this.setData({
       plan,
       selectedWeek: safeWeek,
       currentWeek: context.week,
-      selectedWeekInfo: plan && plan.weeks ? plan.weeks[safeWeek - 1] : null,
+      selectedWeekInfo,
       logsCount: context.logs.length,
       previousPlan,
       expandedWorkoutId,
       canRestoreOriginal: canRestoreOriginalPlan(plan),
       versionLabel: plan && plan.customization && plan.customization.label ? plan.customization.label : "AI 计划",
+      planConsole: getPlanConsole(plan, selectedWeekInfo, safeWeek, expandedWorkoutId),
       ...coachDetails
     });
   },
@@ -151,19 +187,23 @@ Page({
       ? this.data.expandedWorkoutId
       : workouts[0] && workouts[0].id || "";
     const coachDetails = getCoachDetails(plan);
+    const selectedWeekInfo = plan && plan.weeks ? plan.weeks[selectedWeek - 1] : null;
     this.setData({
       plan,
       selectedWeek,
-      selectedWeekInfo: plan && plan.weeks ? plan.weeks[selectedWeek - 1] : null,
+      selectedWeekInfo,
       expandedWorkoutId,
+      planConsole: getPlanConsole(plan, selectedWeekInfo, selectedWeek, expandedWorkoutId),
       ...coachDetails
     });
   },
 
   toggleWorkout(event) {
     const workoutId = event.currentTarget.dataset.id;
+    const expandedWorkoutId = this.data.expandedWorkoutId === workoutId ? "" : workoutId;
     this.setData({
-      expandedWorkoutId: this.data.expandedWorkoutId === workoutId ? "" : workoutId
+      expandedWorkoutId,
+      planConsole: getPlanConsole(this.data.plan, this.data.selectedWeekInfo, this.data.selectedWeek, expandedWorkoutId)
     });
   },
 
@@ -186,6 +226,18 @@ Page({
   togglePreviousPlan() {
     this.setData({
       showPreviousPlan: !this.data.showPreviousPlan
+    });
+  },
+
+  togglePlanTools() {
+    this.setData({
+      showPlanTools: !this.data.showPlanTools
+    });
+  },
+
+  toggleCoachDetails() {
+    this.setData({
+      showCoachDetails: !this.data.showCoachDetails
     });
   },
 

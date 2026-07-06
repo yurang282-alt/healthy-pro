@@ -2,6 +2,24 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.5.0",
+    version: "v0.5.0",
+    title: "朋友试用前安全和体验收口",
+    summary: "收口好友隐私边界，并把首页、计划页和记录页统一成更清晰的训练驾驶舱体验。",
+    highlights: ["好友请求和排行只通过云函数返回摘要信息", "不向好友展示体重、体脂、训练重量、完整计划或完整记录", "训练记录和计划页减少长文本堆叠，优先展示当前动作、进度和下一步"],
+    releaseType: "improvement",
+    publishedAt: "2026-07-06T20:00:00+08:00"
+  },
+  {
+    id: "weapp-v0.4.4",
+    version: "v0.4.4",
+    title: "好友隐私边界修复",
+    summary: "好友码、好友请求和排行读取改为通过云函数处理，前端不再直接读取其他用户的完整数据。",
+    highlights: ["好友功能只返回昵称、完成率、训练次数和连续周数等摘要", "不返回体重、体脂、训练重量、完整计划或完整训练记录", "为后续收紧 CloudBase 集合权限和朋友试用做准备"],
+    releaseType: "fix",
+    publishedAt: "2026-07-02T18:00:00+08:00"
+  },
+  {
     id: "weapp-v0.4.3",
     version: "v0.4.3",
     title: "训练记录流程优化",
