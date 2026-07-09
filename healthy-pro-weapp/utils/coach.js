@@ -1151,8 +1151,8 @@ function getPrescription(exercise, weekNumber = 1, weekRules = WEEK_RULES) {
   if (exercise.type === "cardio") {
     return {
       sets: "1 段",
-      reps: exercise.target,
-      rest: exercise.rest,
+      reps: exercise.target || exercise.reps,
+      rest: getExerciseRestLabelForWeapp(exercise),
       effort: week.effort,
       effortText: week.effortText
     };
@@ -1161,7 +1161,7 @@ function getPrescription(exercise, weekNumber = 1, weekRules = WEEK_RULES) {
   return {
     sets: `${getSetCount(exercise, weekNumber, weekRules)} 组`,
     reps: exercise.reps,
-    rest: exercise.rest,
+    rest: getExerciseRestLabelForWeapp(exercise),
     effort: week.effort,
     effortText: week.effortText
   };
@@ -1204,7 +1204,7 @@ function getWorkoutDuration(workout, weekNumber = 1, weekRules = WEEK_RULES) {
     }
 
     const sets = getSetCount(exercise, weekNumber, weekRules);
-    const restMinutes = parseRestMinutes(exercise.rest);
+    const restMinutes = parseRestMinutes(exercise.rest, exercise.restSeconds);
     strengthSets += sets;
     min += sets * 1.5 + Math.max(0, sets - 1) * restMinutes + 2.25;
     max += sets * 2 + sets * restMinutes + 2.75;
@@ -1896,6 +1896,9 @@ function getPlanDurationRange(workouts, weekNumber, weekRules = WEEK_RULES) {
 }
 
 function getSetCount(exercise, weekNumber, weekRules = WEEK_RULES) {
+  if (exercise && exercise.customPrescription && exercise.customPrescription.setsLocked) {
+    return Math.max(1, Number(exercise.baseSets || exercise.customPrescription.sets || 1));
+  }
   const week = getWeekRule(weekNumber, weekRules);
   return Math.max(1, Number(exercise.baseSets || 1) + week.setOffset);
 }
@@ -1944,7 +1947,8 @@ function parseMinuteRange(text = "") {
   };
 }
 
-function parseRestMinutes(text = "") {
+function parseRestMinutes(text = "", restSeconds) {
+  if (Number.isFinite(Number(restSeconds))) return Number(restSeconds) / 60;
   const secondsMatch = String(text).match(/(\d+(?:\.\d+)?)\s*秒/);
   if (secondsMatch) return Number(secondsMatch[1]) / 60;
 
@@ -1955,7 +1959,9 @@ function parseRestMinutes(text = "") {
 }
 
 function getLoadProfile(exercise) {
-  return LOAD_PROFILES[exercise.id] || LOAD_PROFILES[exercise.loadProfileId];
+  return LOAD_PROFILES[exercise.id] ||
+    LOAD_PROFILES[exercise.sourceExerciseId] ||
+    LOAD_PROFILES[exercise.loadProfileId];
 }
 
 function getEstimatedLoadRecommendation(exercise, assessment, profile, weekNumber) {
@@ -2023,12 +2029,13 @@ function getHistoryLoadRecommendation(exercise, profile, history, weekNumber) {
 }
 
 function getLatestExerciseLoad(exercise, logs = []) {
+  const ids = [exercise && exercise.id, exercise && exercise.sourceExerciseId].filter(Boolean);
   for (let logIndex = logs.length - 1; logIndex >= 0; logIndex -= 1) {
     const log = logs[logIndex];
     const match = (log.exercises || []).find((item) =>
       item.done &&
       item.type !== "cardio" &&
-      (item.exerciseId === exercise.id || item.name === exercise.name)
+      (ids.indexOf(item.exerciseId) >= 0 || ids.indexOf(item.sourceExerciseId) >= 0 || item.name === exercise.name)
     );
     const value = parseFirstNumber(match?.weight);
     if (value !== null) {
@@ -2292,6 +2299,37 @@ function ensureWeappEquipmentImage(item) {
     .replace('/public/assets/smith-machine.png', '/assets/equipment/smith-machine.png');
 }
 
+function parsePlanNumber(value, fallback) {
+  const match = String(value ?? '').match(/\d+(?:\.\d+)?/);
+  if (match) return Number(match[0]);
+  return Number(fallback || 0);
+}
+
+function normalizeRestSecondsForWeapp(value, fallback) {
+  if (String(value ?? '').indexOf('无') >= 0) return 0;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric >= 0) return Math.round(numeric);
+  const secondsMatch = String(value ?? '').match(/(\d+(?:\.\d+)?)\s*秒/);
+  if (secondsMatch) return Math.round(Number(secondsMatch[1]));
+  const minutesMatch = String(value ?? '').match(/(\d+(?:\.\d+)?)\s*分钟/);
+  if (minutesMatch) return Math.round(Number(minutesMatch[1]) * 60);
+  return Math.max(0, Math.round(parsePlanNumber(fallback, 60)));
+}
+
+function formatRestSecondsForWeapp(value) {
+  const seconds = Math.max(0, Math.round(Number(value || 0)));
+  if (!seconds) return '无';
+  if (seconds >= 120 && seconds % 60 === 0) return (seconds / 60) + ' 分钟';
+  return seconds + ' 秒';
+}
+
+function getExerciseRestLabelForWeapp(exercise) {
+  if (Number.isFinite(Number(exercise && exercise.restSeconds))) {
+    return formatRestSecondsForWeapp(exercise.restSeconds);
+  }
+  return exercise && exercise.rest || '60 秒';
+}
+
 function getAssessmentFromPlan(plan) {
   return (plan && plan.assessmentSnapshot) || {};
 }
@@ -2425,14 +2463,14 @@ function getExerciseOptions() {
   });
 }
 
-function createExerciseFromKey(key) {
+function createExerciseFromKey(key, context) {
   const source = PLAN_EXERCISES.find(function (exercise) { return exercise.id === key; }) ||
     PLAN_EXERCISES.find(function (exercise) { return exercise.id === 'chest-press'; }) ||
     PLAN_EXERCISES[0];
   return decorateExerciseForWeapp(Object.assign({}, cloneForWeapp(source), {
     id: source.id + '-' + Date.now().toString(16),
     sourceExerciseId: source.id
-  }), { week: 1 });
+  }), Object.assign({ week: 1 }, context || {}));
 }
 
 function getBaseExerciseIdForWeapp(exercise) {
@@ -2699,15 +2737,32 @@ function cleanExerciseForPlan(exercise) {
   const source = PLAN_EXERCISES.find(function (item) { return item.id === baseId; }) ||
     PLAN_EXERCISES.find(function (item) { return item.name === safeExercise.name && item.equipmentId === safeExercise.equipmentId; }) ||
     safeExercise;
-  const setMatch = String(safeExercise.sets || '').match(/\d+/);
+  const type = safeExercise.type || source.type;
+  const baseSets = Math.max(1, Math.round(parsePlanNumber(
+    safeExercise.editSets || safeExercise.baseSets || safeExercise.targetSets || safeExercise.sets,
+    source.baseSets || 1
+  )));
+  const restSeconds = normalizeRestSecondsForWeapp(
+    safeExercise.restSeconds !== undefined ? safeExercise.restSeconds : safeExercise.rest,
+    source.rest || 60
+  );
+  const reps = String(safeExercise.reps || source.reps || source.target || '10-12 次').slice(0, 20);
+  const target = String(safeExercise.target || safeExercise.reps || source.target || reps).slice(0, 20);
   return Object.assign({}, cloneForWeapp(source), {
     id: safeExercise.id || source.id,
     sourceExerciseId: source.sourceExerciseId || source.id,
     name: safeExercise.name || source.name,
     equipmentId: safeExercise.equipmentId || source.equipmentId,
-    type: safeExercise.type || source.type,
-    baseSets: Math.max(1, Number(setMatch ? setMatch[0] : source.baseSets || 1)),
-    reps: String(safeExercise.reps || source.reps || source.target || '10-12 次').slice(0, 16)
+    type: type,
+    baseSets: type === 'cardio' ? 1 : baseSets,
+    reps: type === 'cardio' ? target : reps,
+    target: type === 'cardio' ? target : source.target,
+    restSeconds: restSeconds,
+    rest: formatRestSecondsForWeapp(restSeconds),
+    customPrescription: {
+      setsLocked: type !== 'cardio',
+      restLocked: true
+    }
   });
 }
 

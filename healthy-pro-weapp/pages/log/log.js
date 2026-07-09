@@ -155,12 +155,15 @@ function getActiveTrainingMeta(record, index, total) {
   const doneCount = Number(record.setsDone || 0);
   const targetSets = Math.max(1, Number(record.targetSets || 1));
   const progressPercent = total ? Math.round(((Number(index || 0) + (record.done ? 1 : 0)) / total) * 100) : 0;
+  const actionLabel = record.done
+    ? "已完成"
+    : (record.isStrength && targetSets > 1 ? `完成第 ${Math.min(doneCount + 1, targetSets)}/${targetSets} 组` : "完成当前动作");
   return {
     indexText: `第 ${Number(index || 0) + 1}/${total || 1} 项`,
     progressPercent,
-    actionLabel: record.done ? "已完成" : "完成当前动作",
+    actionLabel,
     targetText: record.done ? "已完成" : (record.isCardio ? record.reps : `${doneCount}/${targetSets} 组`),
-    nextText: record.done ? "检查后继续下一项" : "完成当前动作",
+    nextText: record.done ? "检查后继续下一项" : actionLabel,
     primaryCue: Array.isArray(record.cues) && record.cues[0] ? record.cues[0] : record.cue || "",
     cueCount: Array.isArray(record.cues) ? Math.max(0, record.cues.length - 1) : 0,
     statusTags: [
@@ -312,6 +315,7 @@ Page({
   formatHistoryLog(log, index = 0) {
     const completed = (log.exercises || []).filter((exercise) => exercise.done);
     const sessionNumber = Number(log.sessionNumber || index + 1);
+    const completedNames = completed.map((exercise, exerciseIndex) => `${exerciseIndex + 1}. ${exercise.name}`);
     return {
       ...log,
       sessionNumber,
@@ -320,8 +324,11 @@ Page({
       feedbackLabel: getIntensityLabel(log.intensityFeedback),
       coachFeedbackTitle: log.coachFeedback && log.coachFeedback.title || "",
       coachFeedbackSummary: log.coachFeedback && log.coachFeedback.summary || "",
-      completedText: completed.map((exercise) => exercise.name).slice(0, 4).join("、"),
-      detailLines: completed.map(formatExerciseDetail).filter(Boolean).slice(0, 4)
+      completedText: completedNames.join("、"),
+      detailLines: completed.map((exercise, exerciseIndex) => {
+        const detail = formatExerciseDetail(exercise);
+        return detail ? `${exerciseIndex + 1}. ${detail}` : "";
+      }).filter(Boolean)
     };
   },
 
@@ -469,19 +476,26 @@ Page({
 
   completeActiveStrengthSet() {
     const index = Number(this.data.activeExerciseIndex || 0);
+    let shouldJump = false;
     const exerciseRecords = this.data.exerciseRecords.map((item, itemIndex) => {
       if (itemIndex !== index) return item;
       const targetSets = Math.max(1, Number(item.targetSets || 1));
+      const currentSets = Math.max(0, Number(item.setsDone || 0));
+      const nextSets = Math.min(targetSets, currentSets + 1);
+      const isDone = nextSets >= targetSets;
+      const restSeconds = parseRestSeconds(item.rest);
+      shouldJump = isDone;
       return {
         ...item,
-        done: true,
-        setsDone: item.setsDone || String(targetSets),
-        restUntil: ""
+        done: isDone,
+        setsDone: String(nextSets),
+        restUntil: !isDone && restSeconds ? String(Date.now() + restSeconds * 1000) : ""
       };
     });
     this.applyExerciseRecords(exerciseRecords, index);
-    const nextIndex = getNextPendingIndex(exerciseRecords, index);
-    if (nextIndex >= 0) {
+    this.startRestTimer();
+    const nextIndex = shouldJump ? getNextPendingIndex(exerciseRecords, index) : -1;
+    if (shouldJump && nextIndex >= 0) {
       setTimeout(() => this.jumpToIndex(nextIndex), 250);
     }
   },
@@ -506,7 +520,7 @@ Page({
   markActiveIncomplete() {
     const index = Number(this.data.activeExerciseIndex || 0);
     const exerciseRecords = this.data.exerciseRecords.map((item, itemIndex) => (
-      itemIndex === index ? { ...item, done: false } : item
+      itemIndex === index ? { ...item, done: false, setsDone: "", restUntil: "" } : item
     ));
     this.setData({ completionPromptDismissed: false });
     this.applyExerciseRecords(exerciseRecords, index);
@@ -580,10 +594,12 @@ Page({
       return;
     }
 
-    const exercises = records.map((exercise) => {
+    const exercises = records.map((exercise, exerciseIndex) => {
       const base = {
         id: exercise.id,
         exerciseId: exercise.id,
+        sourceExerciseId: exercise.sourceExerciseId || exercise.id,
+        order: exerciseIndex + 1,
         name: exercise.name,
         equipmentId: exercise.equipmentId,
         type: exercise.type,

@@ -10,6 +10,7 @@ Healthy Pro is a personal training assistant for gym planning and workout loggin
 - Calm, not motivational-noisy.
 - Precise, not generic wellness.
 - Coach-like, not admin-dashboard.
+- Training-tool first: the interface should feel like a serious gym training tool, not a generic health card app.
 
 ## Visual System
 

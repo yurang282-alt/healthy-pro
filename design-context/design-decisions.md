@@ -1,5 +1,27 @@
 # Healthy Pro Design Decisions
 
+## 2026-07-07 Design Follow-Up Backlog
+
+Source: CTO design follow-up. Scope is planning and acceptance only; no product code, CloudBase, login, database, cloud function, or Mini Program upload changes.
+
+### Decision 1: Keep the Training Tool Direction
+
+Healthy Pro's design target is professional, restrained, and training-tool-like. The product should help users decide what to train, execute the current workout, and save useful records. It should not drift toward a generic health card app, cute check-in app, or broad wellness dashboard.
+
+### Decision 2: Accept the Current Cockpit Direction, But Keep It Under Review
+
+The current Mini Program cockpit direction is directionally correct for friend trial because Home, Plan, and Log now emphasize current task, progress, training metrics, and coach-like feedback. The remaining design work should be small-scope tightening, not a full redesign.
+
+### Top Remaining Design Issues
+
+1. Secondary surfaces such as Assessment, Equipment, and Profile still feel lighter and more card-like than the core cockpit pages.
+2. Real-device screenshot acceptance is still manual; spacing, overflow, safe-area behavior, and contrast need periodic phone checks before wider release.
+3. Cockpit styles are still partly page-local, so repeated UI fixes can diverge unless shared tokens/components are consolidated later.
+
+### Implementation Recommendation
+
+Design is good enough for experience-version and friend trial. Enter implementation only for targeted fixes that improve clarity, hierarchy, or recovery in the current flow. Do not start another broad redesign until friend feedback shows a repeated comprehension or task-completion failure.
+
 ## 2026-07-02 Mini Program Cockpit V2
 
 Scope: WeChat Mini Program only. PWA, CloudBase, user isolation, `login`, and `social` cloud functions were not changed for this design pass.

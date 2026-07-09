@@ -18,6 +18,57 @@
   margin-top: 4rpx;
 }
 
+.workout-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 12rpx;
+  margin: 22rpx -24rpx 0;
+  padding: 16rpx 24rpx;
+  overflow-x: auto;
+  background: #f3f5f7;
+}
+
+.workout-tab {
+  flex: 0 0 190rpx;
+  padding: 16rpx;
+  border: 1rpx solid #d9e0e8;
+  border-radius: 14rpx;
+  background: #ffffff;
+}
+
+.workout-tab text {
+  display: block;
+  min-width: 0;
+}
+
+.workout-tab text:first-child {
+  color: #667085;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.workout-tab text:last-child {
+  margin-top: 4rpx;
+  color: #111827;
+  font-size: 24rpx;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workout-tab.active {
+  border-color: rgba(21, 122, 85, 0.46);
+  background: #eaf4ef;
+}
+
+.workout-tab.active text:first-child,
+.workout-tab.active text:last-child {
+  color: #145640;
+}
+
 .review-list {
   display: grid;
   gap: 10rpx;
@@ -81,6 +132,38 @@
   min-width: 0;
 }
 
+.exercise-title-row {
+  display: flex;
+  gap: 12rpx;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.exercise-title-row .item-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.move-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8rpx;
+}
+
+.move-button {
+  min-height: 48rpx;
+  padding: 0 14rpx;
+  border-radius: 10rpx;
+  color: #405166;
+  font-size: 22rpx;
+  line-height: 48rpx;
+}
+
+.move-button[disabled] {
+  color: #a8b3c1;
+  background: #f6f7f8;
+}
+
 .picker-button {
   display: inline-flex;
   align-items: center;
@@ -103,6 +186,10 @@
   margin-top: 14rpx;
 }
 
+.prescription-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .mini-label {
   margin-bottom: 6rpx;
   color: #667085;
@@ -122,4 +209,21 @@
   color: #9f2f2f;
   border-color: #f0c6c6;
   background: #fff7f7;
+}
+
+.editor-action-card {
+  position: sticky;
+  bottom: 20rpx;
+  z-index: 6;
+  box-shadow: 0 16rpx 36rpx rgba(15, 23, 42, 0.14);
+}
+
+@media (max-width: 360px) {
+  .prescription-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .move-actions {
+    flex-direction: column;
+  }
 }

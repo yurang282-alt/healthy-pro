@@ -2,6 +2,15 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.5.1",
+    version: "v0.5.1",
+    title: "计划编辑和训练记录修复",
+    summary: "修复自定义计划改了但执行不生效的问题，并补齐训练日切换、动作顺序调整和完整历史明细。",
+    highlights: ["编辑计划支持按训练日切换，不再需要一直下滑", "组数和休息时间改为结构化保存，执行训练时会按组递进并触发休息", "替换动作后保留建议重量，历史训练显示完整动作明细"],
+    releaseType: "fix",
+    publishedAt: "2026-07-08T12:00:00+08:00"
+  },
+  {
     id: "weapp-v0.5.0",
     version: "v0.5.0",
     title: "朋友试用前安全和体验收口",
