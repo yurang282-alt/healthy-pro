@@ -1,6 +1,6 @@
 # Healthy Pro Friend Trial P0 Evidence - 2026-07-10
 
-Status: conditional pass for a very small named friend trial; blocked for broader rollout until user-device evidence is recorded.
+Status: closed for small friend trial after user-reported two-user isolation and restore verification.
 
 Scope: WeChat Mini Program and CloudBase only. PWA/Supabase was not treated as the primary trial surface.
 
@@ -11,6 +11,7 @@ Scope: WeChat Mini Program and CloudBase only. PWA/Supabase was not treated as t
 - CloudBase checks were limited to environment metadata, function metadata, permission metadata, and collection counts.
 - Existing uncommitted v0.5.2 edit-plan UI work remains `awaiting_user`; it was not committed, uploaded, or published as part of this P0 pass.
 - CloudBase root static hosting was not touched.
+- User-reported real-device verification was accepted as trial evidence; no private screenshots or health data were requested.
 
 ## Verified Evidence
 
@@ -120,16 +121,21 @@ Counts only; no record content read.
 - `node --check healthy-pro-weapp/cloudfunctions/login/index.js`: passed.
 - `node --check healthy-pro-weapp/cloudfunctions/social/index.js`: passed.
 
+### User-device validation
+
+Reported by user after the metadata/code check:
+
+- Two-user isolation verification: passed.
+- Same-account backup/restore drill: passed.
+- Result: P0 is closed for a small, known-friend trial.
+
 ## Not Yet Verified
 
-P0 evidence still requiring user/device proof:
+Remaining evidence or product work:
 
-1. Two real WeChat users on the same experience version cannot see each other's private assessment, plan, training logs, body data, notes, or feedback.
-2. Accepted friends can see only summary/ranking data.
-3. Removed/rejected friends lose visibility.
-4. Same WeChat user can restore assessment, current plan, training logs, and profile after clearing local data or using another device.
-5. Current experience version and `我的 > 更新公告` are visible on real phone.
-6. v0.5.2 edit-plan UI remains `awaiting_user` and should not be promoted until real-device confirmation.
+1. Current experience version and `我的 > 更新公告` should still be spot-checked after the next upload.
+2. v0.5.2 edit-plan UI remains `awaiting_user` and should not be promoted until real-device confirmation.
+3. Before expanding beyond known friends, repeat two-user isolation and restore checks on the exact release candidate version.
 
 P1 privacy-minimization follow-up:
 
@@ -164,14 +170,13 @@ Use one real WeChat user.
 
 ## Gate Decision
 
-Decision: `conditional_allow`.
+Decision: `closed_for_small_trial`.
 
 Meaning:
 
-- Allow 1-2 known testers to continue controlled validation.
-- Do not expand to a 10+ friend group until the two-user script and restore drill are recorded.
-
-If strict P0 evidence is required before any new tester, the gate is still blocked by real-device evidence, not by code or CloudBase metadata.
+- Allow a small known-friend trial, roughly 5-10 trusted users.
+- Keep the trial controlled: share only the experience version, collect issues, and avoid broad public distribution.
+- Do not submit for formal public release until update announcement, privacy copy, and any post-trial fixes are checked on the release candidate.
 
 ## Owners
 
@@ -179,9 +184,9 @@ If strict P0 evidence is required before any new tester, the gate is still block
 | --- | --- |
 | Static code and CloudBase metadata evidence | Project |
 | Experience version setting and tester distribution | User |
-| Two-user privacy test | User with Project support |
-| Backup/restore drill | User with Project support |
-| Acceptance of trial risk | CTO/User |
+| Two-user privacy test | Completed by User |
+| Backup/restore drill | Completed by User |
+| Acceptance of small-trial risk | CTO/User |
 | v0.5.2 edit-plan UI confirmation | User |
 
 ## Git / Experience / User-Visible State

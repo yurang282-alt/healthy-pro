@@ -1,6 +1,6 @@
 # Healthy Pro Friend Trial P0 Checklist
 
-Updated: 2026-07-10
+Updated: 2026-07-11
 
 Latest evidence record: `docs/friend-trial-p0-evidence-2026-07-10.md`.
 
@@ -83,11 +83,11 @@ Still missing or not formally evidenced:
 
 ## One-Line Gate
 
-Healthy Pro should not expand friend trial until the release and privacy verification below are completed and recorded. The product flow is close enough, and real CloudBase data exists, but broader friend trial is blocked by three production-readiness evidence gaps:
+Healthy Pro is cleared for a small known-friend trial after CloudBase metadata checks, two-user isolation verification, and backup/restore verification. The product should still avoid broad public release until release-candidate checks and post-trial fixes are complete.
 
-1. CloudBase collection permissions and friend-data access boundaries are not documented or verified.
-2. Two-user real-device isolation and restore are not verified.
-3. Privacy defaults, backup/export/delete expectations, and experience-version release evidence are incomplete.
+1. Small known-friend trial is allowed.
+2. Formal public release is still blocked by privacy copy, export/delete expectations, and final release-candidate evidence.
+3. v0.5.2 edit-plan UI remains `awaiting_user` until real-device confirmation.
 
 ## Current Facts
 
@@ -119,10 +119,10 @@ Healthy Pro should not expand friend trial until the release and privacy verific
 | WeChat identity | Partially satisfied | `login` cloud function exists and app binds to `openid`; needs real-device evidence |
 | Local user isolation | Satisfied in code | Local store is openid-scoped |
 | Cloud user isolation | Unverified | Code uses openid-scoped doc IDs, but platform collection permissions are not documented or tested |
-| Two users cannot see each other's data | Unverified | Must test with two real WeChat users and CloudBase rules |
+| Two users cannot see each other's data | Satisfied by user report | Recheck on the next release candidate before public release |
 | Training/body data privacy | Not ready | Data exists in CloudBase and should be treated as private health/body/training data |
 | Friend sharing privacy | Code fixed, live version needs confirmation | `social` cloud function removes direct cross-user `users` reads from the client; must verify the deployed version before trial |
-| Backup/export/restore | Not ready | App can pull cloud store by openid, but user-level export, backup, delete, and recovery procedure are not defined |
+| Backup/export/restore | Restore satisfied by user report | Export/delete expectations remain P1 |
 | Experience version | Not ready | No evidence of Mini Program experience-version upload and real-device verification |
 | Update announcements | Partially satisfied | In-app announcements exist; friend-trial release needs visible latest announcement verification |
 | CloudBase static hosting | Not applicable | Healthy Pro has no H5 CloudBase entry today |
