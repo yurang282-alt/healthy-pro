@@ -36,10 +36,8 @@
       <view style="width: {{planConsole.progressPercent}}%;"></view>
     </view>
 
-    <view class="plan-overview-actions">
-      <button class="secondary-button" bindtap="adjustPlan">重新调整</button>
-      <button class="ghost-button" bindtap="goAssessment">重新评估</button>
-    </view>
+    <button class="primary-button plan-start-button" bindtap="goLog">开始训练</button>
+    <view class="plan-edit-link" bindtap="editPlan">编辑当前计划</view>
   </view>
 
   <view wx:if="{{plan}}" class="card plan-overview-card">
@@ -55,53 +53,6 @@
       <view wx:for="{{plan.weeks}}" wx:key="week" class="week-chip {{selectedWeek == item.week ? 'active' : ''}}" data-week="{{item.week}}" bindtap="chooseWeek">
         <text>第 {{item.week}} 周{{currentWeek == item.week ? ' · 当前' : ''}}</text>
         <text class="week-label">{{item.label}}</text>
-      </view>
-    </view>
-
-    <view class="adjust-explainer">{{selectedWeekInfo.note}}</view>
-  </view>
-
-  <view wx:if="{{plan}}" class="plan-drawer-toggle" bindtap="togglePlanTools">
-    <view>
-      <view class="eyebrow">计划管理</view>
-      <text>编辑、恢复或查看旧版</text>
-    </view>
-    <text>{{showPlanTools ? '收起' : '管理计划'}}</text>
-  </view>
-
-  <view wx:if="{{plan && showPlanTools}}" class="plan-tools-strip">
-    <view class="row">
-      <view>
-        <view class="eyebrow">计划管理</view>
-        <text class="card-title">编辑、恢复或查看旧版</text>
-      </view>
-      <text class="pill">{{versionLabel}}</text>
-    </view>
-    <view class="plan-management-actions">
-      <button class="primary-button" bindtap="editPlan">编辑计划</button>
-      <button wx:if="{{canRestoreOriginal}}" class="ghost-button" bindtap="restoreOriginal">恢复 AI</button>
-    </view>
-    <view class="action-row secondary-plan-actions">
-      <button wx:if="{{previousPlan}}" class="secondary-button" bindtap="restorePrevious">恢复上一版</button>
-      <button wx:if="{{previousPlan}}" class="ghost-button" bindtap="togglePreviousPlan">{{showPreviousPlan ? '收起旧版' : '查看旧版'}}</button>
-    </view>
-  </view>
-
-  <view wx:if="{{showPreviousPlan && previousPlan}}" class="card previous-plan-card">
-    <view class="row">
-      <view>
-        <view class="eyebrow">上一版计划</view>
-        <text class="card-title">{{previousPlan.customization.label || '历史版本'}}</text>
-      </view>
-      <text class="pill">{{previousPlan.frequency.sessionsPerWeek}} 次/周</text>
-    </view>
-    <view class="previous-list">
-      <view wx:for="{{previousPlan.workouts}}" wx:key="id" class="history-row">
-        <view class="item-body">
-          <text class="item-title">{{item.title}}</text>
-          <text class="item-meta">{{item.focus}}</text>
-          <text class="item-help">{{item.exercises.length}} 个动作</text>
-        </view>
       </view>
     </view>
   </view>
@@ -139,6 +90,52 @@
           </view>
         </view>
         <view wx:else class="workout-summary" data-id="{{item.id}}" bindtap="toggleWorkout">点击展开动作和建议重量</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{plan}}" class="plan-drawer-toggle" bindtap="togglePlanTools">
+    <view>
+      <view class="eyebrow">计划设置</view>
+      <text>调整、评估与版本恢复</text>
+    </view>
+    <text>{{showPlanTools ? '收起' : '展开'}}</text>
+  </view>
+
+  <view wx:if="{{plan && showPlanTools}}" class="plan-tools-strip">
+    <view class="row">
+      <view>
+        <view class="eyebrow">计划设置</view>
+        <text class="card-title">调整与恢复</text>
+      </view>
+      <text class="pill">{{versionLabel}}</text>
+    </view>
+    <view class="plan-management-actions">
+      <button class="secondary-button" bindtap="adjustPlan">按记录调整</button>
+      <button class="ghost-button" bindtap="goAssessment">重新评估</button>
+    </view>
+    <view class="action-row secondary-plan-actions">
+      <button wx:if="{{canRestoreOriginal}}" class="ghost-button" bindtap="restoreOriginal">恢复 AI</button>
+      <button wx:if="{{previousPlan}}" class="secondary-button" bindtap="restorePrevious">恢复上一版</button>
+      <button wx:if="{{previousPlan}}" class="ghost-button" bindtap="togglePreviousPlan">{{showPreviousPlan ? '收起旧版' : '查看旧版'}}</button>
+    </view>
+  </view>
+
+  <view wx:if="{{showPreviousPlan && previousPlan}}" class="card previous-plan-card">
+    <view class="row">
+      <view>
+        <view class="eyebrow">上一版计划</view>
+        <text class="card-title">{{previousPlan.customization.label || '历史版本'}}</text>
+      </view>
+      <text class="pill">{{previousPlan.frequency.sessionsPerWeek}} 次/周</text>
+    </view>
+    <view class="previous-list">
+      <view wx:for="{{previousPlan.workouts}}" wx:key="id" class="history-row">
+        <view class="item-body">
+          <text class="item-title">{{item.title}}</text>
+          <text class="item-meta">{{item.focus}}</text>
+          <text class="item-help">{{item.exercises.length}} 个动作</text>
+        </view>
       </view>
     </view>
   </view>

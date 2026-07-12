@@ -5,7 +5,6 @@
   gap: 18rpx;
 }
 
-.sync-chip,
 .plan-chip,
 .stage-pill {
   flex: 0 0 auto;
@@ -13,13 +12,6 @@
   font-size: 22rpx;
   font-weight: 900;
   line-height: 1.2;
-}
-
-.sync-chip {
-  margin-top: 8rpx;
-  padding: 10rpx 16rpx;
-  color: #175d43;
-  background: #e7f3ec;
 }
 
 .stage-pill {
@@ -113,23 +105,18 @@
   line-height: 1.45;
 }
 
-.dark-actions {
-  align-items: stretch;
-}
-
-.dark-actions .primary-button {
-  flex: 1.25;
-}
-
-.cockpit-actions .primary-button {
+.cockpit-primary-action {
   color: #101820;
   background: #d7f7e5;
 }
 
-.dark-actions .ghost-button {
-  color: rgba(255, 255, 255, 0.86);
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+.cockpit-secondary-link {
+  min-height: 72rpx;
+  padding-top: 20rpx;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 26rpx;
+  font-weight: 900;
+  text-align: center;
 }
 
 .onboarding-card {
@@ -250,24 +237,6 @@
   background: #e7f3ec;
   font-size: 20rpx;
   font-weight: 900;
-}
-
-.home-status-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
-  margin-top: 8rpx;
-}
-
-.home-status-tags text {
-  min-height: 40rpx;
-  padding: 6rpx 12rpx;
-  border-radius: 999rpx;
-  background: #eef3f6;
-  color: #344052;
-  font-size: 21rpx;
-  font-weight: 900;
-  line-height: 28rpx;
 }
 
 .progress-card {

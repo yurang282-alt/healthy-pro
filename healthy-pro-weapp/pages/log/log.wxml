@@ -1,7 +1,6 @@
 <view class="page">
   <view class="page-kicker">Healthy Pro</view>
   <view class="title">训练执行舱</view>
-  <view wx:if="{{workout}}" class="command-subtitle">{{workout.title}} · {{workout.focus}}</view>
 
   <view wx:if="{{!workout}}" class="card">
     <text class="card-title">先完成基础评估</text>
@@ -26,28 +25,13 @@
       <view>
         <view class="eyebrow">本次训练</view>
         <text class="card-title">{{activeMeta.indexText}}</text>
-        <text class="execution-status">{{activeRecord.name}}</text>
+        <text class="execution-status">{{workout.title}}</text>
       </view>
       <view class="session-actions">
         <text class="execution-pill">{{completedCount}}/{{exerciseRecords.length}}</text>
         <button class="small-button draft-button" bindtap="saveDraft">保存草稿</button>
       </view>
     </view>
-    <view class="execution-meter">
-      <view>
-        <text>训练次数</text>
-        <text>第 {{sessionNumber}} 次</text>
-      </view>
-      <view>
-        <text>周期</text>
-        <text>第 {{week}} 周</text>
-      </view>
-      <view>
-        <text>完成</text>
-        <text>{{completedCount}}/{{exerciseRecords.length}}</text>
-      </view>
-    </view>
-
     <view wx:if="{{activeRecord}}" class="training-card">
       <view class="training-progress-line">
         <view style="width: {{activeMeta.progressPercent}}%;"></view>
@@ -61,26 +45,9 @@
         </view>
       </view>
 
-      <view class="status-tag-row">
-        <text wx:for="{{activeMeta.statusTags}}" wx:key="*this">{{item}}</text>
-        <text>{{activeRecord.isCardio ? '目标 ' + activeMeta.targetText : activeMeta.targetText}}</text>
-      </view>
-
       <view wx:if="{{activeMeta.primaryCue}}" class="single-cue">
         <text>要点</text>
         <text>{{activeMeta.primaryCue}}</text>
-      </view>
-
-      <view class="inline-actions">
-        <button class="small-button detail-button" data-id="{{activeRecord.sourceExerciseId || activeRecord.id}}" bindtap="viewExercise">动作详情</button>
-        <button wx:if="{{activeMeta.cueCount || activeRecord.loadDetail}}" class="small-button detail-button" bindtap="toggleActionDetails">{{showActionDetails ? '收起要点' : '更多要点'}}</button>
-      </view>
-
-      <view wx:if="{{showActionDetails}}" class="detail-drawer">
-        <view wx:if="{{activeRecord.loadDetail}}" class="load-note">{{activeRecord.loadDetail}} {{activeRecord.loadCaution}}</view>
-        <view class="cue-list">
-          <text wx:for="{{activeRecord.cues}}" wx:key="*this">{{item}}</text>
-        </view>
       </view>
 
       <view wx:if="{{activeRecord.isStrength}}" class="record-grid active-field-grid">
@@ -123,13 +90,24 @@
 
       <view class="feeling-row">
         <view wx:for="{{feelingChoices}}" wx:for-item="choice" wx:key="value" class="feeling-choice {{activeRecord.feeling == choice.value ? 'active' : ''}}" data-index="{{activeExerciseIndex}}" data-value="{{choice.value}}" bindtap="chooseFeeling">
-          <text class="feeling-code">{{choice.code}}</text>
           <text class="feeling-label">{{choice.label}}</text>
         </view>
       </view>
 
       <button wx:if="{{activeRecord.isStrength && !activeRecord.done}}" class="primary-button training-main-button" bindtap="completeActiveStrengthSet">{{activeMeta.actionLabel}}</button>
       <button wx:if="{{activeRecord.isCardio && !activeRecord.done}}" class="primary-button training-main-button" bindtap="completeActiveCardio">{{activeMeta.actionLabel}}</button>
+
+      <view class="inline-actions compact-secondary-actions">
+        <button class="small-button detail-button" data-id="{{activeRecord.sourceExerciseId || activeRecord.id}}" bindtap="viewExercise">动作详情</button>
+        <button wx:if="{{activeMeta.cueCount || activeRecord.loadDetail}}" class="small-button detail-button" bindtap="toggleActionDetails">{{showActionDetails ? '收起要点' : '更多要点'}}</button>
+      </view>
+
+      <view wx:if="{{showActionDetails}}" class="detail-drawer">
+        <view wx:if="{{activeRecord.loadDetail}}" class="load-note">{{activeRecord.loadDetail}} {{activeRecord.loadCaution}}</view>
+        <view class="cue-list">
+          <text wx:for="{{activeRecord.cues}}" wx:key="*this">{{item}}</text>
+        </view>
+      </view>
       <view wx:if="{{activeRecord.done}}" class="done-panel">
         <text>这个动作已完成。可以继续修改重量、次数或感觉。</text>
         <button class="small-button" bindtap="markActiveIncomplete">改为待完成</button>

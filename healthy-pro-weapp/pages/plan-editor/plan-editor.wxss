@@ -2,6 +2,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.editor-intro {
+  margin-top: 10rpx;
+}
+
 .editor-stack {
   margin-top: 24rpx;
 }
@@ -26,10 +30,64 @@
   gap: 12rpx;
   width: 100%;
   max-width: 100%;
-  margin: 22rpx 0 0;
+  margin: 18rpx 0 0;
   padding: 12rpx 0 10rpx;
   overflow-x: auto;
   background: #f3f5f7;
+}
+
+.plan-settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-top: 14rpx;
+  padding: 18rpx;
+  border: 1rpx solid #d9e0e8;
+  border-radius: 14rpx;
+  background: #ffffff;
+}
+
+.plan-settings-toggle view {
+  min-width: 0;
+}
+
+.plan-settings-toggle text {
+  display: block;
+}
+
+.plan-settings-toggle view text:first-child {
+  color: #111827;
+  font-size: 27rpx;
+  font-weight: 900;
+}
+
+.plan-settings-toggle view text:last-child {
+  margin-top: 4rpx;
+  color: #667085;
+  font-size: 22rpx;
+}
+
+.plan-settings-toggle > text {
+  flex: 0 0 auto;
+  color: #157a55;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.plan-settings-panel {
+  display: grid;
+  gap: 14rpx;
+  margin-top: 14rpx;
+  padding: 18rpx;
+  border: 1rpx solid rgba(21, 122, 85, 0.18);
+  border-radius: 16rpx;
+  background: #fbfefd;
+}
+
+.settings-section + .settings-section {
+  padding-top: 16rpx;
+  border-top: 1rpx solid #e1e7ee;
 }
 
 .workout-tab {
@@ -145,7 +203,8 @@
 }
 
 .exercise-summary .item-title,
-.exercise-summary .item-meta {
+.exercise-summary .item-meta,
+.exercise-load-summary {
   display: block;
 }
 
@@ -164,6 +223,14 @@
   line-height: 1.35;
 }
 
+.exercise-load-summary {
+  margin-top: 6rpx;
+  color: #176b4d;
+  font-size: 24rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .exercise-actions {
   display: flex;
   width: 100%;
@@ -175,12 +242,12 @@
 .move-button {
   flex: 0 0 108rpx;
   width: 108rpx;
-  min-height: 52rpx;
+  min-height: 80rpx;
   padding: 0;
   border-radius: 10rpx;
   color: #405166;
-  font-size: 22rpx;
-  line-height: 52rpx;
+  font-size: 24rpx;
+  line-height: 80rpx;
 }
 
 .move-button[disabled] {
@@ -188,8 +255,28 @@
   background: #f6f7f8;
 }
 
-.replace-picker {
+.edit-button {
   flex: 1;
+  min-width: 0;
+  min-height: 80rpx;
+  padding: 0 16rpx;
+  color: #157a55;
+  border-color: rgba(21, 122, 85, 0.28);
+  background: #eef8f2;
+  line-height: 80rpx;
+}
+
+.exercise-editor-drawer {
+  display: grid;
+  gap: 14rpx;
+  padding: 16rpx;
+  border: 1rpx solid rgba(21, 122, 85, 0.18);
+  border-radius: 14rpx;
+  background: #f8fcfa;
+}
+
+.replace-picker {
+  width: 100%;
   min-width: 0;
 }
 
@@ -198,7 +285,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 52rpx;
+  min-height: 72rpx;
   padding: 0 16rpx;
   border: 1rpx solid rgba(21, 122, 85, 0.32);
   border-radius: 10rpx;
@@ -227,15 +314,15 @@
 
 .mini-input {
   width: 100%;
-  min-height: 68rpx;
+  min-height: 80rpx;
   padding: 12rpx 14rpx;
   font-size: 26rpx;
 }
 
 .danger-button {
   width: 100%;
-  min-height: 58rpx;
-  line-height: 58rpx;
+  min-height: 80rpx;
+  line-height: 80rpx;
   color: #9f2f2f;
   border-color: #f0c6c6;
   background: #fff7f7;
@@ -250,16 +337,28 @@
   box-shadow: 0 16rpx 36rpx rgba(15, 23, 42, 0.14);
 }
 
+.save-state {
+  color: #667085;
+  font-size: 23rpx;
+  font-weight: 800;
+  text-align: center;
+}
+
+.save-state.changed {
+  color: #157a55;
+}
+
+.editor-action-card .primary-button {
+  margin-top: 12rpx;
+}
+
 @media (max-width: 360px) {
   .prescription-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .exercise-actions {
-    flex-wrap: wrap;
-  }
-
-  .replace-picker {
-    flex-basis: 100%;
+  .move-button {
+    flex-basis: 96rpx;
+    width: 96rpx;
   }
 }

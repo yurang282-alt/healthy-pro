@@ -149,13 +149,10 @@ Page({
     });
     const previousPlan = getPreviousPlan(plan);
     const workouts = plan && Array.isArray(plan.workouts) ? plan.workouts : [];
-    const fallbackWorkoutId = context.workout && context.workout.id
-      ? context.workout.id
-      : workouts[0] && workouts[0].id;
-    const currentExpandedId = options.keepExpanded ? this.data.expandedWorkoutId : fallbackWorkoutId;
-    const expandedWorkoutId = workouts.some((item) => item.id === currentExpandedId)
+    const currentExpandedId = options.keepExpanded ? this.data.expandedWorkoutId : "";
+    const expandedWorkoutId = currentExpandedId && workouts.some((item) => item.id === currentExpandedId)
       ? currentExpandedId
-      : fallbackWorkoutId || "";
+      : "";
     const coachDetails = getCoachDetails(plan);
     const selectedWeekInfo = plan && plan.weeks ? plan.weeks[safeWeek - 1] : null;
     this.setData({
@@ -183,9 +180,9 @@ Page({
       week: selectedWeek
     });
     const workouts = plan && Array.isArray(plan.workouts) ? plan.workouts : [];
-    const expandedWorkoutId = workouts.some((item) => item.id === this.data.expandedWorkoutId)
+    const expandedWorkoutId = this.data.expandedWorkoutId && workouts.some((item) => item.id === this.data.expandedWorkoutId)
       ? this.data.expandedWorkoutId
-      : workouts[0] && workouts[0].id || "";
+      : "";
     const coachDetails = getCoachDetails(plan);
     const selectedWeekInfo = plan && plan.weeks ? plan.weeks[selectedWeek - 1] : null;
     this.setData({
@@ -209,6 +206,10 @@ Page({
 
   goAssessment() {
     wx.navigateTo({ url: "/pages/assessment/assessment" });
+  },
+
+  goLog() {
+    wx.switchTab({ url: "/pages/log/log" });
   },
 
   editPlan() {

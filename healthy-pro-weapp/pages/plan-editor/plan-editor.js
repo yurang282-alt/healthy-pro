@@ -90,10 +90,13 @@ Page({
     draft: null,
     selectedWorkoutIndex: 0,
     selectedWorkout: null,
+    expandedExerciseIndex: -1,
     review: null,
     reviewItems: [],
     exerciseOptions: [],
-    frequencyOptions: [2, 3, 4]
+    frequencyOptions: [2, 3, 4],
+    showPlanSettings: false,
+    hasUnsavedChanges: false
   },
 
   onLoad() {
@@ -111,7 +114,9 @@ Page({
       return;
     }
 
-    this.setDraft(createDraft(plan));
+    const draft = createDraft(plan);
+    this.initialDraftSnapshot = JSON.stringify(draft);
+    this.setDraft(draft);
     this.setData({ exerciseOptions: getExerciseOptions() });
   },
 
@@ -138,8 +143,13 @@ Page({
       selectedWorkoutIndex,
       selectedWorkout: workoutCount ? draft.workouts[selectedWorkoutIndex] : null,
       review,
-      reviewItems: buildReviewItems(review)
+      reviewItems: buildReviewItems(review),
+      hasUnsavedChanges: Boolean(this.initialDraftSnapshot && JSON.stringify(draft) !== this.initialDraftSnapshot)
     });
+  },
+
+  togglePlanSettings() {
+    this.setData({ showPlanSettings: !this.data.showPlanSettings });
   },
 
   chooseWorkoutTab(event) {
@@ -147,7 +157,15 @@ Page({
     const draft = clone(this.data.draft);
     this.setData({
       selectedWorkoutIndex,
-      selectedWorkout: draft.workouts && draft.workouts[selectedWorkoutIndex] || null
+      selectedWorkout: draft.workouts && draft.workouts[selectedWorkoutIndex] || null,
+      expandedExerciseIndex: -1
+    });
+  },
+
+  toggleExerciseEditor(event) {
+    const exerciseIndex = Number(event.currentTarget.dataset.exerciseIndex);
+    this.setData({
+      expandedExerciseIndex: this.data.expandedExerciseIndex === exerciseIndex ? -1 : exerciseIndex
     });
   },
 
@@ -172,6 +190,7 @@ Page({
       }
     }
     draft.frequency = frequency;
+    this.setData({ expandedExerciseIndex: -1 });
     this.setDraft(draft);
   },
 
@@ -254,6 +273,7 @@ Page({
       return;
     }
     draft.workouts[workoutIndex].exercises.splice(exerciseIndex, 1);
+    this.setData({ expandedExerciseIndex: -1 });
     this.setDraft(draft);
   },
 
@@ -268,6 +288,7 @@ Page({
     const current = exercises[exerciseIndex];
     exercises[exerciseIndex] = exercises[nextIndex];
     exercises[nextIndex] = current;
+    this.setData({ expandedExerciseIndex: -1 });
     this.setDraft(draft);
   },
 
@@ -295,6 +316,18 @@ Page({
   },
 
   cancel() {
-    wx.navigateBack();
+    if (!this.data.hasUnsavedChanges) {
+      wx.navigateBack();
+      return;
+    }
+    wx.showModal({
+      title: "放弃本次修改？",
+      content: "尚未保存的计划调整会丢失。",
+      confirmText: "放弃修改",
+      confirmColor: "#9f2f2f",
+      success: (result) => {
+        if (result.confirm) wx.navigateBack();
+      }
+    });
   }
 });

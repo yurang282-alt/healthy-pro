@@ -1,9 +1,19 @@
-<view class="page">
-  <view class="eyebrow">基础评估</view>
-  <view class="title">生成我的训练计划</view>
-  <view class="muted">生成后会优先保存到当前微信账号；云端暂不可用时，本地也能继续使用。</view>
+<view class="page assessment-page">
+  <view class="assessment-header">
+    <view>
+      <view class="eyebrow">基础评估</view>
+      <view class="title">生成训练计划</view>
+    </view>
+    <text class="assessment-step-count">{{currentStep}} / {{stepCount}}</text>
+  </view>
 
-  <view class="card form">
+  <view class="assessment-progress"><view style="width: {{currentStep * 100 / stepCount}}%;"></view></view>
+
+  <view wx:if="{{currentStep == 1}}" class="assessment-section">
+    <view class="section-heading">
+      <text>身体情况</text>
+      <text>用于判断训练起点和安全容量</text>
+    </view>
     <view class="field">
       <text class="label">年龄</text>
       <input class="input" type="number" value="{{draft.age}}" data-key="age" bindinput="setValue" />
@@ -14,56 +24,66 @@
         <view wx:for="{{genderOptions}}" wx:key="value" class="choice {{draft.gender == item.value ? 'active' : ''}}" data-key="gender" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
       </view>
     </view>
-    <view class="field">
-      <text class="label">身高 cm</text>
-      <input class="input" type="number" value="{{draft.height}}" data-key="height" bindinput="setValue" />
+    <view class="assessment-number-grid">
+      <view class="field">
+        <text class="label">身高 cm</text>
+        <input class="input" type="number" value="{{draft.height}}" data-key="height" bindinput="setValue" />
+      </view>
+      <view class="field">
+        <text class="label">体重 kg</text>
+        <input class="input" type="digit" value="{{draft.weight}}" data-key="weight" bindinput="setValue" />
+      </view>
     </view>
     <view class="field">
-      <text class="label">体重 kg</text>
-      <input class="input" type="digit" value="{{draft.weight}}" data-key="weight" bindinput="setValue" />
-    </view>
-    <view class="field">
-      <text class="label">体脂 %</text>
+      <text class="label">体脂 % <text class="optional-label">不知道可不填</text></text>
       <input class="input" type="digit" value="{{draft.bodyFat}}" data-key="bodyFat" bindinput="setValue" />
     </view>
+  </view>
 
+  <view wx:if="{{currentStep == 2}}" class="assessment-section">
+    <view class="section-heading">
+      <text>训练方向</text>
+      <text>结合目标和经验决定训练结构</text>
+    </view>
     <view class="field">
       <text class="label">目标</text>
       <view class="choice-grid">
         <view wx:for="{{targetOptions}}" wx:key="value" class="choice {{draft.targetPreference == item.value ? 'active' : ''}}" data-key="targetPreference" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
       </view>
     </view>
-
     <view class="field">
       <text class="label">健身了解程度</text>
       <view class="choice-grid">
         <view wx:for="{{experienceOptions}}" wx:key="value" class="choice {{draft.trainingExperience == item.value ? 'active' : ''}}" data-key="trainingExperience" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
       </view>
     </view>
-
     <view class="field">
-      <text class="label">每周最多训练</text>
-      <view class="choice-grid">
-        <view wx:for="{{weeklyLimitOptions}}" wx:key="value" class="choice {{draft.weeklyLimit == item.value ? 'active' : ''}}" data-key="weeklyLimit" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
-      </view>
-    </view>
-
-    <view class="field">
-      <text class="label">单次可接受时长</text>
-      <view class="choice-grid three-col">
-        <view wx:for="{{sessionBudgetOptions}}" wx:key="value" class="choice {{draft.sessionBudget == item.value ? 'active' : ''}}" data-key="sessionBudget" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
-      </view>
-    </view>
-
-    <view class="field">
-      <text class="label">重点部位</text>
+      <text class="label">重点部位 <text class="optional-label">最多 3 个</text></text>
       <checkbox-group class="choice-grid" bindchange="chooseFocus">
         <label wx:for="{{focusOptions}}" wx:key="id" class="choice {{item.checked ? 'active' : ''}}">
           <checkbox value="{{item.id}}" checked="{{item.checked}}" />{{item.label}}
         </label>
       </checkbox-group>
     </view>
+  </view>
 
+  <view wx:if="{{currentStep == 3}}" class="assessment-section">
+    <view class="section-heading">
+      <text>时间与限制</text>
+      <text>计划不会超过你选择的训练上限</text>
+    </view>
+    <view class="field">
+      <text class="label">每周最多训练</text>
+      <view class="choice-grid">
+        <view wx:for="{{weeklyLimitOptions}}" wx:key="value" class="choice {{draft.weeklyLimit == item.value ? 'active' : ''}}" data-key="weeklyLimit" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
+      </view>
+    </view>
+    <view class="field">
+      <text class="label">单次可接受时长</text>
+      <view class="choice-grid three-col">
+        <view wx:for="{{sessionBudgetOptions}}" wx:key="value" class="choice {{draft.sessionBudget == item.value ? 'active' : ''}}" data-key="sessionBudget" data-value="{{item.value}}" bindtap="chooseValue">{{item.label}}</view>
+      </view>
+    </view>
     <view class="field">
       <text class="label">伤病或医生限制</text>
       <view class="choice-grid">
@@ -71,6 +91,18 @@
       </view>
     </view>
 
-    <button class="primary-button" bindtap="submit">生成我的 4 周计划</button>
+    <view class="assessment-review">
+      <text>确认本次评估</text>
+      <view><text>目标</text><text>{{review.target}}</text></view>
+      <view><text>经验</text><text>{{review.experience}}</text></view>
+      <view><text>时间</text><text>{{review.frequency}} · {{review.duration}}</text></view>
+      <view><text>重点</text><text>{{review.focus}}</text></view>
+    </view>
+  </view>
+
+  <view class="assessment-actions">
+    <button wx:if="{{currentStep > 1}}" class="ghost-button" bindtap="previousStep">上一步</button>
+    <button wx:if="{{currentStep < stepCount}}" class="primary-button" bindtap="nextStep">下一步</button>
+    <button wx:else class="primary-button" bindtap="submit">生成我的 4 周计划</button>
   </view>
 </view>

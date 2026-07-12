@@ -26,7 +26,7 @@ function buildTrainingCockpit(plan, workout, week, logs = [], latestFeedback) {
     progressPercent,
     readinessTitle: latestFeedback ? "参考上次反馈" : "准备开始",
     readinessText: latestFeedback
-      ? latestFeedback.summary
+      ? latestFeedback.title
       : "今天按顺序完成动作，动作稳定比追重量更重要。",
     focusText,
     firstCue: firstMove.cue || "先把第一个动作做稳，再继续推进。",

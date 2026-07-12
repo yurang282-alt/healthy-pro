@@ -85,7 +85,7 @@
 }
 
 .choice {
-  min-height: 68rpx;
+  min-height: 80rpx;
   padding: 14rpx 10rpx;
   font-size: 25rpx;
 }
@@ -106,13 +106,13 @@
 }
 
 .draft-button {
-  min-height: 54rpx;
+  min-height: 72rpx;
   padding: 0 18rpx;
   border-color: rgba(255, 255, 255, 0.18);
   color: #ffffff;
   background: rgba(255, 255, 255, 0.09);
-  font-size: 22rpx;
-  line-height: 54rpx;
+  font-size: 24rpx;
+  line-height: 72rpx;
 }
 
 .subsection-title {
@@ -677,9 +677,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3rpx;
+  gap: 0;
   min-width: 0;
-  min-height: 72rpx;
+  min-height: 80rpx;
   padding: 10rpx 6rpx;
   border: 1rpx solid #e1e7ee;
   border-radius: 12rpx;
@@ -689,33 +689,15 @@
   text-align: center;
 }
 
-.feeling-code {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34rpx;
-  height: 34rpx;
-  border-radius: 999rpx;
-  background: #eef2f5;
-  color: #45515f;
-  font-size: 18rpx;
-  line-height: 34rpx;
-}
-
 .feeling-label {
-  font-size: 20rpx;
-  line-height: 1.15;
+  font-size: 24rpx;
+  line-height: 1.2;
 }
 
 .feeling-choice.active {
   border-color: rgba(21, 122, 85, 0.48);
   background: #eaf4ef;
   color: #157a55;
-}
-
-.feeling-choice.active .feeling-code {
-  color: #ffffff;
-  background: #157a55;
 }
 
 .execution-save-button {

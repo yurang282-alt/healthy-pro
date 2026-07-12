@@ -2,18 +2,7 @@
   <view class="eyebrow">Healthy Pro</view>
   <view class="title">我的</view>
 
-  <view wx:if="{{user && user.plan}}" class="card profile-identity">
-    <view class="eyebrow">训练档案</view>
-    <text class="card-title">当前计划执行中</text>
-    <view class="muted">当前目标：{{user.plan.goal.type}} · {{user.plan.frequency.sessionsPerWeek}} 次/周</view>
-    <view class="profile-chip-row">
-      <text>本周 {{insights.thisWeekCount}}/{{insights.weekTargetText}} 次</text>
-      <text>{{dataModeText}}</text>
-      <text>{{releaseChipText}}</text>
-    </view>
-  </view>
-
-  <view wx:elif="{{user}}" class="card profile-identity">
+  <view wx:if="{{user && !user.plan}}" class="card profile-identity">
     <view class="eyebrow">训练档案</view>
     <text class="card-title">先完成基础评估</text>
     <view class="muted">当前微信用户还没有训练计划。完成评估后，数据会绑定到你的微信身份。</view>
@@ -38,34 +27,26 @@
         </view>
         <text class="pill">{{insights.weekCompletionRate}}%</text>
       </view>
+      <view class="muted weekly-plan-line">{{user.plan.goal.type}} · {{user.plan.frequency.sessionsPerWeek}} 次/周</view>
       <view class="progress-track">
         <view class="progress-fill" style="width: {{insights.weekCompletionRate}}%;"></view>
       </view>
-      <view class="metric-grid">
-        <view class="metric light-metric">
-          <text>本周训练</text>
-          <text class="metric-value">{{insights.thisWeekCount}}/{{insights.weekTargetText}}</text>
-        </view>
-        <view class="metric light-metric">
-          <text>完成动作</text>
-          <text class="metric-value">{{insights.thisWeekCompleted}}</text>
-        </view>
-        <view class="metric light-metric">
-          <text>最近感觉</text>
-          <text class="metric-value">{{insights.intensity.feelingLabel}}</text>
-        </view>
+      <view class="weekly-inline-stats">
+        <text>完成 {{insights.thisWeekCompleted}} 个动作</text>
+        <text>最近感觉 {{insights.intensity.feelingLabel}}</text>
       </view>
       <view class="coach-message">{{insights.coachMessage}}</view>
     </view>
 
-    <view wx:if="{{user}}" class="card profile-hub">
-      <view class="eyebrow">更多</view>
-      <text class="card-title">选择你要看的内容</text>
+    <view wx:if="{{user}}" class="profile-hub">
+      <text class="profile-menu-title">更多</text>
       <view class="profile-entry-list">
         <view wx:for="{{profileEntries}}" wx:key="mode" class="profile-entry-card" data-mode="{{item.mode}}" bindtap="openProfileMode">
-          <text class="entry-eyebrow">{{item.eyebrow}}</text>
-          <text class="entry-title">{{item.title}}</text>
-          <text class="entry-summary">{{item.summary}}</text>
+          <view>
+            <text class="entry-eyebrow">{{item.eyebrow}}</text>
+            <text class="entry-title">{{item.title}}</text>
+          </view>
+          <text class="entry-arrow">›</text>
         </view>
       </view>
     </view>

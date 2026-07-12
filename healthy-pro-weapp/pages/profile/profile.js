@@ -2,6 +2,15 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.5.4",
+    version: "v0.5.4",
+    title: "核心界面简化",
+    summary: "减少训练过程中的重复信息，让每个页面更快找到当前任务和下一步操作。",
+    highlights: ["记录页聚焦当前动作，全部完成后顶部引导保存", "计划编辑按训练日切换，动作默认折叠但保留组次、休息和建议重量", "器械库默认只显示今日器械，完整列表按需展开", "基础评估拆成身体、训练方向、时间限制三步"],
+    releaseType: "improvement",
+    publishedAt: "2026-07-12T20:00:00+08:00"
+  },
+  {
     id: "weapp-v0.5.3",
     version: "v0.5.3",
     title: "编辑计划输入与布局修复",

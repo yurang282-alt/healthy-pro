@@ -1,31 +1,40 @@
 <view class="page">
   <view class="eyebrow">自定义计划</view>
   <view class="title">基于 AI 计划微调</view>
-  <view class="muted">只能从现有动作库替换或增加动作。保存后会生成新版本，原始 AI 计划仍可恢复。</view>
-
-  <view wx:if="{{draft}}" class="card">
-    <view class="eyebrow">每周训练频次</view>
-    <view class="choice-grid frequency-grid">
-      <view wx:for="{{frequencyOptions}}" wx:key="*this" class="choice {{draft.frequency == item ? 'active' : ''}}" data-value="{{item}}" bindtap="setFrequency">每周 {{item}} 次</view>
-    </view>
-  </view>
-
-  <view wx:if="{{draft && review}}" class="card review-card {{review.level == 'warning' ? 'warning' : ''}}">
-    <view class="eyebrow">教练建议</view>
-    <text class="card-title">{{review.level == 'warning' ? '先看这些风险' : '这版可以执行'}}</text>
-    <view class="muted">{{review.summary}}</view>
-    <view wx:if="{{reviewItems.length}}" class="review-list">
-      <view wx:for="{{reviewItems}}" wx:key="text" class="review-row {{item.type}}">
-        <text>{{item.label}}</text>
-        <text>{{item.text}}</text>
-      </view>
-    </view>
-  </view>
+  <view class="muted editor-intro">先选训练日，再调整动作与处方。</view>
 
   <view wx:if="{{draft}}" class="workout-tabs">
     <view wx:for="{{draft.workouts}}" wx:for-item="workout" wx:for-index="workoutIndex" wx:key="id" class="workout-tab {{selectedWorkoutIndex == workoutIndex ? 'active' : ''}}" data-index="{{workoutIndex}}" bindtap="chooseWorkoutTab">
       <text>训练日 {{workoutIndex + 1}}</text>
       <text>{{workout.title}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{draft}}" class="plan-settings-toggle" bindtap="togglePlanSettings">
+    <view>
+      <text>计划设置</text>
+      <text>每周 {{draft.frequency}} 次 · {{review.level == 'warning' ? '有风险需确认' : '教练审核通过'}}</text>
+    </view>
+    <text>{{showPlanSettings ? '收起' : '展开'}}</text>
+  </view>
+
+  <view wx:if="{{draft && showPlanSettings}}" class="plan-settings-panel">
+    <view class="settings-section">
+      <view class="eyebrow">每周训练频次</view>
+      <view class="choice-grid frequency-grid">
+        <view wx:for="{{frequencyOptions}}" wx:key="*this" class="choice {{draft.frequency == item ? 'active' : ''}}" data-value="{{item}}" bindtap="setFrequency">每周 {{item}} 次</view>
+      </view>
+    </view>
+    <view wx:if="{{review}}" class="settings-section review-card {{review.level == 'warning' ? 'warning' : ''}}">
+      <view class="eyebrow">教练建议</view>
+      <text class="card-title">{{review.level == 'warning' ? '先看这些风险' : '这版可以执行'}}</text>
+      <view class="muted">{{review.summary}}</view>
+      <view wx:if="{{reviewItems.length}}" class="review-list">
+        <view wx:for="{{reviewItems}}" wx:key="text" class="review-row {{item.type}}">
+          <text>{{item.label}}</text>
+          <text>{{item.text}}</text>
+        </view>
+      </view>
     </view>
   </view>
 
@@ -47,31 +56,35 @@
             <image class="thumb" src="{{exercise.image}}" mode="aspectFit" />
             <view class="exercise-copy">
               <text class="item-title">{{exerciseIndex + 1}}. {{exercise.name}}</text>
-              <text class="item-meta">{{exercise.equipmentName}} · 建议 {{exercise.load || '按感觉试'}}</text>
+              <text class="item-meta">{{exercise.type == 'cardio' ? exercise.reps : exercise.editSets + ' 组 · ' + exercise.reps + ' · 休息 ' + exercise.restSeconds + ' 秒'}}</text>
+              <text class="exercise-load-summary">{{exercise.equipmentName}} · 建议 {{exercise.load || '按感觉试'}}</text>
             </view>
           </view>
           <view class="exercise-actions">
             <button class="small-button move-button" disabled="{{exerciseIndex == 0}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-direction="up" bindtap="moveExercise">上移</button>
             <button class="small-button move-button" disabled="{{exerciseIndex == selectedWorkout.exercises.length - 1}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-direction="down" bindtap="moveExercise">下移</button>
+            <button class="small-button edit-button" data-exercise-index="{{exerciseIndex}}" bindtap="toggleExerciseEditor">{{expandedExerciseIndex == exerciseIndex ? '收起' : '编辑'}}</button>
+          </view>
+          <view wx:if="{{expandedExerciseIndex == exerciseIndex}}" class="exercise-editor-drawer">
             <picker class="replace-picker" range="{{exerciseOptions}}" range-key="name" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" bindchange="replaceExercise">
-              <view class="picker-button">替换</view>
+              <view class="picker-button">替换动作</view>
             </picker>
+            <view class="mini-grid prescription-grid">
+              <view>
+                <text class="label mini-label">组数</text>
+                <input class="input mini-input" type="number" value="{{exercise.editSets}}" disabled="{{exercise.type == 'cardio'}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="editSets" bindinput="setExerciseField" bindblur="normalizeExerciseField" />
+              </view>
+              <view>
+                <text class="label mini-label">次数 / 时长</text>
+                <input class="input mini-input" value="{{exercise.reps}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="reps" bindinput="setExerciseField" />
+              </view>
+              <view>
+                <text class="label mini-label">休息秒数</text>
+                <input class="input mini-input" type="number" value="{{exercise.restSeconds}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="restSeconds" bindinput="setExerciseField" bindblur="normalizeExerciseField" />
+              </view>
+            </view>
+            <button class="small-button danger-button" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" bindtap="removeExercise">删除动作</button>
           </view>
-          <view class="mini-grid prescription-grid">
-            <view>
-              <text class="label mini-label">组数</text>
-              <input class="input mini-input" type="number" value="{{exercise.editSets}}" disabled="{{exercise.type == 'cardio'}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="editSets" bindinput="setExerciseField" bindblur="normalizeExerciseField" />
-            </view>
-            <view>
-              <text class="label mini-label">次数 / 时长</text>
-              <input class="input mini-input" value="{{exercise.reps}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="reps" bindinput="setExerciseField" />
-            </view>
-            <view>
-              <text class="label mini-label">休息秒数</text>
-              <input class="input mini-input" type="number" value="{{exercise.restSeconds}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="restSeconds" bindinput="setExerciseField" bindblur="normalizeExerciseField" />
-            </view>
-          </view>
-          <button class="small-button danger-button" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" bindtap="removeExercise">删除动作</button>
         </view>
       </view>
 
@@ -80,6 +93,7 @@
   </view>
 
   <view wx:if="{{draft}}" class="card editor-action-card">
+    <view class="save-state {{hasUnsavedChanges ? 'changed' : ''}}">{{hasUnsavedChanges ? '修改尚未保存' : '当前没有修改'}}</view>
     <button class="primary-button" bindtap="savePlan">保存为当前执行计划</button>
     <button class="ghost-button" bindtap="cancel">放弃修改</button>
   </view>

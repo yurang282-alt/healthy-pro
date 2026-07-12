@@ -66,6 +66,19 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 - Demo URL: `http://127.0.0.1:5173?demo=focus`
 - Mini Program path: `/Users/bytedance/healthy-pro/healthy-pro-weapp`
 
+## Rocky4AI 正式入口与发布边界
+
+- Rocky4AI 正式主域已完成备案、HTTPS 证书和 CloudBase 绑定，正式主入口是 `https://rocky4ai.com/`。
+- CloudBase 环境 ID 是 `cloud1-d3g79qnvd808824c9`。
+- CloudBase 根目录 `/` 的唯一 owner 是 `app-factory`，当前根入口进入 LifeMap；Healthy Pro 等普通 App 绝不能发布到根目录。
+- Healthy Pro / Exercise 当前正式产品入口是微信小程序 `Healthy Pro / AI4RockyHP`，不是 CloudBase H5 网站。
+- 本项目目前没有正式 H5 入口。未来如确需 H5，候选路径是 `/apps/healthy/`，且必须先通过 CTO 发布闸门。
+- CloudBase 默认域名、测试域名和 `localhost` 仅用于开发、检查或留存证据，不得作为交给用户的正式入口。
+- Web 项目内部跳转优先使用同源相对路径 `/apps/<app-name>/`；不得硬编码 CloudBase 测试域名，也不得自行创建 DNS 子域名。
+- 域名统一不代表账号、数据库或用户数据已经统一；不得据此自行接入统一身份、共享数据或跨 App 同步。
+- DNS、证书、域名绑定和根目录发布由 CTO / `app-factory` 管理，本项目不得自行修改。
+- 后续发布必须区分本地工作区、Git 提交、远端 `main`、部署状态和用户可见版本，并验证精确的 `rocky4ai.com` 入口；小程序发布则验证对应的微信体验版或正式版入口。
+
 ## CloudBase Resource Ownership
 
 - Updated: 2026-07-01.
@@ -75,7 +88,7 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 - Cloud functions: `login` and `social` belong to Healthy Pro.
 - Database collections observed by read-only metadata/count checks: `users` = 2, `plans` = 2, `training_logs` = 12, `feedback` / `feedbacks` / `friendships` = 0 at check time.
 - Privacy rule: treat these as private health/body/training records; do not inspect record contents casually.
-- Future H5 path, if needed: `/apps/healthy/`. Do not deploy Healthy to `/`.
+- Future H5 path, if needed: `/apps/healthy/`; see `Rocky4AI 正式入口与发布边界` for the CTO release gate and root-directory prohibition.
 - Source of truth before any CloudBase work: `/Users/bytedance/Documents/Codex/cloudbase-deployment-registry.md`.
 
 ## Design Agent Governance

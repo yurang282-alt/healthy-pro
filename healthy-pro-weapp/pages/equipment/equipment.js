@@ -28,7 +28,8 @@ Page({
     visibleEquipment: [],
     currentEquipmentAll: [],
     currentEquipment: [],
-    equipmentGroups: []
+    equipmentGroups: [],
+    showAll: false
   },
 
   onShow() {
@@ -45,19 +46,24 @@ Page({
     this.applyFilter(query);
   },
 
+  toggleAll() {
+    this.setData({ showAll: !this.data.showAll }, () => {
+      this.applyFilter(this.data.query);
+    });
+  },
+
   applyFilter(query) {
     const source = this.data.equipment;
+    const currentSource = this.data.currentEquipmentAll || [];
+    const currentIds = new Set(currentSource.map((item) => item.id));
     const visibleEquipment = query
       ? source.filter((item) => `${item.name} ${item.category} ${item.muscles} ${item.setup}`.includes(query))
-      : source;
-    const currentSource = this.data.currentEquipmentAll || [];
+      : (this.data.showAll ? source.filter((item) => !currentIds.has(item.id)) : []);
     this.setData({
       query,
       visibleEquipment,
       equipmentGroups: groupEquipment(visibleEquipment),
-      currentEquipment: query
-        ? currentSource.filter((item) => visibleEquipment.some((visible) => visible.id === item.id))
-        : currentSource
+      currentEquipment: query ? [] : currentSource
     });
   },
 

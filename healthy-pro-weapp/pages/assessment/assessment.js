@@ -33,9 +33,23 @@ function getInitialDraft() {
   }));
 }
 
+function getOptionLabel(options, value, fallback = "未选择") {
+  const matched = (options || []).find((item) => String(item.value) === String(value));
+  return matched ? matched.label : fallback;
+}
+
 Page({
   data: {
     draft: cloneDraft(DEFAULT_DRAFT),
+    currentStep: 1,
+    stepCount: 3,
+    review: {
+      target: "",
+      experience: "",
+      frequency: "",
+      duration: "",
+      focus: ""
+    },
     focusOptions: [
       { id: "chest", label: "胸", checked: true },
       { id: "back", label: "背", checked: true },
@@ -89,7 +103,7 @@ Page({
     this.setData({
       draft,
       focusOptions: this.syncFocusOptions(draft.focusAreas)
-    });
+    }, () => this.syncReview());
   },
 
   syncFocusOptions(focusAreas) {
@@ -105,22 +119,82 @@ Page({
     const value = event.detail.value;
     this.setData({
       [`draft.${key}`]: value
-    });
+    }, () => this.syncReview());
   },
 
   chooseValue(event) {
     const { key, value } = event.currentTarget.dataset;
     this.setData({
       [`draft.${key}`]: value
-    });
+    }, () => this.syncReview());
   },
 
   chooseFocus(event) {
     const focusAreas = event.detail.value;
+    if (focusAreas.length > 3) {
+      wx.showToast({ title: "重点部位最多选 3 个", icon: "none" });
+      this.setData({ focusOptions: this.syncFocusOptions(this.data.draft.focusAreas) });
+      return;
+    }
     this.setData({
       "draft.focusAreas": focusAreas,
       focusOptions: this.syncFocusOptions(focusAreas)
+    }, () => this.syncReview());
+  },
+
+  syncReview() {
+    const draft = this.data.draft || {};
+    const focusById = Object.fromEntries((this.data.focusOptions || []).map((item) => [item.id, item.label]));
+    this.setData({
+      review: {
+        target: getOptionLabel(this.data.targetOptions, draft.targetPreference),
+        experience: getOptionLabel(this.data.experienceOptions, draft.trainingExperience),
+        frequency: getOptionLabel(this.data.weeklyLimitOptions, draft.weeklyLimit),
+        duration: getOptionLabel(this.data.sessionBudgetOptions, draft.sessionBudget),
+        focus: (draft.focusAreas || []).map((id) => focusById[id]).filter(Boolean).join("、") || "全身基础"
+      }
     });
+  },
+
+  validateBodyStep() {
+    const draft = this.data.draft || {};
+    const checks = [
+      { value: Number(draft.age), min: 14, max: 80, label: "年龄" },
+      { value: Number(draft.height), min: 120, max: 230, label: "身高" },
+      { value: Number(draft.weight), min: 30, max: 250, label: "体重" }
+    ];
+    const invalid = checks.find((item) => !Number.isFinite(item.value) || item.value < item.min || item.value > item.max);
+    if (invalid) {
+      wx.showModal({
+        title: `请检查${invalid.label}`,
+        content: `${invalid.label}需要在 ${invalid.min}-${invalid.max} 之间。`,
+        showCancel: false
+      });
+      return false;
+    }
+    if (draft.bodyFat !== "" && draft.bodyFat !== null && draft.bodyFat !== undefined) {
+      const bodyFat = Number(draft.bodyFat);
+      if (!Number.isFinite(bodyFat) || bodyFat < 3 || bodyFat > 60) {
+        wx.showModal({
+          title: "请检查体脂率",
+          content: "不知道体脂可以留空；填写时需要在 3%-60% 之间。",
+          showCancel: false
+        });
+        return false;
+      }
+    }
+    return true;
+  },
+
+  nextStep() {
+    if (this.data.currentStep === 1 && !this.validateBodyStep()) return;
+    this.setData({ currentStep: Math.min(this.data.stepCount, this.data.currentStep + 1) });
+    wx.pageScrollTo({ scrollTop: 0, duration: 180 });
+  },
+
+  previousStep() {
+    this.setData({ currentStep: Math.max(1, this.data.currentStep - 1) });
+    wx.pageScrollTo({ scrollTop: 0, duration: 180 });
   },
 
   submit() {

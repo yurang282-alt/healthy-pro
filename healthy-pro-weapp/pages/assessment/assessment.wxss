@@ -1,8 +1,144 @@
+.assessment-page {
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.assessment-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.assessment-step-count {
+  flex: 0 0 auto;
+  min-width: 84rpx;
+  min-height: 52rpx;
+  margin-top: 8rpx;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  color: #175d43;
+  background: #e7f3ec;
+  font-size: 24rpx;
+  font-weight: 900;
+  line-height: 32rpx;
+  text-align: center;
+}
+
+.assessment-progress {
+  overflow: hidden;
+  height: 10rpx;
+  margin-top: 24rpx;
+  border-radius: 999rpx;
+  background: #e6ebf0;
+}
+
+.assessment-progress view {
+  height: 100%;
+  border-radius: inherit;
+  background: #157a55;
+  transition: width 180ms ease;
+}
+
+.assessment-section {
+  margin-top: 30rpx;
+  padding: 24rpx;
+  border: 1rpx solid #e1e7ee;
+  border-radius: 18rpx;
+  background: #ffffff;
+}
+
+.section-heading text {
+  display: block;
+}
+
+.section-heading text:first-child {
+  color: #111827;
+  font-size: 36rpx;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.section-heading text:last-child {
+  margin-top: 8rpx;
+  color: #667085;
+  font-size: 25rpx;
+  line-height: 1.4;
+}
+
+.optional-label {
+  color: #667085;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.assessment-number-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.assessment-review {
+  display: grid;
+  gap: 12rpx;
+  margin-top: 26rpx;
+  padding: 18rpx;
+  border-left: 6rpx solid #157a55;
+  border-radius: 14rpx;
+  background: #f2faf6;
+}
+
+.assessment-review > text {
+  color: #175d43;
+  font-size: 27rpx;
+  font-weight: 900;
+}
+
+.assessment-review view {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.assessment-review view text:first-child {
+  color: #667085;
+  font-size: 24rpx;
+}
+
+.assessment-review view text:last-child {
+  color: #111827;
+  font-size: 25rpx;
+  font-weight: 900;
+  text-align: right;
+}
+
+.assessment-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-top: 22rpx;
+}
+
+.assessment-actions button:only-child {
+  grid-column: 1 / -1;
+}
+
+.assessment-actions .primary-button,
+.assessment-actions .ghost-button {
+  margin-top: 0;
+}
+
 checkbox {
-  transform: scale(0.75);
   margin-right: 6rpx;
+  transform: scale(0.78);
 }
 
 .three-col {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 360px) {
+  .assessment-number-grid,
+  .three-col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

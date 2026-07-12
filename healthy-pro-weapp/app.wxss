@@ -164,17 +164,17 @@ button::after {
 .secondary-button,
 .ghost-button {
   width: 100%;
-  min-height: 72rpx;
+  min-height: 88rpx;
   margin-top: 18rpx;
   border-radius: 14rpx;
   font-size: 27rpx;
   font-weight: 900;
-  line-height: 72rpx;
+  line-height: 88rpx;
 }
 
 .small-button {
   width: auto;
-  min-height: 60rpx;
+  min-height: 72rpx;
   margin: 0;
   padding: 0 20rpx;
   border: 1rpx solid #e1e7ee;
@@ -183,19 +183,19 @@ button::after {
   color: #111827;
   font-size: 24rpx;
   font-weight: 900;
-  line-height: 60rpx;
+  line-height: 72rpx;
 }
 
 .detail-button {
   width: auto;
-  min-height: 50rpx;
+  min-height: 64rpx;
   margin-top: 10rpx;
   padding: 0 18rpx;
   border-color: rgba(21, 122, 85, 0.28);
   color: #157a55;
   background: #f2faf6;
-  font-size: 22rpx;
-  line-height: 50rpx;
+  font-size: 24rpx;
+  line-height: 64rpx;
 }
 
 .primary-button {
@@ -278,7 +278,7 @@ button::after {
   display: block;
   margin-top: 6rpx;
   color: #667085;
-  font-size: 24rpx;
+  font-size: 25rpx;
   line-height: 1.4;
 }
 
@@ -286,7 +286,7 @@ button::after {
   display: block;
   margin-top: 6rpx;
   color: #176b4d;
-  font-size: 24rpx;
+  font-size: 25rpx;
   line-height: 1.42;
 }
 
@@ -297,7 +297,7 @@ button::after {
   border-radius: 999rpx;
   color: #0f3d2d;
   background: #eaf4ef;
-  font-size: 23rpx;
+  font-size: 24rpx;
   font-weight: 900;
 }
 
@@ -341,7 +341,7 @@ button::after {
 }
 
 .choice {
-  min-height: 74rpx;
+  min-height: 84rpx;
   padding: 16rpx;
   border: 1rpx solid #e1e7ee;
   border-radius: 14rpx;
@@ -361,6 +361,6 @@ button::after {
 .empty-note {
   margin-top: 16rpx;
   color: #667085;
-  font-size: 24rpx;
+  font-size: 25rpx;
   line-height: 1.5;
 }

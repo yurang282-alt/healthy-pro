@@ -75,7 +75,7 @@
 .plan-console-metrics text {
   display: block;
   color: rgba(255, 255, 255, 0.62);
-  font-size: 21rpx;
+  font-size: 22rpx;
   font-weight: 800;
   line-height: 1.35;
 }
@@ -101,16 +101,19 @@
   background: #d7f7e5;
 }
 
-.plan-console-card .plan-overview-actions .secondary-button {
+.plan-console-card .plan-start-button {
   color: #101820;
   border-color: transparent;
   background: #d7f7e5;
 }
 
-.plan-console-card .plan-overview-actions .ghost-button {
+.plan-edit-link {
+  min-height: 72rpx;
+  padding-top: 20rpx;
   color: rgba(255, 255, 255, 0.88);
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
+  font-size: 26rpx;
+  font-weight: 900;
+  text-align: center;
 }
 
 .plan-overview-card {
@@ -214,7 +217,6 @@
   line-height: 1.45;
 }
 
-.plan-overview-actions,
 .plan-management-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -273,14 +275,19 @@
 
 .plan-overview-actions .secondary-button,
 .plan-overview-actions .ghost-button,
-.plan-management-actions .primary-button,
+.plan-management-actions .secondary-button,
 .plan-management-actions .ghost-button,
 .secondary-plan-actions .secondary-button,
 .secondary-plan-actions .ghost-button {
-  min-height: 64rpx;
+  min-height: 80rpx;
   margin-top: 0;
   font-size: 25rpx;
-  line-height: 64rpx;
+  line-height: 80rpx;
+}
+
+.secondary-plan-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .plan-tools-strip .pill {
@@ -371,7 +378,7 @@
   border-radius: 999rpx;
   background: #eef3f6;
   color: #344052;
-  font-size: 21rpx;
+  font-size: 22rpx;
   font-weight: 900;
   line-height: 28rpx;
 }

@@ -1,5 +1,25 @@
 # Healthy Pro Design Decisions
 
+## 2026-07-12 Progressive Disclosure Simplification
+
+Scope: WeChat Mini Program only. This pass keeps training prescriptions, safety boundaries, plan recovery, CloudBase identity, and saved records intact while reducing what appears by default.
+
+### Decision 1: One Screen, One Immediate Question
+
+Home answers what to train today; Plan explains the current structure; Log focuses on the current exercise; Plan Editor exposes one editable exercise at a time; Equipment defaults to today's machines; Profile summarizes the current week.
+
+### Decision 2: Preserve Prescription Data In Compact Summaries
+
+Collapsed exercise rows must still show sets, reps or duration, rest, equipment, and suggested load. Simplification may hide editing controls and explanations, but not the prescription required to execute safely.
+
+### Decision 3: Use Progressive Disclosure For Secondary Work
+
+Full equipment libraries, coach rationale, plan recovery, history, body records, and advanced plan settings stay available behind explicit controls. Primary actions remain directly visible and use stable phone-sized touch targets.
+
+### Decision 4: Split Assessment By User Decision
+
+Assessment is organized into body status, training direction, and time or limitations, followed by a compact confirmation. Reassessment continues to hydrate the last saved values.
+
 ## 2026-07-07 Design Follow-Up Backlog
 
 Source: CTO design follow-up. Scope is planning and acceptance only; no product code, CloudBase, login, database, cloud function, or Mini Program upload changes.
