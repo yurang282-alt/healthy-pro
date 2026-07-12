@@ -43,35 +43,35 @@
 
       <view class="editor-list">
         <view wx:for="{{selectedWorkout.exercises}}" wx:for-item="exercise" wx:for-index="exerciseIndex" wx:key="id" class="editor-exercise">
-          <image class="thumb" src="{{exercise.image}}" mode="aspectFit" />
-          <view class="editor-fields">
-            <view class="exercise-title-row">
+          <view class="exercise-summary">
+            <image class="thumb" src="{{exercise.image}}" mode="aspectFit" />
+            <view class="exercise-copy">
               <text class="item-title">{{exerciseIndex + 1}}. {{exercise.name}}</text>
-              <view class="move-actions">
-                <button class="small-button move-button" disabled="{{exerciseIndex == 0}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-direction="up" bindtap="moveExercise">上移</button>
-                <button class="small-button move-button" disabled="{{exerciseIndex == selectedWorkout.exercises.length - 1}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-direction="down" bindtap="moveExercise">下移</button>
-              </view>
+              <text class="item-meta">{{exercise.equipmentName}} · 建议 {{exercise.load || '按感觉试'}}</text>
             </view>
-            <picker range="{{exerciseOptions}}" range-key="name" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" bindchange="replaceExercise">
-              <view class="picker-button">替换动作</view>
-            </picker>
-            <view class="mini-grid prescription-grid">
-              <view>
-                <text class="label mini-label">组数</text>
-                <input class="input mini-input" type="number" value="{{exercise.editSets}}" disabled="{{exercise.type == 'cardio'}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="editSets" bindinput="setExerciseField" />
-              </view>
-              <view>
-                <text class="label mini-label">次数 / 时长</text>
-                <input class="input mini-input" value="{{exercise.reps}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="reps" bindinput="setExerciseField" />
-              </view>
-              <view>
-                <text class="label mini-label">休息秒数</text>
-                <input class="input mini-input" type="number" value="{{exercise.restSeconds}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="restSeconds" bindinput="setExerciseField" />
-              </view>
-            </view>
-            <text class="item-meta">{{exercise.equipmentName}} · 建议 {{exercise.load || '按感觉试'}}</text>
           </view>
-          <button class="small-button danger-button" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" bindtap="removeExercise">删除</button>
+          <view class="exercise-actions">
+            <button class="small-button move-button" disabled="{{exerciseIndex == 0}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-direction="up" bindtap="moveExercise">上移</button>
+            <button class="small-button move-button" disabled="{{exerciseIndex == selectedWorkout.exercises.length - 1}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-direction="down" bindtap="moveExercise">下移</button>
+            <picker class="replace-picker" range="{{exerciseOptions}}" range-key="name" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" bindchange="replaceExercise">
+              <view class="picker-button">替换</view>
+            </picker>
+          </view>
+          <view class="mini-grid prescription-grid">
+            <view>
+              <text class="label mini-label">组数</text>
+              <input class="input mini-input" type="number" value="{{exercise.editSets}}" disabled="{{exercise.type == 'cardio'}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="editSets" bindinput="setExerciseField" bindblur="normalizeExerciseField" />
+            </view>
+            <view>
+              <text class="label mini-label">次数 / 时长</text>
+              <input class="input mini-input" value="{{exercise.reps}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="reps" bindinput="setExerciseField" />
+            </view>
+            <view>
+              <text class="label mini-label">休息秒数</text>
+              <input class="input mini-input" type="number" value="{{exercise.restSeconds}}" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" data-key="restSeconds" bindinput="setExerciseField" bindblur="normalizeExerciseField" />
+            </view>
+          </view>
+          <button class="small-button danger-button" data-workout-index="{{selectedWorkoutIndex}}" data-exercise-index="{{exerciseIndex}}" bindtap="removeExercise">删除动作</button>
         </view>
       </view>
 

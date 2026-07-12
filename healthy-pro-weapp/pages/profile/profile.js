@@ -2,6 +2,24 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.5.3",
+    version: "v0.5.3",
+    title: "编辑计划输入与布局修复",
+    summary: "编辑组数和休息时间时可以先清空再输入，计划页在手机上也更易操作。",
+    highlights: ["组数、休息时间改为失焦或保存时校验，不再出现 1 改 5 变成 15", "动作卡信息、上移下移和替换操作重新排布，避免文字和按钮互相挤压", "保存区保持在底部安全区域，完成调整后可直接保存"],
+    releaseType: "fix",
+    publishedAt: "2026-07-12T10:00:00+08:00"
+  },
+  {
+    id: "weapp-v0.5.2",
+    version: "v0.5.2",
+    title: "编辑计划页面布局修复",
+    summary: "修复编辑计划页在手机上横向溢出、动作名竖排和按钮挤压的问题。",
+    highlights: ["动作卡改为摘要、操作、处方三层结构", "上移、下移和替换按钮不再挤压动作名称", "底部保存区保留在安全区域内，便于完成修改后保存"],
+    releaseType: "fix",
+    publishedAt: "2026-07-09T08:00:00+08:00"
+  },
+  {
     id: "weapp-v0.5.1",
     version: "v0.5.1",
     title: "计划编辑和训练记录修复",

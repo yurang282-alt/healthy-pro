@@ -24,8 +24,10 @@
   z-index: 5;
   display: flex;
   gap: 12rpx;
-  margin: 22rpx -24rpx 0;
-  padding: 16rpx 24rpx;
+  width: 100%;
+  max-width: 100%;
+  margin: 22rpx 0 0;
+  padding: 12rpx 0 10rpx;
   overflow-x: auto;
   background: #f3f5f7;
 }
@@ -119,8 +121,10 @@
 }
 
 .editor-exercise {
-  display: grid;
-  grid-template-columns: 96rpx minmax(0, 1fr);
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
   gap: 16rpx;
   padding: 18rpx;
   border: 1rpx solid #d9e0e8;
@@ -128,35 +132,55 @@
   background: #ffffff;
 }
 
-.editor-fields {
-  min-width: 0;
-}
-
-.exercise-title-row {
+.exercise-summary {
   display: flex;
-  gap: 12rpx;
+  min-width: 0;
+  gap: 16rpx;
   align-items: flex-start;
-  justify-content: space-between;
 }
 
-.exercise-title-row .item-title {
+.exercise-copy {
   flex: 1;
   min-width: 0;
 }
 
-.move-actions {
+.exercise-summary .item-title,
+.exercise-summary .item-meta {
+  display: block;
+}
+
+.exercise-summary .item-title {
+  color: #111827;
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 1.24;
+  word-break: break-all;
+}
+
+.exercise-summary .item-meta {
+  margin-top: 8rpx;
+  color: #667085;
+  font-size: 23rpx;
+  line-height: 1.35;
+}
+
+.exercise-actions {
   display: flex;
-  flex: 0 0 auto;
-  gap: 8rpx;
+  width: 100%;
+  min-width: 0;
+  gap: 10rpx;
+  align-items: center;
 }
 
 .move-button {
-  min-height: 48rpx;
-  padding: 0 14rpx;
+  flex: 0 0 108rpx;
+  width: 108rpx;
+  min-height: 52rpx;
+  padding: 0;
   border-radius: 10rpx;
   color: #405166;
   font-size: 22rpx;
-  line-height: 48rpx;
+  line-height: 52rpx;
 }
 
 .move-button[disabled] {
@@ -164,13 +188,18 @@
   background: #f6f7f8;
 }
 
+.replace-picker {
+  flex: 1;
+  min-width: 0;
+}
+
 .picker-button {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 54rpx;
-  margin-top: 10rpx;
-  padding: 0 18rpx;
+  width: 100%;
+  min-height: 52rpx;
+  padding: 0 16rpx;
   border: 1rpx solid rgba(21, 122, 85, 0.32);
   border-radius: 10rpx;
   color: #157a55;
@@ -181,9 +210,9 @@
 
 .mini-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12rpx;
-  margin-top: 14rpx;
+  width: 100%;
+  min-width: 0;
 }
 
 .prescription-grid {
@@ -197,15 +226,16 @@
 }
 
 .mini-input {
+  width: 100%;
   min-height: 68rpx;
   padding: 12rpx 14rpx;
   font-size: 26rpx;
 }
 
 .danger-button {
-  grid-column: 2;
-  justify-self: flex-start;
-  margin-top: 8rpx;
+  width: 100%;
+  min-height: 58rpx;
+  line-height: 58rpx;
   color: #9f2f2f;
   border-color: #f0c6c6;
   background: #fff7f7;
@@ -213,8 +243,10 @@
 
 .editor-action-card {
   position: sticky;
-  bottom: 20rpx;
+  bottom: calc(18rpx + env(safe-area-inset-bottom));
   z-index: 6;
+  width: 100%;
+  max-width: 100%;
   box-shadow: 0 16rpx 36rpx rgba(15, 23, 42, 0.14);
 }
 
@@ -223,7 +255,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .move-actions {
-    flex-direction: column;
+  .exercise-actions {
+    flex-wrap: wrap;
+  }
+
+  .replace-picker {
+    flex-basis: 100%;
   }
 }

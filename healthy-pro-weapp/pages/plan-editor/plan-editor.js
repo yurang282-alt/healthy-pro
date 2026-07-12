@@ -26,6 +26,20 @@ function parseRestSeconds(value, fallback = 60) {
   return Number(fallback || 60);
 }
 
+function normalizeIntegerInput(value, min, max, fallback) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const numeric = Math.round(Number(raw));
+  if (!Number.isFinite(numeric)) return "";
+  return Math.max(min, Math.min(max, numeric));
+}
+
+function finalizeIntegerInput(value, min, max, fallback) {
+  const normalized = normalizeIntegerInput(value, min, max, fallback);
+  if (normalized === "") return fallback;
+  return normalized;
+}
+
 function prepareExerciseForEditor(exercise) {
   const safeExercise = exercise || {};
   const isCardio = safeExercise.type === "cardio";
@@ -174,10 +188,25 @@ Page({
     const exerciseIndex = Number(event.currentTarget.dataset.exerciseIndex);
     const key = event.currentTarget.dataset.key;
     let value = event.detail.value;
-    if (key === "editSets") value = Math.max(1, Math.min(12, Math.round(Number(value || 1))));
-    if (key === "restSeconds") value = Math.max(0, Math.min(300, Math.round(Number(value || 0))));
+    if (key === "editSets") value = normalizeIntegerInput(value, 1, 12, 1);
+    if (key === "restSeconds") value = normalizeIntegerInput(value, 0, 300, 0);
     const draft = clone(this.data.draft);
     draft.workouts[workoutIndex].exercises[exerciseIndex][key] = value;
+    this.setDraft(draft);
+  },
+
+  normalizeExerciseField(event) {
+    const workoutIndex = Number(event.currentTarget.dataset.workoutIndex ?? this.data.selectedWorkoutIndex);
+    const exerciseIndex = Number(event.currentTarget.dataset.exerciseIndex);
+    const key = event.currentTarget.dataset.key;
+    const draft = clone(this.data.draft);
+    const exercise = draft.workouts[workoutIndex].exercises[exerciseIndex];
+    if (key === "editSets") {
+      exercise.editSets = finalizeIntegerInput(exercise.editSets, 1, 12, 1);
+    }
+    if (key === "restSeconds") {
+      exercise.restSeconds = finalizeIntegerInput(exercise.restSeconds, 0, 300, 0);
+    }
     this.setDraft(draft);
   },
 
@@ -248,7 +277,15 @@ Page({
     const currentPlan = store.user && store.user.plan;
     if (!currentPlan) return;
 
-    store.user.plan = buildCustomPlan(currentPlan, this.data.draft, {
+    const draft = clone(this.data.draft);
+    (draft.workouts || []).forEach((workout) => {
+      (workout.exercises || []).forEach((exercise) => {
+        exercise.editSets = exercise.type === "cardio" ? 1 : finalizeIntegerInput(exercise.editSets, 1, 12, 1);
+        exercise.restSeconds = finalizeIntegerInput(exercise.restSeconds, 0, 300, 0);
+      });
+    });
+
+    store.user.plan = buildCustomPlan(currentPlan, draft, {
       assessment: store.user && store.user.assessment,
       review: this.data.review
     });
