@@ -20,11 +20,11 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 
 ## Current Status
 
-- Stage: PWA is in maintenance mode. The WeChat Mini Program v0.5.5 is the current release target and its P0 gate is closed for a controlled trial with known friends. Two-user isolation and same-account cloud restore have passed by user report. Formal public release is a separate gate and is not yet claimed.
+- Stage: PWA is in maintenance mode. The WeChat Mini Program v0.5.5 has been uploaded for a controlled trial with known friends. Its P0 gate is closed; two-user isolation and same-account cloud restore have passed by user report. Formal public release is a separate gate and is not yet claimed.
 - Working version: PWA supports assessment, coach plan, today's training, workout/body records, equipment library, Supabase auth/sync when configured, friends, feedback, and update announcements. Mini Program supports home, assessment, plan, log, equipment, profile, openid-scoped local storage, CloudBase user store sync, training log/feedback mirroring, plan editing, plan history, plan recovery, friends, feedback, and local update announcements. Friend lookup/ranking is designed to go through the `social` cloud function so the client does not read other users' full `users` documents.
 - Local state: `npm run dev` serves the PWA at `http://127.0.0.1:5173`. `npm run dev:lan` supports same-Wi-Fi phone preview.
 - GitHub state: `main` contained the v0.5.4 Mini Program UI simplification at `d1ee763` before this closeout change; use Git as the exact source of truth after subsequent commits.
-- Deployment state: Mini Program v0.5.4 has been uploaded through WeChat DevTools. The exact uploaded build still needs a short real-device UI and update-announcement spot-check before it becomes the next public-release candidate.
+- Deployment state: Mini Program v0.5.5 was uploaded through WeChat DevTools on 2026-07-13 for AppID `wx9f1d623ecc4ce4ae`; the reported package size was 459.8 KB. It remains an experience/development build, not a formally reviewed public release.
 - In-app/release state: The v0.5.5 Mini Program announcement covers the friends-page redesign. PWA announcements remain maintenance-only unless a PWA change is released.
 
 ## Architecture
