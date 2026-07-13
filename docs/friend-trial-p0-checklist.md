@@ -125,7 +125,7 @@ Healthy Pro is cleared for a small known-friend trial after CloudBase metadata c
 | Cloud user isolation | Satisfied for small trial | Owner-scoped IDs, private core collections, and two-user isolation have been checked |
 | Two users cannot see each other's data | Satisfied by user report | Recheck on the next release candidate before public release |
 | Training/body data privacy | Satisfied for small trial | Private-by-default core collections and two-user isolation passed; avoid unnecessary record inspection |
-| Friend sharing privacy | Source fixed, deployment pending | Repository `social` summaries no longer include another user's friend code; deploy this function before relying on the change online |
+| Friend sharing privacy | Satisfied for small trial | `social` summaries no longer include another user's friend code; user deployed the function and a subsequent read-only function list confirmed it online |
 | Backup/export/restore | Restore satisfied by user report | Export/delete expectations remain P1 |
 | Experience version | Uploaded | v0.5.4 uploaded; exact UI spot-check remains |
 | Update announcements | Implemented | v0.5.4 announcement exists; visibility spot-check remains |
@@ -156,7 +156,7 @@ Healthy Pro is cleared for a small known-friend trial after CloudBase metadata c
 
 ## P1 Checklist
 
-- Source completed, deployment pending: remove `friendCode` from friend summary responses returned by the `social` cloud function. A user's code remains visible only in their own profile.
+- Completed and deployed: remove `friendCode` from friend summary responses returned by the `social` cloud function. A user's code remains visible only in their own profile.
 - Add a simple user data export path for self-backup.
 - Define data deletion expectations for a friend trial: what can be deleted in app vs. what requires admin cleanup.
 - Add an operator backup procedure before schema/permission changes.
