@@ -48,19 +48,24 @@ Already available:
 - Friend lookup/ranking is designed to go through `social`, not direct full-user reads.
 - The app already has assessment, plan generation, plan editing, training logging, equipment, profile, friends, feedback, and update announcements.
 
-Still missing or not formally evidenced:
+Closed for the controlled known-friend trial:
 
-- CloudBase database permission-rule evidence.
-- Live function-version evidence for `social`.
-- Written two-user trial record with pass/fail notes.
-- Backup/restore runbook and proof.
-- Experience-version verification record tied to a version number and update announcement.
+- Core collections were confirmed private in the P0 evidence pass.
+- Two-user isolation passed by user report.
+- Same-account cloud restore passed by user report.
+- v0.5.4 was uploaded with an in-app v0.5.4 announcement.
+
+Still required before formal public release:
+
+- Repeat the smoke test against the exact public release candidate.
+- Finalize privacy-policy wording and user data export/deletion expectations.
+- Keep deployment evidence for the release-candidate `login` and `social` functions.
 
 ### Minimal Next Actions
 
-1. Capture CloudBase permission and live-function evidence without inspecting private record contents.
-2. Run the two-user real-device privacy and restore script on the current experience version.
-3. Record the release evidence: AppID, CloudBase env, version, tester devices, update announcement, pass/fail result.
+1. Spot-check v0.5.4 on a real phone, including `我的 > 更新公告`.
+2. Collect trial issues without expanding scope unless they block the core workout loop.
+3. Before public review, choose and document export/deletion and privacy-policy paths.
 
 ### Do Not Do Now
 
@@ -87,7 +92,7 @@ Healthy Pro is cleared for a small known-friend trial after CloudBase metadata c
 
 1. Small known-friend trial is allowed.
 2. Formal public release is still blocked by privacy copy, export/delete expectations, and final release-candidate evidence.
-3. v0.5.2 edit-plan UI remains `awaiting_user` until real-device confirmation.
+3. v0.5.4 has been uploaded; its simplified UI and update announcement still need one short real-device spot-check.
 
 ## Current Facts
 
@@ -106,28 +111,27 @@ Healthy Pro is cleared for a small known-friend trial after CloudBase metadata c
 - `healthy-pro-weapp/cloudfunctions/login/index.js` returns `openid`, `appid`, and `unionid` through `wx-server-sdk`.
 - Local storage is scoped with `healthyProStore:user:<openid>`.
 - Cloud documents are named with openid-scoped IDs such as `user_<openid>`, `plan_<openid>`, `log_<openid>_<logId>`, and `feedback_<openid>_<feedbackId>`.
-- Social/friend data is implemented through friend codes and `friendships`, but CloudBase collection permission rules are not present in this repo.
+- Social/friend data is implemented through friend codes and `friendships`. Platform permission rules are managed in CloudBase rather than this repo; the P0 evidence pass confirmed the core collections were private.
 - The Mini Program code now routes friend lookup, friend requests, friend response/removal, and leaderboard reads through the `social` cloud function. The cloud function reads full user documents server-side but returns only minimal friend summary fields to the client.
-- The registry records `social` as deployed, but the current local CLI cannot re-check the live function list. Before friend trial, verify the live `social` function matches this repository and run real-device verification.
-- Existing docs state that CloudBase permission rules, two-user isolation, restore, real-device validation, and experience-version upload are still pending.
+- WeChat DevTools can list and deploy `social` in the Healthy Pro CloudBase environment; deployments must remain limited to Healthy Pro-owned functions.
 
 ## P0 Checklist
 
 | Area | Status | Decision |
 | --- | --- | --- |
 | Core flow: assess -> plan -> today -> log | Satisfied locally | Good enough for trial once data/release gates pass |
-| WeChat identity | Partially satisfied | `login` cloud function exists and app binds to `openid`; needs real-device evidence |
+| WeChat identity | Satisfied for small trial | `login` binds to `openid`; two-user real-device isolation passed by user report |
 | Local user isolation | Satisfied in code | Local store is openid-scoped |
-| Cloud user isolation | Unverified | Code uses openid-scoped doc IDs, but platform collection permissions are not documented or tested |
+| Cloud user isolation | Satisfied for small trial | Owner-scoped IDs, private core collections, and two-user isolation have been checked |
 | Two users cannot see each other's data | Satisfied by user report | Recheck on the next release candidate before public release |
-| Training/body data privacy | Not ready | Data exists in CloudBase and should be treated as private health/body/training data |
-| Friend sharing privacy | Code fixed, live version needs confirmation | `social` cloud function removes direct cross-user `users` reads from the client; must verify the deployed version before trial |
+| Training/body data privacy | Satisfied for small trial | Private-by-default core collections and two-user isolation passed; avoid unnecessary record inspection |
+| Friend sharing privacy | Source fixed, deployment pending | Repository `social` summaries no longer include another user's friend code; deploy this function before relying on the change online |
 | Backup/export/restore | Restore satisfied by user report | Export/delete expectations remain P1 |
-| Experience version | Not ready | No evidence of Mini Program experience-version upload and real-device verification |
-| Update announcements | Partially satisfied | In-app announcements exist; friend-trial release needs visible latest announcement verification |
+| Experience version | Uploaded | v0.5.4 uploaded; exact UI spot-check remains |
+| Update announcements | Implemented | v0.5.4 announcement exists; visibility spot-check remains |
 | CloudBase static hosting | Not applicable | Healthy Pro has no H5 CloudBase entry today |
 
-## Must Fix Before Friend Trial
+## Must Recheck Before Formal Public Release
 
 1. CloudBase permissions
    - Document the intended permissions for `users`, `plans`, `training_logs`, `feedback`, `feedbacks`, and `friendships`.
@@ -152,11 +156,11 @@ Healthy Pro is cleared for a small known-friend trial after CloudBase metadata c
 
 ## P1 Checklist
 
-- Remove `friendCode` from friend summary responses returned by the `social` cloud function. A user's friend code should only be visible to themselves, not included in other friends' summary payloads.
+- Source completed, deployment pending: remove `friendCode` from friend summary responses returned by the `social` cloud function. A user's code remains visible only in their own profile.
 - Add a simple user data export path for self-backup.
 - Define data deletion expectations for a friend trial: what can be deleted in app vs. what requires admin cleanup.
 - Add an operator backup procedure before schema/permission changes.
-- Decide whether `feedback` and `feedbacks` should both exist or whether one is legacy.
+- Treat `feedbacks` as the current Mini Program collection and `feedback` as legacy until a read-only migration audit proves it can be removed; do not delete production data during the trial.
 - Add a friend-trial script with tester names, devices, AppID, CloudBase env, test time, and pass/fail notes.
 - Make privacy copy explicit in the app: what friends can see and what they cannot see.
 
@@ -171,12 +175,12 @@ Healthy Pro is cleared for a small known-friend trial after CloudBase metadata c
 
 The shortest path is not new features. Do this sequence:
 
-1. Write and review CloudBase collection permission rules.
-2. Run a two-user real-device isolation and restore test.
-3. Upload a Mini Program experience version with a visible update announcement.
+1. Spot-check the uploaded v0.5.4 UI and update announcement on a real phone.
+2. Keep the trial controlled and collect only core-flow defects.
+3. Before public review, complete privacy, export, and deletion decisions.
 
 If any one of these fails, Healthy Pro is not ready for friend trial.
 
 ## Current Recommendation
 
-For one-on-one owner testing, the current build is usable. For inviting friends, do not proceed until the `social` cloud function live version is confirmed, collection permissions are reviewed, and the two-user privacy test passes. The fastest safe product path is to keep `users`, `plans`, `training_logs`, `feedbacks`, and body data owner-only, and expose friend/ranking data only through the cloud function.
+The current build is suitable for a controlled known-friend trial. Do not describe it as formally public-ready yet. Keep `users`, `plans`, `training_logs`, `feedbacks`, and body data owner-only, expose friend/ranking data only through `social`, and repeat the evidence checks on the exact public release candidate.

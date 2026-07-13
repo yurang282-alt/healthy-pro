@@ -87,12 +87,11 @@ function toPublicSummary(record) {
   };
 }
 
-function toPublicUser(record) {
+function toFriendSummary(record) {
   const profile = toPublicProfile(record);
   return {
     openid: record && record.openid || "",
     nickname: profile.nickname,
-    friendCode: profile.friendCode,
     shareLeaderboard: profile.shareLeaderboard,
     shareWeeklySummary: profile.shareWeeklySummary,
     ...toPublicSummary(record)
@@ -214,7 +213,7 @@ async function getSocial(event, openid) {
   )).filter(Boolean)));
   const otherRecords = await Promise.all(otherOpenids.map((targetOpenid) => getUserRecord(targetOpenid).catch(() => null)));
   const byOpenid = otherRecords.reduce((map, record) => {
-    if (record && record.openid) map[record.openid] = toPublicUser(record);
+    if (record && record.openid) map[record.openid] = toFriendSummary(record);
     return map;
   }, {});
 

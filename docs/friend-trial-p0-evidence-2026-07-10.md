@@ -189,6 +189,15 @@ Meaning:
 | Acceptance of small-trial risk | CTO/User |
 | v0.5.2 edit-plan UI confirmation | User |
 
+## Follow-Up: 2026-07-13
+
+- v0.5.4 was uploaded after the historical evidence pass above; the earlier v0.5.2 `awaiting_user` note is superseded.
+- Two-user isolation and same-account restore remain passed by user report.
+- Repository `social` code now removes `friendCode` from internal friend/ranking summaries while preserving the current user's own code in their private profile response. WeChat DevTools deployment was attempted twice but failed at `getCloudAPISignedHeader` with platform error `41002`; the online function is therefore not claimed as updated.
+- Core collection permissions were recorded as private during the P0 evidence pass. Platform rules remain CloudBase-managed and should be rechecked on the exact formal release candidate.
+- Remaining user evidence: one short v0.5.4 real-device UI and `我的 > 更新公告` spot-check.
+- Small known-friend trial remains allowed; formal public release remains a separate privacy, data-rights, and release-candidate gate.
+
 ## Git / Experience / User-Visible State
 
 - Git branch at check time: `main`.
