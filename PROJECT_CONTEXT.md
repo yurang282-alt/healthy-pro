@@ -26,6 +26,7 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 - GitHub state: `main` contained the v0.5.4 Mini Program UI simplification at `d1ee763` before this closeout change; use Git as the exact source of truth after subsequent commits.
 - Deployment state: Mini Program v0.5.5 was uploaded through WeChat DevTools on 2026-07-13 for AppID `wx9f1d623ecc4ce4ae`; the reported package size was 459.8 KB. It remains an experience/development build, not a formally reviewed public release.
 - In-app/release state: The v0.5.5 Mini Program announcement covers the friends-page redesign. PWA announcements remain maintenance-only unless a PWA change is released.
+- User validation evidence: The user confirmed on 2026-07-13 that changing an exercise's set count from 1 to 5 in the plan editor persists as 5 after reopening. The underlying fix is commit `0022572`, already contained in current `main` and the uploaded v0.5.5 Mini Program build. CTO subsequently authorized a dedicated v0.5.6 experience-build closeout with a matching in-app announcement; this does not change the fix logic or expand the friend trial.
 
 ## Architecture
 

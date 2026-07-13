@@ -2,6 +2,15 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.5.6",
+    version: "v0.5.6",
+    title: "计划组数编辑修复",
+    summary: "编辑训练计划时可以先清空原组数再输入新数值，保存后会正确保留。",
+    highlights: ["修复组数从 1 改为 5 时被拼成 15 的问题", "空值只在失焦或保存时校验，不打断输入过程", "已完成真机验证：重新进入编辑页后组数仍保持为 5"],
+    releaseType: "fix",
+    publishedAt: "2026-07-13T22:30:00+08:00"
+  },
+  {
     id: "weapp-v0.5.5",
     version: "v0.5.5",
     title: "好友页重新设计",
