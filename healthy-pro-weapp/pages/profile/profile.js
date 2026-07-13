@@ -2,6 +2,15 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.5.5",
+    version: "v0.5.5",
+    title: "好友页重新设计",
+    summary: "好友码、添加好友和本周排行集中到首屏，减少设置项对主要任务的干扰。",
+    highlights: ["好友码和添加入口集中到训练风格主面板", "本周排行优先展示，好友请求移动到排行之后", "昵称、共享范围和好友管理按需展开", "扩大主要按钮触控区域并改善长昵称排版"],
+    releaseType: "improvement",
+    publishedAt: "2026-07-13T18:00:00+08:00"
+  },
+  {
     id: "weapp-v0.5.4",
     version: "v0.5.4",
     title: "核心界面简化",
@@ -449,6 +458,7 @@ function buildSocialView(store, insights) {
     shareOptions: buildShareOptions(profile),
     incoming: incoming.map(decorateFriend),
     outgoing: outgoing.map(decorateFriend),
+    requestCount: incoming.length + outgoing.length,
     accepted: accepted.map(decorateFriend),
     leaderboard: leaderboard.map((item, index) => ({
       ...item,
@@ -535,6 +545,7 @@ Page({
     socialView: null,
     socialNickname: "",
     friendCodeInput: "",
+    socialSettingsOpen: false,
     releaseState: null,
     profileMode: "hub",
     profileModeTitle: "",
@@ -661,6 +672,10 @@ Page({
 
   setSocialNickname(event) {
     this.setData({ socialNickname: event.detail.value });
+  },
+
+  toggleSocialSettings() {
+    this.setData({ socialSettingsOpen: !this.data.socialSettingsOpen });
   },
 
   toggleShareOption(event) {

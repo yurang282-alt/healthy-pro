@@ -9,7 +9,7 @@
     <button class="primary-button profile-button" bindtap="goAssessment">开始评估</button>
   </view>
 
-  <view wx:if="{{profileMode != 'hub'}}" class="profile-subhead">
+  <view wx:if="{{profileMode != 'hub'}}" class="profile-subhead profile-subhead-{{profileMode}}">
     <button class="small-button subtle" bindtap="backProfileHome">返回</button>
     <view>
       <view class="eyebrow">我的</view>
@@ -134,40 +134,37 @@
   </block>
 
   <block wx:elif="{{profileMode == 'friends'}}">
-    <view wx:if="{{user && socialView}}" class="card">
-      <view class="row">
-        <view>
-          <view class="eyebrow">好友</view>
-          <text class="card-title">好友与排行</text>
+    <view wx:if="{{user && socialView}}" class="friends-page">
+      <view class="friends-hero">
+        <view class="friends-hero-head">
+          <view>
+            <view class="friends-kicker">本周稳定榜</view>
+            <text class="friends-hero-title">和朋友一起练稳</text>
+          </view>
+          <text class="friends-count">{{socialView.leaderboardCount}} 人</text>
         </view>
-        <text class="pill">{{socialView.leaderboardCount}} 人</text>
-      </view>
-      <view class="friend-code-card">
-        <view>
-          <text>我的好友码</text>
-          <text class="friend-code">{{socialView.friendProfile.friendCode || "同步后生成"}}</text>
+        <view class="friend-code-strip">
+          <view>
+            <text>我的好友码</text>
+            <text class="friend-code">{{socialView.friendProfile.friendCode || "同步后生成"}}</text>
+          </view>
+          <button class="friend-copy-button" bindtap="copyFriendCode">复制</button>
         </view>
-        <button class="small-button" bindtap="copyFriendCode">复制</button>
-      </view>
-
-      <view class="form-block">
-        <text class="field-label">昵称</text>
-        <input class="text-input" maxlength="16" value="{{socialNickname}}" bindinput="setSocialNickname" placeholder="输入好友看到的昵称" />
-      </view>
-      <view class="share-grid">
-        <view wx:for="{{socialView.shareOptions}}" wx:key="key" class="check-card {{item.checked ? 'selected' : ''}}" data-key="{{item.key}}" bindtap="toggleShareOption">
-          <text>{{item.label}}</text>
-          <text>{{item.note}}</text>
+        <view class="add-friend-row hero-add-friend">
+          <input class="friend-code-input" maxlength="12" value="{{friendCodeInput}}" bindinput="setFriendCodeInput" placeholder="输入朋友的好友码" />
+          <button class="friend-add-button" bindtap="addFriend">添加</button>
         </view>
       </view>
-      <button class="secondary-button profile-button" bindtap="saveSocialProfile">保存昵称和共享设置</button>
 
-      <view class="add-friend-row">
-        <input class="text-input" maxlength="12" value="{{friendCodeInput}}" bindinput="setFriendCodeInput" placeholder="输入好友码" />
-        <button class="small-button" bindtap="addFriend">发送请求</button>
-      </view>
-
-      <view class="leaderboard" wx:if="{{socialView.leaderboard.length}}">
+      <view class="friends-section leaderboard-section">
+        <view class="friends-section-head">
+          <view>
+            <text>本周排行</text>
+            <text>按训练完成率排序</text>
+          </view>
+          <text>每周更新</text>
+        </view>
+        <view class="leaderboard" wx:if="{{socialView.leaderboard.length}}">
         <view wx:for="{{socialView.leaderboard}}" wx:key="rank" class="leaderboard-row {{item.isSelf ? 'self' : ''}}">
           <text>{{item.rank}}</text>
           <view>
@@ -175,13 +172,40 @@
             <text>{{item.displaySummary}}</text>
           </view>
         </view>
+        </view>
+        <view wx:else class="friends-empty">添加一位朋友后，这里会出现本周排行。</view>
       </view>
-      <view wx:else class="muted empty-inline">打开好友排行并添加好友后，这里会显示本周榜单。</view>
 
-      <view class="friend-activity">
-        <view class="friend-activity-head">
-          <text>好友动态</text>
+      <view wx:if="{{socialView.incoming.length || socialView.outgoing.length}}" class="friends-section request-section">
+        <view class="friends-section-head">
+          <text>好友请求</text>
+          <text>{{socialView.requestCount}} 条</text>
+        </view>
+        <view class="friend-list compact-list">
+          <view wx:for="{{socialView.incoming}}" wx:for-item="friend" wx:key="id" class="friend-card">
+            <view>
+              <text>{{friend.nickname}}</text>
+              <text>请求添加你为好友</text>
+            </view>
+            <view class="friend-actions">
+              <button class="small-button" data-id="{{friend.id}}" data-status="accepted" bindtap="respondFriend">确认</button>
+              <button class="small-button subtle" data-id="{{friend.id}}" data-status="declined" bindtap="respondFriend">拒绝</button>
+            </view>
+          </view>
+          <view wx:for="{{socialView.outgoing}}" wx:for-item="friend" wx:key="id" class="friend-card">
+            <view>
+              <text>{{friend.nickname}}</text>
+              <text>等待对方确认</text>
+            </view>
+            <text class="status-text">待确认</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="friends-section activity-section">
+        <view class="friends-section-head">
           <text>最近训练</text>
+          <text>只显示训练摘要</text>
         </view>
         <view wx:if="{{socialView.activities.length}}" class="activity-list">
           <view wx:for="{{socialView.activities}}" wx:key="key" class="activity-row">
@@ -192,39 +216,44 @@
             <text>{{item.timeLabel}}</text>
           </view>
         </view>
-        <view wx:else class="muted empty-inline">好友完成训练后，这里会出现最近动态。</view>
+        <view wx:else class="friends-empty">好友完成训练后，这里会出现最近动态。</view>
       </view>
 
-      <view wx:if="{{socialView.incoming.length || socialView.outgoing.length}}" class="friend-list">
-        <view wx:for="{{socialView.incoming}}" wx:for-item="friend" wx:key="id" class="friend-card">
+      <view class="friends-section management-section">
+        <view class="management-trigger" bindtap="toggleSocialSettings" aria-role="button" aria-label="{{socialSettingsOpen ? '收起隐私与好友管理' : '展开隐私与好友管理'}}" aria-expanded="{{socialSettingsOpen}}">
           <view>
-            <text>{{friend.nickname}}</text>
-            <text>请求添加你为好友</text>
+            <text>隐私与好友管理</text>
+            <text>昵称、共享范围和移除好友</text>
           </view>
-          <view class="friend-actions">
-            <button class="small-button" data-id="{{friend.id}}" data-status="accepted" bindtap="respondFriend">确认</button>
-            <button class="small-button subtle" data-id="{{friend.id}}" data-status="declined" bindtap="respondFriend">拒绝</button>
-          </view>
+          <text>{{socialSettingsOpen ? '收起' : '管理'}}</text>
         </view>
-        <view wx:for="{{socialView.outgoing}}" wx:for-item="friend" wx:key="id" class="friend-card">
-          <view>
-            <text>{{friend.nickname}}</text>
-            <text>等待对方确认</text>
-          </view>
-          <text class="pill muted-pill">待确认</text>
-        </view>
-      </view>
 
-      <view wx:if="{{socialView.accepted.length}}" class="friend-list">
-        <view wx:for="{{socialView.accepted}}" wx:for-item="friend" wx:key="id" class="friend-card">
-          <view>
-            <text>{{friend.nickname}}</text>
-            <text>{{friend.displaySummary}}</text>
+        <view wx:if="{{socialSettingsOpen}}" class="management-content">
+          <view class="form-block">
+            <text class="field-label">好友昵称</text>
+            <input class="text-input" maxlength="16" value="{{socialNickname}}" bindinput="setSocialNickname" placeholder="输入好友看到的昵称" />
           </view>
-          <button class="small-button subtle" data-id="{{friend.id}}" bindtap="removeFriend">移除</button>
+          <view class="share-grid">
+            <view wx:for="{{socialView.shareOptions}}" wx:key="key" class="check-card {{item.checked ? 'selected' : ''}}" data-key="{{item.key}}" bindtap="toggleShareOption" aria-role="checkbox" aria-checked="{{item.checked}}" aria-label="{{item.label}}，{{item.note}}">
+              <text>{{item.label}}</text>
+              <text>{{item.note}}</text>
+            </view>
+          </view>
+          <button class="secondary-button profile-button" bindtap="saveSocialProfile">保存设置</button>
+
+          <view wx:if="{{socialView.accepted.length}}" class="friend-list managed-friends">
+            <view class="managed-list-title">我的好友</view>
+            <view wx:for="{{socialView.accepted}}" wx:for-item="friend" wx:key="id" class="friend-card">
+              <view>
+                <text>{{friend.nickname}}</text>
+                <text>{{friend.displaySummary}}</text>
+              </view>
+              <button class="small-button subtle" data-id="{{friend.id}}" bindtap="removeFriend">移除</button>
+            </view>
+          </view>
+          <view class="privacy-note">好友只能看到完成率、训练次数和连续周数；体重、体脂、训练重量和备注不会共享。</view>
         </view>
       </view>
-      <view class="muted empty-inline">排行只展示完成率、训练次数和连续记录周数，不展示体重、体脂和训练重量。</view>
     </view>
   </block>
 

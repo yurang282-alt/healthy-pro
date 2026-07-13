@@ -558,6 +558,295 @@
   font-size: 23rpx;
 }
 
+.profile-subhead-friends {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 18rpx;
+  padding: 0 0 18rpx;
+  border: 0;
+  border-bottom: 1rpx solid #e1e7ee;
+  border-radius: 0;
+  background: transparent;
+}
+
+.profile-subhead-friends .small-button {
+  width: auto;
+  min-width: 100rpx;
+  min-height: 80rpx;
+  padding: 0 20rpx;
+  line-height: 80rpx;
+}
+
+.profile-subhead-friends .muted {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+}
+
+.friends-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.friends-hero {
+  padding: 24rpx;
+  border-radius: 16rpx;
+  background: #101923;
+  color: #ffffff;
+}
+
+.friends-hero-head,
+.friends-section-head,
+.management-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.friends-kicker {
+  color: #78d0aa;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.friends-hero-title {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 36rpx;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.friends-count {
+  flex: 0 0 auto;
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(120, 208, 170, 0.16);
+  color: #b9ead4;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.friend-code-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 22rpx;
+  padding: 16rpx 18rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.14);
+  border-radius: 14rpx;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.friend-code-strip text {
+  display: block;
+}
+
+.friend-code-strip text:first-child {
+  color: #aeb9c5;
+  font-size: 21rpx;
+  font-weight: 800;
+}
+
+.friend-code-strip .friend-code {
+  margin-top: 3rpx;
+  color: #ffffff;
+  font-size: 32rpx;
+}
+
+.friend-copy-button,
+.friend-add-button {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 80rpx;
+  margin: 0;
+  padding: 0 24rpx;
+  border: 0;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  font-weight: 900;
+  line-height: 80rpx;
+}
+
+.friend-copy-button {
+  background: #ffffff;
+  color: #101923;
+}
+
+.friend-add-button {
+  background: #67c99d;
+  color: #0c251b;
+}
+
+.hero-add-friend {
+  margin-top: 14rpx;
+}
+
+.friend-code-input {
+  width: 100%;
+  min-height: 80rpx;
+  padding: 0 18rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.14);
+  border-radius: 12rpx;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 25rpx;
+  font-weight: 800;
+}
+
+.friends-section {
+  padding: 22rpx 4rpx 4rpx;
+  border-top: 1rpx solid #e1e7ee;
+}
+
+.friends-section-head > text:first-child,
+.friends-section-head > view > text:first-child {
+  display: block;
+  color: #111827;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.friends-section-head > text:last-child,
+.friends-section-head > view > text:last-child {
+  display: block;
+  margin-top: 3rpx;
+  color: #667085;
+  font-size: 21rpx;
+  font-weight: 800;
+}
+
+.leaderboard-section .leaderboard,
+.compact-list,
+.managed-friends {
+  margin-top: 14rpx;
+}
+
+.leaderboard-section .leaderboard-row {
+  min-height: 86rpx;
+  padding: 16rpx;
+  border-radius: 12rpx;
+  background: #f8fafb;
+}
+
+.leaderboard-section .leaderboard-row.self {
+  border-color: rgba(21, 122, 85, 0.32);
+  background: #eef7f2;
+}
+
+.leaderboard-section .leaderboard-row > text {
+  background: #253240;
+}
+
+.leaderboard-section .leaderboard-row.self > text {
+  background: #157a55;
+}
+
+.friends-empty {
+  margin-top: 14rpx;
+  padding: 18rpx;
+  border-radius: 12rpx;
+  background: #f6f7f8;
+  color: #667085;
+  font-size: 23rpx;
+  line-height: 1.4;
+}
+
+.request-section {
+  padding-top: 18rpx;
+}
+
+.status-text {
+  flex: 0 0 auto;
+  color: #667085;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.friend-card > view:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.friend-actions {
+  flex: 0 0 auto;
+}
+
+.friend-actions .small-button,
+.managed-friends .small-button {
+  min-height: 72rpx;
+  margin: 0;
+  line-height: 72rpx;
+}
+
+.activity-section .activity-list {
+  margin-top: 14rpx;
+}
+
+.activity-section .activity-row {
+  padding: 14rpx 2rpx;
+  border-width: 0 0 1rpx;
+  border-radius: 0;
+}
+
+.management-section {
+  padding: 0;
+  border-top: 0;
+}
+
+.management-trigger {
+  min-height: 88rpx;
+  padding: 0 4rpx;
+  border-top: 1rpx solid #e1e7ee;
+  border-bottom: 1rpx solid #e1e7ee;
+}
+
+.management-trigger text {
+  display: block;
+}
+
+.management-trigger view text:first-child {
+  color: #111827;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.management-trigger view text:last-child {
+  margin-top: 3rpx;
+  color: #667085;
+  font-size: 21rpx;
+}
+
+.management-trigger > text {
+  flex: 0 0 auto;
+  color: #157a55;
+  font-size: 23rpx;
+  font-weight: 900;
+}
+
+.management-content {
+  padding: 4rpx 0 12rpx;
+}
+
+.managed-list-title {
+  color: #111827;
+  font-size: 25rpx;
+  font-weight: 900;
+}
+
+.privacy-note {
+  margin-top: 18rpx;
+  padding: 16rpx;
+  border-radius: 12rpx;
+  background: #f6f7f8;
+  color: #667085;
+  font-size: 21rpx;
+  line-height: 1.45;
+}
+
 .release-card {
   padding: 16rpx;
 }

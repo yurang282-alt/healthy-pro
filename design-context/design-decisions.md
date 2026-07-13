@@ -1,5 +1,21 @@
 # Healthy Pro Design Decisions
 
+## 2026-07-13 Friends And Ranking Hierarchy
+
+Trigger: real-device feedback showed that the friends page exposed identity settings, sharing controls, adding friends, ranking, activity, and friend management with equal visual weight.
+
+### Decision 1: Social Is A Training Companion Surface
+
+The default view answers two questions: how to add a friend, and how the group is training this week. Friend code and add action belong in the primary dark panel; weekly ranking follows immediately.
+
+### Decision 2: Settings Are Not The Main Task
+
+Nickname, sharing scope, friend removal, and detailed privacy copy remain available but are folded under `隐私与好友管理`. Incoming requests remain visible because they require action.
+
+### Decision 3: Keep Ranking Restrained
+
+The ranking emphasizes weekly completion and consistency, not competition decoration. It does not expose weight, body fat, training loads, notes, or complete plans.
+
 ## 2026-07-12 Progressive Disclosure Simplification
 
 Scope: WeChat Mini Program only. This pass keeps training prescriptions, safety boundaries, plan recovery, CloudBase identity, and saved records intact while reducing what appears by default.
