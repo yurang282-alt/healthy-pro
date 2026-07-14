@@ -20,12 +20,12 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 
 ## Current Status
 
-- Stage: PWA is in maintenance mode. The WeChat Mini Program v0.5.6 has been uploaded for a controlled trial with known friends. Its P0 gate is closed; two-user isolation and same-account cloud restore have passed by user report. Formal public release is a separate gate and is not yet claimed.
+- Stage: PWA is in maintenance mode. The WeChat Mini Program v0.5.7 has been uploaded for a controlled trial with known friends. Its P0 gate is closed; two-user isolation and same-account cloud restore have passed by user report. Formal public release is a separate gate and is not yet claimed.
 - Working version: PWA supports assessment, coach plan, today's training, workout/body records, equipment library, Supabase auth/sync when configured, friends, feedback, and update announcements. Mini Program supports home, assessment, plan, log, equipment, profile, openid-scoped local storage, CloudBase user store sync, training log/feedback mirroring, plan editing, plan history, plan recovery, friends, feedback, and local update announcements. Friend lookup/ranking is designed to go through the `social` cloud function so the client does not read other users' full `users` documents.
 - Local state: `npm run dev` serves the PWA at `http://127.0.0.1:5173`. `npm run dev:lan` supports same-Wi-Fi phone preview.
-- GitHub state: `main` and `origin/main` contained the v0.5.6 release artifact at `2558448` before the upload evidence update; use Git as the exact source of truth after subsequent commits.
-- Deployment state: Mini Program v0.5.6 was uploaded successfully through WeChat DevTools CLI on 2026-07-13 for AppID `wx9f1d623ecc4ce4ae`; the CLI reported 460.2 KB / 471,264 bytes. It remains an experience/development build, not a formally reviewed public release.
-- In-app/release state: The v0.5.6 Mini Program announcement covers the plan-editor set-count input fix and its real-device validation. PWA announcements remain maintenance-only because this release does not affect the PWA.
+- GitHub state: `main` and `origin/main` contain the v0.5.7 feature commit `7564c69`; the upload evidence update is recorded by the subsequent documentation commit.
+- Deployment state: Mini Program v0.5.7 was uploaded successfully through WeChat DevTools CLI on 2026-07-14 for AppID `wx9f1d623ecc4ce4ae`; the CLI reported 469.0 KB / 480,250 bytes. It remains an experience/development build, not a formally reviewed public release.
+- In-app/release state: The v0.5.7 Mini Program announcement covers one-off workout overrides, cross-page state consistency, recovery reminders, and automatic return to the scheduled plan after saving. PWA announcements remain maintenance-only because this release does not affect the PWA.
 - User validation evidence: The user confirmed on 2026-07-13 that changing an exercise's set count from 1 to 5 in the plan editor persists as 5 after reopening. The underlying fix is commit `0022572`, already contained in current `main` and the uploaded v0.5.5 Mini Program build. CTO subsequently authorized a dedicated v0.5.6 experience-build closeout with a matching in-app announcement; this does not change the fix logic or expand the friend trial.
 
 ## Architecture
