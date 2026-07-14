@@ -1,9 +1,13 @@
 const {
+  advanceTrainingExecution,
+  createTrainingOverride,
   decoratePlanForWeapp,
   generatePlan,
   getCurrentWeek,
   getNextWorkout,
+  getTrainingExecutionInfo,
   normalizeAssessment,
+  normalizeTrainingExecution,
   shouldRegeneratePlan
 } = require("./utils/coach");
 const {
@@ -172,6 +176,7 @@ App({
       feedbacks: [],
       releaseReads: {},
       onboarding: {},
+      trainingExecution: null,
       social: null,
       profile: {
         nickname: "微信用户",
@@ -231,6 +236,9 @@ App({
     } else {
       store.user.plan = null;
     }
+    store.trainingExecution = store.user.plan
+      ? normalizeTrainingExecution(store.user.plan, store.logs, store.trainingExecution)
+      : null;
     store.bodyLogs = Array.isArray(store.bodyLogs) ? store.bodyLogs : [];
     store.profile = {
       nickname: "微信用户",
@@ -336,6 +344,7 @@ App({
       logs: store.logs,
       week
     });
+    const trainingExecution = getTrainingExecutionInfo(plan, store.logs, store.trainingExecution);
     return {
       ...store,
       user: {
@@ -343,8 +352,33 @@ App({
         plan
       },
       week,
-      workout: getNextWorkout(plan, store.logs)
+      trainingExecution,
+      workout: trainingExecution.workout || getNextWorkout(plan, store.logs)
     };
+  },
+
+  setNextWorkoutOverride(workoutId) {
+    const store = this.getStore();
+    if (!store.user || !store.user.plan) return null;
+    store.trainingExecution = createTrainingOverride(
+      store.user.plan,
+      store.logs || [],
+      store.trainingExecution,
+      workoutId
+    );
+    this.setStore(store);
+    return getTrainingExecutionInfo(store.user.plan, store.logs || [], store.trainingExecution);
+  },
+
+  advanceTrainingSchedule(store, completedWorkoutId) {
+    if (!store || !store.user || !store.user.plan) return null;
+    store.trainingExecution = advanceTrainingExecution(
+      store.user.plan,
+      store.logs || [],
+      store.trainingExecution,
+      completedWorkoutId
+    );
+    return store.trainingExecution;
   },
 
   markCloudStatus(patch) {

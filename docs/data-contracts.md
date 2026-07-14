@@ -134,9 +134,31 @@ CloudBase should store the canonical client object unless a cloud-function adapt
   completedCount: number,
   exercises: TrainingExerciseLog[],
   intensityFeedback: "too-easy" | "right" | "too-hard",
-  note: string
+  note: string,
+  schedule?: {
+    mode: "planned" | "one-off-override",
+    scheduledWorkoutId: string,
+    actualWorkoutId: string,
+    resumeWorkoutId: string
+  }
 }
 ```
+
+## TrainingExecution
+
+Mini Program store persists the next-session cursor separately from the plan and logs. A temporary override changes only the active session; it does not rewrite the long-term plan or consume the scheduled workout.
+
+```js
+{
+  planId: string,
+  nextWorkoutId: string,
+  overrideWorkoutId: string,
+  overrideCreatedAt: string,
+  mode: "planned" | "one-off"
+}
+```
+
+When `overrideWorkoutId` differs from `nextWorkoutId`, the app executes the override once. After that log is saved, the override is cleared and `nextWorkoutId` remains pending. When a scheduled workout is saved, `nextWorkoutId` advances to the following workout.
 
 ### TrainingExerciseLog
 

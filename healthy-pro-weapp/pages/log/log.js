@@ -181,6 +181,7 @@ Page({
       focus: "",
       exercises: []
     },
+    trainingExecution: null,
     week: 1,
     logs: [],
     bodyLogs: [],
@@ -236,6 +237,7 @@ Page({
     const sessionComplete = isSessionComplete(exerciseRecords);
     this.setData({
       workout,
+      trainingExecution: context.trainingExecution || null,
       week,
       exerciseRecords,
       activeExerciseIndex,
@@ -316,12 +318,23 @@ Page({
     const completed = (log.exercises || []).filter((exercise) => exercise.done);
     const sessionNumber = Number(log.sessionNumber || index + 1);
     const completedNames = completed.map((exercise, exerciseIndex) => `${exerciseIndex + 1}. ${exercise.name}`);
+    const scheduleLabel = log.schedule && log.schedule.mode === "one-off-override" ? "临时改练" : "";
+    const createdLabel = formatDateTime(log.createdAt);
+    const feedbackLabel = getIntensityLabel(log.intensityFeedback);
     return {
       ...log,
       sessionNumber,
       sessionLabel: `第 ${sessionNumber} 次训练`,
-      createdLabel: formatDateTime(log.createdAt),
-      feedbackLabel: getIntensityLabel(log.intensityFeedback),
+      scheduleLabel,
+      createdLabel,
+      feedbackLabel,
+      historyMeta: [
+        `第 ${log.week} 周`,
+        createdLabel,
+        feedbackLabel,
+        `完成 ${completed.length} 个动作`,
+        scheduleLabel
+      ].filter(Boolean).join(" · "),
       coachFeedbackTitle: log.coachFeedback && log.coachFeedback.title || "",
       coachFeedbackSummary: log.coachFeedback && log.coachFeedback.summary || "",
       completedText: completedNames.join("、"),
@@ -639,18 +652,31 @@ Page({
       intensityFeedback: this.data.intensityFeedback,
       note: this.data.note
     };
+    const execution = this.data.trainingExecution || {};
+    nextLog.schedule = {
+      mode: execution.isOverride ? "one-off-override" : "planned",
+      scheduledWorkoutId: execution.scheduledWorkout && execution.scheduledWorkout.id || workout.id,
+      actualWorkoutId: workout.id,
+      resumeWorkoutId: execution.isOverride && execution.scheduledWorkout
+        ? execution.scheduledWorkout.id
+        : ""
+    };
     nextLog.coachFeedback = getPostTrainingCoachFeedback(store.user, nextLog, workout);
 
     store.logs = Array.isArray(store.logs) ? store.logs : [];
+    app.advanceTrainingSchedule(store, workout.id);
     store.logs.push(nextLog);
     app.setStore(store);
     app.syncTrainingLog(nextLog);
     this.setData({ note: "", intensityFeedback: "right", completionPromptDismissed: false });
     wx.removeStorageSync(getDraftKey(workout, this.data.week, getDraftScope()));
     this.refresh();
+    const resumeNotice = nextLog.schedule.mode === "one-off-override" && execution.scheduledWorkout
+      ? `\n\n临时改练已完成，下一次恢复${execution.scheduledWorkout.title}。`
+      : "";
     wx.showModal({
       title: `已保存第 ${nextLog.sessionNumber} 次训练`,
-      content: nextLog.coachFeedback.summary,
+      content: `${nextLog.coachFeedback.summary}${resumeNotice}`,
       showCancel: false,
       confirmText: "知道了"
     });

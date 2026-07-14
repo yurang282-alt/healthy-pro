@@ -32,6 +32,10 @@
         <button class="small-button draft-button" bindtap="saveDraft">保存草稿</button>
       </view>
     </view>
+    <view wx:if="{{trainingExecution.isOverride}}" class="temporary-training-note">
+      <text>临时调整</text>
+      <text>{{trainingExecution.note}}</text>
+    </view>
     <view wx:if="{{activeRecord}}" class="training-card">
       <view class="training-progress-line">
         <view style="width: {{activeMeta.progressPercent}}%;"></view>
@@ -163,7 +167,7 @@
       <view wx:for="{{logs}}" wx:for-item="log" wx:key="id" class="history-row">
         <view class="item-body">
           <text class="item-title">{{log.sessionLabel}} · {{log.workoutTitle}}</text>
-          <text class="item-meta">第 {{log.week}} 周 · {{log.createdLabel}} · {{log.feedbackLabel}} · 完成 {{log.completedCount}} 个动作</text>
+          <text class="item-meta">{{log.historyMeta}}</text>
           <text wx:if="{{log.completedText}}" class="item-help">完成：{{log.completedText}}</text>
           <view wx:if="{{log.detailLines.length}}" class="history-detail">
             <text wx:for="{{log.detailLines}}" wx:for-item="detail" wx:key="*this">{{detail}}</text>

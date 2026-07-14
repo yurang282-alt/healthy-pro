@@ -1140,10 +1140,141 @@ function getCurrentWeek(plan, logs = []) {
   return Math.min(4, Math.floor(logs.length / Math.max(1, frequency)) + 1);
 }
 
-function getNextWorkout(plan, logs = []) {
-  if (!plan || plan.safetyHold) return null;
-  const index = logs.length % plan.workouts.length;
+function getPlanExecutionId(plan) {
+  if (!plan) return "";
+  return String(plan.id || plan.customization?.updatedAt || plan.createdAt || "plan");
+}
+
+function getWorkoutById(plan, workoutId) {
+  if (!plan || !Array.isArray(plan.workouts) || !workoutId) return null;
+  return plan.workouts.find((workout) => workout.id === workoutId) || null;
+}
+
+function getDefaultScheduledWorkout(plan, logs = []) {
+  if (!plan || plan.safetyHold || !Array.isArray(plan.workouts) || !plan.workouts.length) return null;
+  const index = (logs || []).length % plan.workouts.length;
   return plan.workouts[index];
+}
+
+function normalizeTrainingExecution(plan, logs = [], executionState = null) {
+  if (!plan || plan.safetyHold || !Array.isArray(plan.workouts) || !plan.workouts.length) return null;
+  const planId = getPlanExecutionId(plan);
+  const state = executionState && executionState.planId === planId ? executionState : {};
+  const fallbackWorkout = getDefaultScheduledWorkout(plan, logs);
+  const scheduledWorkout = getWorkoutById(plan, state.nextWorkoutId) || fallbackWorkout;
+  const overrideWorkout = getWorkoutById(plan, state.overrideWorkoutId);
+  const hasOverride = Boolean(overrideWorkout && scheduledWorkout && overrideWorkout.id !== scheduledWorkout.id);
+  return {
+    planId,
+    nextWorkoutId: scheduledWorkout ? scheduledWorkout.id : "",
+    overrideWorkoutId: hasOverride ? overrideWorkout.id : "",
+    overrideCreatedAt: hasOverride ? String(state.overrideCreatedAt || "") : "",
+    mode: hasOverride ? "one-off" : "planned"
+  };
+}
+
+function getWorkoutRecoveryStatus(workout, logs = [], now = new Date()) {
+  if (!workout) return { level: "unknown", label: "暂无训练记录", hoursSince: null };
+  const latest = (logs || [])
+    .filter((log) => (
+      (log.workoutId && log.workoutId === workout.id) ||
+      (log.workoutTitle && log.workoutTitle === workout.title)
+    ))
+    .map((log) => ({ log, timestamp: new Date(log.createdAt).getTime() }))
+    .filter((item) => Number.isFinite(item.timestamp))
+    .sort((left, right) => right.timestamp - left.timestamp)[0];
+  if (!latest) return { level: "fresh", label: "最近未练", hoursSince: null };
+  const elapsed = new Date(now).getTime() - latest.timestamp;
+  if (!Number.isFinite(elapsed) || elapsed < 0) return { level: "unknown", label: "恢复时间未知", hoursSince: null };
+  const hoursSince = Math.floor(elapsed / 3600000);
+  if (hoursSince < 24) return { level: "warning", label: "24 小时内练过", hoursSince };
+  if (hoursSince < 48) return { level: "caution", label: "48 小时内练过", hoursSince };
+  const days = Math.max(2, Math.floor(hoursSince / 24));
+  return { level: "ready", label: `${days} 天前练过`, hoursSince };
+}
+
+function getTrainingExecutionInfo(plan, logs = [], executionState = null) {
+  const state = normalizeTrainingExecution(plan, logs, executionState);
+  if (!state) {
+    return {
+      state: null,
+      workout: null,
+      scheduledWorkout: null,
+      isOverride: false,
+      note: ""
+    };
+  }
+  const scheduledWorkout = getWorkoutById(plan, state.nextWorkoutId);
+  const overrideWorkout = getWorkoutById(plan, state.overrideWorkoutId);
+  const workout = overrideWorkout || scheduledWorkout;
+  const isOverride = Boolean(overrideWorkout && scheduledWorkout && overrideWorkout.id !== scheduledWorkout.id);
+  return {
+    state,
+    workout,
+    scheduledWorkout,
+    isOverride,
+    note: isOverride
+      ? `本次临时改为${overrideWorkout.title}，完成后继续${scheduledWorkout.title}。`
+      : "",
+    recovery: getWorkoutRecoveryStatus(workout, logs)
+  };
+}
+
+function createTrainingOverride(plan, logs = [], executionState = null, workoutId = "") {
+  const state = normalizeTrainingExecution(plan, logs, executionState);
+  if (!state || !getWorkoutById(plan, workoutId)) return state;
+  if (workoutId === state.nextWorkoutId) {
+    return {
+      ...state,
+      overrideWorkoutId: "",
+      overrideCreatedAt: "",
+      mode: "planned"
+    };
+  }
+  return {
+    ...state,
+    overrideWorkoutId: workoutId,
+    overrideCreatedAt: new Date().toISOString(),
+    mode: "one-off"
+  };
+}
+
+function advanceTrainingExecution(plan, logs = [], executionState = null, completedWorkoutId = "") {
+  const state = normalizeTrainingExecution(plan, logs, executionState);
+  if (!state || !Array.isArray(plan.workouts) || !plan.workouts.length) return state;
+  const scheduledWorkout = getWorkoutById(plan, state.nextWorkoutId);
+  const overrideWorkout = getWorkoutById(plan, state.overrideWorkoutId);
+  const completedWorkout = getWorkoutById(plan, completedWorkoutId) || overrideWorkout || scheduledWorkout;
+  const completedTemporaryOverride = Boolean(
+    overrideWorkout &&
+    scheduledWorkout &&
+    overrideWorkout.id !== scheduledWorkout.id &&
+    completedWorkout &&
+    completedWorkout.id === overrideWorkout.id
+  );
+
+  if (completedTemporaryOverride) {
+    return {
+      ...state,
+      overrideWorkoutId: "",
+      overrideCreatedAt: "",
+      mode: "planned"
+    };
+  }
+
+  const completedIndex = Math.max(0, plan.workouts.findIndex((workout) => workout.id === completedWorkout?.id));
+  const nextWorkout = plan.workouts[(completedIndex + 1) % plan.workouts.length];
+  return {
+    planId: state.planId,
+    nextWorkoutId: nextWorkout.id,
+    overrideWorkoutId: "",
+    overrideCreatedAt: "",
+    mode: "planned"
+  };
+}
+
+function getNextWorkout(plan, logs = [], executionState = null) {
+  return getTrainingExecutionInfo(plan, logs, executionState).workout;
 }
 
 function getPrescription(exercise, weekNumber = 1, weekRules = WEEK_RULES) {
@@ -2918,11 +3049,13 @@ module.exports = {
   FOCUS_AREAS: FOCUS_AREAS,
   PLAN_EXERCISES: PLAN_EXERCISES,
   EQUIPMENT_BY_ID: EQUIPMENT_BY_ID,
+  advanceTrainingExecution: advanceTrainingExecution,
   adjustPlanFromLogs: adjustPlanFromLogs,
   buildCustomPlan: buildCustomPlan,
   canRestoreOriginalPlan: canRestoreOriginalPlan,
   createDemoUser: createDemoUser,
   createExerciseFromKey: createExerciseFromKey,
+  createTrainingOverride: createTrainingOverride,
   decorateExerciseForWeapp: decorateExerciseForWeapp,
   decoratePlanForWeapp: decoratePlanForWeapp,
   decorateWorkoutForWeapp: decorateWorkoutForWeapp,
@@ -2934,6 +3067,8 @@ module.exports = {
   getLoadRecommendation: getLoadRecommendation,
   getMetrics: getMetrics,
   getNextWorkout: getNextWorkout,
+  getTrainingExecutionInfo: getTrainingExecutionInfo,
+  getWorkoutRecoveryStatus: getWorkoutRecoveryStatus,
   getExerciseDetail: getExerciseDetail,
   getOriginalCoachPlan: getOriginalCoachPlan,
   getPrimaryExerciseForEquipment: getPrimaryExerciseForEquipment,
@@ -2941,6 +3076,7 @@ module.exports = {
   getPreviousPlan: getPreviousPlan,
   getWorkoutDuration: getWorkoutDuration,
   normalizeAssessment: normalizeAssessment,
+  normalizeTrainingExecution: normalizeTrainingExecution,
   reviewCustomPlanDraft: reviewCustomPlanDraft,
   restoreOriginalPlan: restoreOriginalPlan,
   restorePreviousPlan: restorePreviousPlan,

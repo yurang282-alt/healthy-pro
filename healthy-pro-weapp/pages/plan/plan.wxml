@@ -13,9 +13,13 @@
     </view>
 
     <view class="plan-next-block">
-      <text>下一次训练</text>
-      <text>{{planConsole.nextWorkoutTitle}}</text>
+      <view class="plan-next-copy">
+        <text>{{planConsole.nextWorkoutLabel}}</text>
+        <text>{{planConsole.nextWorkoutTitle}}</text>
+      </view>
+      <button class="plan-next-change" bindtap="adjustNextWorkout">只改本次</button>
     </view>
+    <view wx:if="{{planConsole.nextWorkoutNote}}" class="plan-override-note">{{planConsole.nextWorkoutNote}}</view>
 
     <view class="plan-console-metrics">
       <view>

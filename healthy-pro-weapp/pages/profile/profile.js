@@ -2,6 +2,15 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.5.7",
+    version: "v0.5.7",
+    title: "支持只改本次训练",
+    summary: "下一次训练可以临时换成其他主题，完成后自动回到原计划，不会打乱后续安排。",
+    highlights: ["计划页新增“只改本次”入口", "首页、计划和记录会同步显示临时训练主题", "保存后明确提示下一次恢复的原计划，并在重复训练时提醒恢复风险"],
+    releaseType: "feature",
+    publishedAt: "2026-07-14T10:30:00+08:00"
+  },
+  {
     id: "weapp-v0.5.6",
     version: "v0.5.6",
     title: "计划组数编辑修复",

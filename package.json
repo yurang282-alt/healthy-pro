@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "python3 -m http.server 5173 --bind 127.0.0.1",
     "dev:lan": "python3 -m http.server 5173 --bind 0.0.0.0",
-    "check": "node scripts/check-app.mjs",
+    "check": "node scripts/check-app.mjs && node scripts/check-weapp-training-execution.cjs",
     "build": "npm run check && node scripts/build-static.mjs"
   },
   "engines": {

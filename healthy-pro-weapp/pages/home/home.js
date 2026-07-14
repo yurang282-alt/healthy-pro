@@ -4,7 +4,7 @@ function getLatestTrainingFeedback(logs = []) {
   return latest && latest.coachFeedback && latest.coachFeedback.title ? latest.coachFeedback : null;
 }
 
-function buildTrainingCockpit(plan, workout, week, logs = [], latestFeedback) {
+function buildTrainingCockpit(plan, workout, week, logs = [], latestFeedback, trainingExecution = null) {
   if (!plan || !workout) return null;
 
   const exercises = workout.exercises || [];
@@ -24,10 +24,14 @@ function buildTrainingCockpit(plan, workout, week, logs = [], latestFeedback) {
     exercisesLabel: `${exercises.length} 个动作`,
     progressLabel: weeklyTarget ? `${completedForTarget}/${weeklyTarget}` : `${logs.length} 次`,
     progressPercent,
-    readinessTitle: latestFeedback ? "参考上次反馈" : "准备开始",
-    readinessText: latestFeedback
-      ? latestFeedback.title
-      : "今天按顺序完成动作，动作稳定比追重量更重要。",
+    readinessTitle: trainingExecution && trainingExecution.isOverride
+      ? "本次临时改练"
+      : (latestFeedback ? "参考上次反馈" : "准备开始"),
+    readinessText: trainingExecution && trainingExecution.isOverride
+      ? trainingExecution.note
+      : (latestFeedback
+        ? latestFeedback.title
+        : "今天按顺序完成动作，动作稳定比追重量更重要。"),
     focusText,
     firstCue: firstMove.cue || "先把第一个动作做稳，再继续推进。",
     primaryAction: "开始今日训练"
@@ -105,7 +109,7 @@ Page({
       previewExercises: exercises.slice(0, 3),
       remainingCount: Math.max(0, exercises.length - 3),
       latestFeedback,
-      cockpit: buildTrainingCockpit(plan, context.workout, context.week, logs, latestFeedback),
+      cockpit: buildTrainingCockpit(plan, context.workout, context.week, logs, latestFeedback, context.trainingExecution),
       firstUseGuide: buildFirstUseGuide(plan, logs, onboarding)
     });
   },

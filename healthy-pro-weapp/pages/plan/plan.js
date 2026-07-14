@@ -3,6 +3,7 @@ const {
   canRestoreOriginalPlan,
   decoratePlanForWeapp,
   getPreviousPlan,
+  getWorkoutRecoveryStatus,
   restoreOriginalPlan,
   restorePreviousPlan
 } = require("../../utils/coach");
@@ -60,7 +61,7 @@ function getCoachDetails(plan) {
   };
 }
 
-function getPlanConsole(plan, selectedWeekInfo, selectedWeek, expandedWorkoutId) {
+function getPlanConsole(plan, selectedWeekInfo, selectedWeek, trainingExecution = null) {
   if (!plan) {
     return {
       stageLabel: "",
@@ -73,19 +74,39 @@ function getPlanConsole(plan, selectedWeekInfo, selectedWeek, expandedWorkoutId)
     };
   }
   const workouts = Array.isArray(plan.workouts) ? plan.workouts : [];
-  const nextWorkout = workouts.find((item) => item.id === expandedWorkoutId) || workouts[0] || {};
+  const nextWorkout = trainingExecution && trainingExecution.workout || workouts[0] || {};
   const focusLabel = plan.focusText ||
     (plan.focusAreas || []).map((item) => item && item.label).filter(Boolean).slice(0, 3).join("、") ||
     "全身均衡";
   return {
     stageLabel: `第 ${selectedWeek} 周 · ${selectedWeekInfo && selectedWeekInfo.label || "训练周"}`,
+    nextWorkoutLabel: trainingExecution && trainingExecution.isOverride ? "本次临时训练" : "下一次训练",
     nextWorkoutTitle: nextWorkout.title || "下一次训练",
     nextWorkoutFocus: nextWorkout.focus || "按计划完成本周训练",
+    nextWorkoutNote: trainingExecution && trainingExecution.note || "",
     frequencyLabel: `${plan.frequency && plan.frequency.sessionsPerWeek || workouts.length || 0} 次/周`,
     durationLabel: plan.duration && plan.duration.label || `${plan.duration && plan.duration.budget || 60} 分钟`,
     focusLabel,
     progressPercent: Math.max(8, Math.min(100, Math.round((Number(selectedWeek || 1) / 4) * 100)))
   };
+}
+
+function buildNextWorkoutOptions(plan, logs = [], trainingExecution = null) {
+  const workouts = plan && Array.isArray(plan.workouts) ? plan.workouts : [];
+  const activeWorkoutId = trainingExecution && trainingExecution.workout && trainingExecution.workout.id;
+  const scheduledWorkoutId = trainingExecution && trainingExecution.scheduledWorkout && trainingExecution.scheduledWorkout.id;
+  return workouts.map((workout) => {
+    const recovery = getWorkoutRecoveryStatus(workout, logs);
+    return {
+      id: workout.id,
+      title: workout.title,
+      focus: workout.focus,
+      recoveryLabel: recovery.label,
+      recoveryLevel: recovery.level,
+      isActive: workout.id === activeWorkoutId,
+      isScheduled: workout.id === scheduledWorkoutId
+    };
+  });
 }
 
 Page({
@@ -105,6 +126,8 @@ Page({
     coachReviewItems: [],
     coachDecisionSummary: "",
     planConsole: getPlanConsole(null),
+    trainingExecution: null,
+    nextWorkoutOptions: [],
     showPlanTools: false,
     showCoachDetails: false
   },
@@ -133,6 +156,8 @@ Page({
         coachReviewItems: [],
         coachDecisionSummary: "",
         planConsole: getPlanConsole(null),
+        trainingExecution: null,
+        nextWorkoutOptions: [],
         showPlanTools: false,
         showCoachDetails: false
       });
@@ -165,7 +190,9 @@ Page({
       expandedWorkoutId,
       canRestoreOriginal: canRestoreOriginalPlan(plan),
       versionLabel: plan && plan.customization && plan.customization.label ? plan.customization.label : "AI 计划",
-      planConsole: getPlanConsole(plan, selectedWeekInfo, safeWeek, expandedWorkoutId),
+      planConsole: getPlanConsole(plan, selectedWeekInfo, safeWeek, context.trainingExecution),
+      trainingExecution: context.trainingExecution || null,
+      nextWorkoutOptions: buildNextWorkoutOptions(plan, context.logs, context.trainingExecution),
       ...coachDetails
     });
   },
@@ -190,7 +217,7 @@ Page({
       selectedWeek,
       selectedWeekInfo,
       expandedWorkoutId,
-      planConsole: getPlanConsole(plan, selectedWeekInfo, selectedWeek, expandedWorkoutId),
+      planConsole: getPlanConsole(plan, selectedWeekInfo, selectedWeek, this.data.trainingExecution),
       ...coachDetails
     });
   },
@@ -199,8 +226,47 @@ Page({
     const workoutId = event.currentTarget.dataset.id;
     const expandedWorkoutId = this.data.expandedWorkoutId === workoutId ? "" : workoutId;
     this.setData({
-      expandedWorkoutId,
-      planConsole: getPlanConsole(this.data.plan, this.data.selectedWeekInfo, this.data.selectedWeek, expandedWorkoutId)
+      expandedWorkoutId
+    });
+  },
+
+  adjustNextWorkout() {
+    const options = this.data.nextWorkoutOptions || [];
+    const execution = this.data.trainingExecution || {};
+    if (!options.length) return;
+    const itemList = options.map((option) => {
+      const prefix = option.isActive ? "当前 · " : (execution.isOverride && option.isScheduled ? "恢复 · " : "");
+      return `${prefix}${option.title} · ${option.recoveryLabel}`;
+    });
+
+    wx.showActionSheet({
+      itemList,
+      success: ({ tapIndex }) => {
+        const option = options[tapIndex];
+        if (!option || option.isActive) {
+          wx.showToast({ title: "当前已经是这项训练", icon: "none" });
+          return;
+        }
+        const restoringSchedule = Boolean(execution.isOverride && option.isScheduled);
+        const scheduledTitle = execution.scheduledWorkout && execution.scheduledWorkout.title || "原计划";
+        const recoveryWarning = ["warning", "caution"].includes(option.recoveryLevel)
+          ? `\n${option.recoveryLabel}。若仍酸痛、无力或动作不稳，请改练其他部位或休息。`
+          : "";
+        const content = restoringSchedule
+          ? `恢复原安排：下一次训练为${option.title}。`
+          : `本次改为${option.title}。完成后仍继续原定的${scheduledTitle}。${recoveryWarning}`;
+        wx.showModal({
+          title: restoringSchedule ? "恢复原安排？" : `本次改练${option.title}？`,
+          content,
+          confirmText: restoringSchedule ? "恢复" : "确认改练",
+          success: (res) => {
+            if (!res.confirm) return;
+            getApp().setNextWorkoutOverride(option.id);
+            this.refresh({ keepSelected: true, keepExpanded: true });
+            wx.showToast({ title: restoringSchedule ? "已恢复原安排" : "已调整本次训练", icon: "success" });
+          }
+        });
+      }
     });
   },
 
