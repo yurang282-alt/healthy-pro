@@ -26,7 +26,7 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 - GitHub state: `main` and `origin/main` contain the v0.5.7 feature commit `7564c69`; the upload evidence update is recorded by the subsequent documentation commit.
 - Deployment state: Mini Program v0.5.7 was uploaded successfully through WeChat DevTools CLI on 2026-07-14 for AppID `wx9f1d623ecc4ce4ae`; the CLI reported 469.0 KB / 480,250 bytes. It remains an experience/development build, not a formally reviewed public release.
 - In-app/release state: The v0.5.7 Mini Program announcement covers one-off workout overrides, cross-page state consistency, recovery reminders, and automatic return to the scheduled plan after saving. PWA announcements remain maintenance-only because this release does not affect the PWA.
-- User validation evidence: The user confirmed on 2026-07-13 that changing an exercise's set count from 1 to 5 in the plan editor persists as 5 after reopening. The underlying fix is commit `0022572`, already contained in current `main` and the uploaded v0.5.5 Mini Program build. CTO subsequently authorized a dedicated v0.5.6 experience-build closeout with a matching in-app announcement; this does not change the fix logic or expand the friend trial.
+- User validation evidence: The user confirmed on 2026-07-13 that changing an exercise's set count from 1 to 5 in the plan editor persists as 5 after reopening. On 2026-07-17, the user confirmed that the v0.5.7 experience-version validation, including the one-off workout override flow, was complete. The controlled known-friend trial can continue; this is not evidence of formal public release approval.
 
 ## Architecture
 
@@ -54,7 +54,7 @@ Healthy Pro is a mobile-first gym training assistant for the user and future fri
 
 ## Next Actions
 
-- Now: Run a short v0.5.4 real-device spot-check and collect issues from the controlled known-friend trial. Core CloudBase collections were confirmed private in the P0 evidence pass; two-user isolation and same-account restore passed by user report.
+- Now: Continue the controlled known-friend trial on v0.5.7 and collect only issues that block real workouts. The current experience-version validation, two-user isolation, same-account restore, and one-off workout override flow have passed by user report; no new feature work is required for this trial gate.
 - Later: Before formal public release, complete the privacy-policy wording, choose a user export/deletion path, and repeat the P0 smoke test on the exact release candidate.
 - Blocked: Small known-friend trial is not blocked. Formal public release remains blocked until its policy, data-rights, and exact-release evidence are complete.
 
