@@ -134,3 +134,10 @@ Boundaries:
 - The design agent defines design DNA, audits UI/UX fit, and produces design recommendations.
 - The main product partner + CTO agent still decides priority, product scope, architecture, release, and whether implementation should start.
 - The design agent does not publish, merge, deploy, change databases, or change permissions by default.
+
+## Rocky identity batch status — 2026-07-22
+
+- Central `appId=healthy` is reserved, but the Mini Program cannot reuse the `rocky4ai.com` browser Cookie.
+- Safe integration requires an explicit one-time-code flow that proves both the logged-in Rocky account and `cloud.getWXContext()` OpenID. The client may not submit `rockyUserId` or override OpenID.
+- Existing OpenID-owned health, training and social data remains frozen and is not migrated by SSO.
+- Only the binding readiness contract was added locally. Mini Program code, cloud functions, collections, experience version and production are unchanged.
