@@ -39,6 +39,33 @@
   transition: width 180ms ease;
 }
 
+.assessment-privacy {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-top: 18rpx;
+  color: #667085;
+  font-size: 25rpx;
+  line-height: 1.45;
+}
+
+.assessment-privacy text {
+  flex: 1;
+}
+
+.assessment-privacy button {
+  width: auto;
+  min-height: 88rpx;
+  margin: -4rpx 0 0;
+  padding: 0;
+  color: #157a55;
+  background: transparent;
+  font-size: 25rpx;
+  font-weight: 900;
+  line-height: 88rpx;
+}
+
 .assessment-section {
   margin-top: 30rpx;
   padding: 24rpx;

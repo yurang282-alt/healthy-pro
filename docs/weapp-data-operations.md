@@ -20,11 +20,18 @@ Before changing a schema, collection permission, or cloud function that writes d
 - If an operator import is required, first restore to a non-production test collection and compare counts and document IDs. Import to production only with an explicit rollback point and user approval.
 - Demo or local seed data must never overwrite a newer cloud store.
 
-## User Data Deletion
+## User Data Export and Deletion
 
-- The current in-app reset is not an account-deletion guarantee and must not be described as one.
-- During the controlled trial, deletion requests are operator-assisted. Confirm the requesting WeChat identity, list the owner-scoped documents to be removed across `users`, `plans`, `training_logs`, `feedbacks`, and `friendships`, take a rollback backup, then request explicit final confirmation.
-- Formal public release requires a clear in-app or documented self-service deletion path and matching privacy-policy wording.
+- v0.5.8 adds `我的 > 设置与反馈 > 数据与隐私`.
+- Export is generated locally from the current user's store. It includes the user's assessment, plan, training/body logs, feedback, sharing settings, and sanitized friend summaries. It excludes raw own/friend OpenID and CloudBase configuration.
+- Permanent deletion is implemented by the additive `dataRights` cloud function. The function derives identity only from `cloud.getWXContext()`; it never accepts an OpenID from the client.
+- The user must pass two confirmation steps. The first explains the irreversible effect; the second fully paginates and previews exact owner-scoped record counts rather than silently stopping at 100 records.
+- Deletion removes owner data from `users`, `plans`, `training_logs`, active `feedbacks`, legacy `feedback`, and both directions of `friendships`. Each collection step is idempotent: a retry safely treats records removed by an earlier partial attempt as already complete.
+- A persistent OpenID-scoped deletion lock is written before the cloud call. A partial cloud result keeps the existing local store, reports remaining categories, and blocks store/log/feedback/social writes so local data cannot repopulate deleted cloud records.
+- After the cloud confirms that every covered category is empty, the client first persists an explicit new empty profile, then clears legacy storage and training/body drafts. Any local storage failure retains the lock and keeps all cloud writes fail-closed until the user retries successfully.
+- New health-data collections must be added to `dataRights` before they can ship. A collection omitted from the function is a release-blocking privacy defect.
+- Automated checks cover a partial cloud attempt followed by an idempotent retry, more than 100 records, local `setStore`/`removeStorageSync` failures, blocked write paths, and restart behavior while the lock exists.
+- Deploy and validate `dataRights` using a disposable account. Never test irreversible deletion with an existing primary tester account.
 
 ## Evidence
 

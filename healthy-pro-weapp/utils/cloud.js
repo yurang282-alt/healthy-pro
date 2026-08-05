@@ -135,6 +135,26 @@ async function callSocialFunction(action, payload = {}) {
   return data.data || {};
 }
 
+async function callDataRightsFunction(action) {
+  const result = await wx.cloud.callFunction({
+    name: "dataRights",
+    data: { action }
+  });
+  const data = result && result.result ? result.result : {};
+  if (!data.ok) {
+    throw new Error(data.message || "数据服务暂不可用");
+  }
+  return data.data || {};
+}
+
+async function previewCloudDataDeletion() {
+  return callDataRightsFunction("previewDeletion");
+}
+
+async function deleteCloudUserData() {
+  return callDataRightsFunction("deleteOwnData");
+}
+
 async function sendCloudFriendRequest(friendCode, store, identity) {
   const openid = identity && identity.openid;
   if (!openid) throw new Error("缺少微信身份");
@@ -216,9 +236,11 @@ module.exports = {
   CLOUD_ENV_ID,
   CLOUD_STORE_SCHEMA,
   clone,
+  deleteCloudUserData,
   deleteCloudFriendship,
   getCloudIdentity,
   initCloud,
+  previewCloudDataDeletion,
   readCloudSocial,
   readCloudStore,
   respondCloudFriendship,

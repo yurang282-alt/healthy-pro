@@ -2,6 +2,15 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.5.8",
+    version: "v0.5.8",
+    title: "数据与隐私管理",
+    summary: "正式版候选新增清晰的数据说明、本人数据导出和二次确认后的自助删除入口。",
+    highlights: ["基础评估前可查看数据用途和非医疗边界", "可以导出评估、计划、训练、身体和反馈记录", "删除前先核对云端范围，确认后同时清除本人云端数据和本机草稿"],
+    releaseType: "improvement",
+    publishedAt: "2026-08-05T10:30:00+08:00"
+  },
+  {
     id: "weapp-v0.5.7",
     version: "v0.5.7",
     title: "支持只改本次训练",
@@ -530,7 +539,7 @@ function buildProfileEntries(insights, socialView, releaseState) {
       mode: "settings",
       eyebrow: "设置",
       title: "设置与反馈",
-      summary: "同步、评估、反馈与重置"
+      summary: "同步、评估、反馈与数据隐私"
     }
   ];
 }
@@ -540,7 +549,7 @@ function getProfileModeMeta(mode) {
     weekly: ["周报与趋势", "训练、身体和感觉变化"],
     friends: ["好友与排行", "昵称、好友码和本周稳定榜"],
     releases: ["更新公告", "看看最近改了什么"],
-    settings: ["设置与反馈", "同步、评估和体验反馈"]
+    settings: ["设置与反馈", "同步、评估、体验反馈和数据隐私"]
   }[mode] || ["我的", ""];
   return {
     title: meta[0],
@@ -643,6 +652,10 @@ Page({
 
   goLog() {
     wx.switchTab({ url: "/pages/log/log" });
+  },
+
+  goDataRights() {
+    wx.navigateTo({ url: "/pages/data-rights/data-rights" });
   },
 
   goPlan() {

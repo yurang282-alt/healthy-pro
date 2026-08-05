@@ -1,0 +1,48 @@
+<view class="page data-rights-page">
+  <view class="eyebrow">数据与隐私</view>
+  <view class="title">你的训练数据，由你决定</view>
+  <view class="page-lead">用于生成训练计划、保存训练进度和恢复云端记录，不用于医疗诊断或治疗。</view>
+
+  <view class="dark-card privacy-summary {{deletionPending ? 'deletion-state' : ''}}">
+    <view class="eyebrow">{{deletionPending ? '数据删除' : '当前数据'}}</view>
+    <text class="card-title">{{deletionPending ? '删除尚未完成' : (cloudReady ? '已绑定当前微信身份' : '仅保存在本机')}}</text>
+    <text wx:if="{{deletionPending}}" class="privacy-status-note">云同步已暂停，旧数据不会写回。请在下方继续完成删除。</text>
+    <view class="privacy-metrics">
+      <view><text>{{trainingLogCount}}</text><text>训练记录</text></view>
+      <view><text>{{bodyLogCount}}</text><text>身体记录</text></view>
+      <view><text>{{feedbackCount}}</text><text>反馈</text></view>
+    </view>
+  </view>
+
+  <view class="privacy-section">
+    <view class="section-label">我们保存什么</view>
+    <view class="privacy-list">
+      <view><text>身体与目标</text><text>年龄、性别、身高、体重、体脂、训练经验、目标、重点部位和伤病限制</text></view>
+      <view><text>训练过程</text><text>训练计划、动作、组次、重量、时长、训练感觉、备注和身体记录</text></view>
+      <view><text>账号与社交</text><text>微信身份标识、昵称、好友关系、反馈，以及你主动开启的周报和排行摘要</text></view>
+    </view>
+  </view>
+
+  <view class="privacy-section privacy-boundary">
+    <view class="section-label">使用边界</view>
+    <text>Healthy Pro 只提供一般健身建议和记录工具，不诊断疾病、不提供治疗，也不能替代医生。选择伤病或心血管限制时，应用会停止生成训练计划并建议线下评估。</text>
+    <text>好友只会看到你允许共享的训练次数、完成率和连续周数；体重、体脂、训练重量、计划、备注和反馈不会共享给好友。</text>
+    <button class="privacy-link" bindtap="openPrivacyContract">查看微信隐私保护指引</button>
+  </view>
+
+  <view class="privacy-section data-actions">
+    <view class="section-label">管理我的数据</view>
+    <view class="action-copy">
+      <text>导出数据</text>
+      <text>生成一份只保存在你设备上的文本文件；不会上传到新的服务器。</text>
+    </view>
+    <button class="primary-button" loading="{{busy}}" disabled="{{busy}}" bindtap="exportMyData">导出我的数据</button>
+
+    <view class="danger-divider"></view>
+    <view class="action-copy">
+      <text>永久删除</text>
+      <text>删除当前微信身份下的云端数据和本机草稿。操作前会再次列出影响范围并要求确认。</text>
+    </view>
+    <button class="danger-button" loading="{{busy}}" disabled="{{busy}}" bindtap="requestDeleteMyData">{{deletionPending ? '继续完成删除' : '删除我的全部数据'}}</button>
+  </view>
+</view>

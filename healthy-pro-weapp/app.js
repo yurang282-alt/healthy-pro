@@ -13,9 +13,11 @@ const {
 const {
   APP_ID,
   CLOUD_ENV_ID,
+  deleteCloudUserData,
   deleteCloudFriendship,
   getCloudIdentity,
   initCloud,
+  previewCloudDataDeletion,
   readCloudSocial,
   readCloudStore,
   respondCloudFriendship,
@@ -25,6 +27,11 @@ const {
   writeCloudLog,
   writeCloudStore
 } = require("./utils/cloud");
+const {
+  formatDeletionFailure,
+  getDataDeletionLockKey,
+  isDeletionComplete
+} = require("./utils/data-rights");
 
 const STORAGE_KEY = "healthyProStore";
 const STORAGE_KEY_PREFIX = "healthyProStore:user:";
@@ -163,6 +170,7 @@ App({
   cloudReadyPromise: null,
   cloudSyncTimer: null,
   cloudSyncing: false,
+  cloudSyncBlocked: false,
   cloudIdentity: null,
   activeStorageKey: STORAGE_KEY,
 
@@ -291,6 +299,24 @@ App({
     wx.setStorageSync(this.activeStorageKey || STORAGE_KEY, store);
     if (options.sync !== false) {
       this.scheduleCloudSync();
+    }
+  },
+
+  getDataDeletionLock(openid) {
+    const scopedOpenid = openid || (this.getStore().cloud && this.getStore().cloud.openid);
+    if (!scopedOpenid) return null;
+    return wx.getStorageSync(getDataDeletionLockKey(scopedOpenid)) || null;
+  },
+
+  isCloudWriteBlocked(store) {
+    const currentStore = store || this.getStore();
+    const openid = currentStore.cloud && currentStore.cloud.openid;
+    return this.cloudSyncBlocked || Boolean(openid && this.getDataDeletionLock(openid));
+  },
+
+  assertCloudWritesAllowed(store) {
+    if (this.isCloudWriteBlocked(store)) {
+      throw new Error("数据删除尚未完成，云同步已暂停，请先在数据与隐私页继续删除");
     }
   },
 
@@ -423,6 +449,8 @@ App({
 
       const identity = await getCloudIdentity();
       this.cloudIdentity = identity;
+      const deletionLock = wx.getStorageSync(getDataDeletionLockKey(identity.openid));
+      this.cloudSyncBlocked = Boolean(deletionLock);
       const legacyStore = this.getStore();
       const userStorageKey = getStorageKeyForOpenid(identity.openid);
       const userScopedStore = wx.getStorageSync(userStorageKey);
@@ -452,10 +480,12 @@ App({
         mode: "cloud",
         modeLabel: "云端",
         cloudReady: true,
-        syncStatus: "connecting",
-        syncMessage: "正在读取云端数据"
+        syncStatus: deletionLock ? "deletion-pending" : "connecting",
+        syncMessage: deletionLock ? "数据删除尚未完成，云同步已暂停" : "正在读取云端数据"
       };
       this.setStore(currentStore, { sync: false, touch: false });
+
+      if (deletionLock) return this.getStore();
 
       const cloudRecord = await readCloudStore(identity.openid);
       const cloudRecordIsSeedOnly = cloudRecord && isLegacySeedStore(cloudRecord.store);
@@ -519,7 +549,7 @@ App({
 
   scheduleCloudSync() {
     const store = this.getStore();
-    if (!store.cloud || !store.cloud.enabled || !store.cloud.openid) return;
+    if (this.isCloudWriteBlocked(store) || !store.cloud || !store.cloud.enabled || !store.cloud.openid) return;
     clearTimeout(this.cloudSyncTimer);
     this.cloudSyncTimer = setTimeout(() => {
       this.pushCloudStore({ mirrorLogs: false });
@@ -529,7 +559,7 @@ App({
   async pushCloudStore(options = {}) {
     const store = this.getStore();
     const openid = store.cloud && store.cloud.openid;
-    if (!openid || this.cloudSyncing) return store;
+    if (this.isCloudWriteBlocked(store) || !openid || this.cloudSyncing) return store;
 
     this.cloudSyncing = true;
     try {
@@ -581,6 +611,7 @@ App({
 
   async syncCloudNow() {
     await this.whenCloudReady();
+    this.assertCloudWritesAllowed(this.getStore());
     return this.pushCloudStore({ mirrorLogs: true });
   },
 
@@ -588,6 +619,7 @@ App({
     try {
       await this.whenCloudReady();
       const store = this.getStore();
+      if (this.isCloudWriteBlocked(store)) return;
       const openid = store.cloud && store.cloud.openid;
       if (!openid) return;
       await writeCloudLog(log, { openid });
@@ -605,6 +637,7 @@ App({
     try {
       await this.whenCloudReady();
       const store = this.getStore();
+      if (this.isCloudWriteBlocked(store)) return;
       const openid = store.cloud && store.cloud.openid;
       if (!openid) return;
       await writeCloudFeedback(feedback, { openid });
@@ -615,6 +648,110 @@ App({
         error: error && (error.errMsg || error.message) || "unknown error"
       };
       this.setStore(store, { sync: false, touch: false });
+    }
+  },
+
+  async previewUserDataDeletion() {
+    await this.whenCloudReady();
+    const store = this.getStore();
+    if (!store.cloud || !store.cloud.enabled || !store.cloud.openid) {
+      throw new Error("微信云未连接，暂时不能删除云端数据");
+    }
+    return previewCloudDataDeletion();
+  },
+
+  waitForCloudSyncIdle(timeoutMs = 6000) {
+    const startedAt = Date.now();
+    return new Promise((resolve, reject) => {
+      const check = () => {
+        if (!this.cloudSyncing) {
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt >= timeoutMs) {
+          reject(new Error("云端正在同步，请稍后再试"));
+          return;
+        }
+        setTimeout(check, 120);
+      };
+      check();
+    });
+  },
+
+  async deleteCurrentUserData() {
+    await this.whenCloudReady();
+    const currentStore = this.getStore();
+    const openid = currentStore.cloud && currentStore.cloud.openid;
+    if (!openid) throw new Error("没有拿到当前微信身份");
+
+    const lockKey = getDataDeletionLockKey(openid);
+    const existingLock = wx.getStorageSync(lockKey) || {};
+    wx.setStorageSync(lockKey, {
+      ...existingLock,
+      status: "deleting-cloud",
+      startedAt: existingLock.startedAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    this.cloudSyncBlocked = true;
+    clearTimeout(this.cloudSyncTimer);
+    let cloudDeletionComplete = false;
+    try {
+      await this.waitForCloudSyncIdle();
+      const result = await deleteCloudUserData();
+      if (!isDeletionComplete(result)) {
+        wx.setStorageSync(lockKey, {
+          status: "cloud-partial",
+          startedAt: existingLock.startedAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          remaining: result && result.remaining || null
+        });
+        const error = new Error(`${formatDeletionFailure(result)}已暂停云同步，旧数据不会重新写回。请再次操作继续删除。`);
+        error.code = "CLOUD_DELETE_PARTIAL";
+        error.result = result;
+        throw error;
+      }
+      cloudDeletionComplete = true;
+
+      wx.setStorageSync(lockKey, {
+        status: "cleaning-local",
+        startedAt: existingLock.startedAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      this.activeStorageKey = getStorageKeyForOpenid(openid);
+      const nextStore = this.createDefaultStore({ openid, cloudEnabled: true });
+      nextStore.profile = {
+        ...(nextStore.profile || {}),
+        syncStatus: "synced",
+        syncMessage: "原数据已删除，可重新开始评估",
+        lastSyncedAt: new Date().toISOString()
+      };
+      this.setStore(nextStore, { sync: false, touch: false });
+
+      if (typeof wx.getStorageInfoSync !== "function") {
+        throw new Error("当前微信版本无法核对本机草稿，请升级微信后重试");
+      }
+      const storageInfo = wx.getStorageInfoSync();
+      const draftScope = `:${openid}`;
+      (storageInfo.keys || [])
+        .filter((key) => (
+          key === STORAGE_KEY ||
+          (key.startsWith("healthyProTrainingDraft:") && key.includes(draftScope)) ||
+          key === `healthyProBodyDraft:${openid}`
+        ))
+        .forEach((key) => wx.removeStorageSync(key));
+      wx.removeStorageSync(lockKey);
+      this.cloudSyncBlocked = false;
+      return result;
+    } catch (error) {
+      this.cloudSyncBlocked = Boolean(wx.getStorageSync(lockKey));
+      if (error && error.code) throw error;
+      const wrappedError = new Error(
+        cloudDeletionComplete
+          ? "云端数据已删除，但本机清理尚未完成。同步保持暂停，请再次操作完成本机清理。"
+          : `${error && (error.message || error.errMsg) || "删除未完成"} 同步保持暂停，旧数据不会重新写回。`
+      );
+      wrappedError.code = cloudDeletionComplete ? "LOCAL_DELETE_PENDING" : "DELETE_PENDING";
+      throw wrappedError;
     }
   },
 
@@ -636,6 +773,7 @@ App({
   async addCloudFriendByCode(friendCode) {
     await this.whenCloudReady();
     const store = this.getStore();
+    this.assertCloudWritesAllowed(store);
     const openid = store.cloud && store.cloud.openid;
     if (!openid) throw new Error("微信云未连接");
     await this.pushCloudStore({ mirrorLogs: false });
@@ -645,12 +783,14 @@ App({
 
   async respondCloudFriendship(friendshipId, status) {
     await this.whenCloudReady();
+    this.assertCloudWritesAllowed(this.getStore());
     await respondCloudFriendship(friendshipId, status);
     return this.refreshCloudSocial();
   },
 
   async removeCloudFriendship(friendshipId) {
     await this.whenCloudReady();
+    this.assertCloudWritesAllowed(this.getStore());
     await deleteCloudFriendship(friendshipId);
     return this.refreshCloudSocial();
   }

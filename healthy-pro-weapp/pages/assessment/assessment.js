@@ -197,6 +197,10 @@ Page({
     wx.pageScrollTo({ scrollTop: 0, duration: 180 });
   },
 
+  goDataRights() {
+    wx.navigateTo({ url: "/pages/data-rights/data-rights" });
+  },
+
   submit() {
     const validation = validateAssessment(this.data.draft);
     if (!validation.valid) {

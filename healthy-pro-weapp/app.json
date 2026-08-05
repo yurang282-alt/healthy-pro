@@ -7,7 +7,8 @@
     "pages/exercise-detail/exercise-detail",
     "pages/log/log",
     "pages/equipment/equipment",
-    "pages/profile/profile"
+    "pages/profile/profile",
+    "pages/data-rights/data-rights"
   ],
   "window": {
     "navigationBarTitleText": "Healthy Pro",

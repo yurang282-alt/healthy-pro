@@ -291,7 +291,10 @@
       <view wx:if="{{lastSyncedLabel}}" class="muted">上次同步：{{lastSyncedLabel}}</view>
       <view wx:elif="{{profile.error}}" class="muted">错误信息：{{profile.error}}</view>
       <view wx:else class="muted">训练计划和记录会保存到当前微信账号。</view>
-      <button class="secondary-button profile-button" bindtap="syncCloud">立即同步</button>
+      <view class="profile-actions">
+        <button class="secondary-button" bindtap="syncCloud">立即同步</button>
+        <button class="ghost-button" bindtap="goDataRights">数据与隐私</button>
+      </view>
     </view>
 
     <view wx:if="{{user}}" class="card">
@@ -318,7 +321,6 @@
         <button class="secondary-button" bindtap="goAssessment">重新评估</button>
         <button class="ghost-button" bindtap="goPlan">训练计划</button>
         <button class="ghost-button" bindtap="goLog">训练记录</button>
-        <button class="ghost-button" bindtap="resetDemo">重置数据</button>
       </view>
     </view>
   </block>
