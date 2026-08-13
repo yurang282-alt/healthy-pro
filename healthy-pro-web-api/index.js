@@ -320,14 +320,18 @@ async function handleHttpRequest(req, res, dependencies = {}) {
 
     const enabled = dependencies.enabled ?? isEnabled("HEALTHY_WEB_ENABLED");
     const bindingReadEnabled = dependencies.bindingReadEnabled ?? isEnabled("HEALTHY_WEB_BINDING_READ_ENABLED");
-    if (!enabled || !bindingReadEnabled) throw new HttpError(503, "HEALTHY_WEB_NOT_ENABLED");
+    if (!enabled) throw new HttpError(503, "HEALTHY_WEB_NOT_ENABLED");
 
     const verifySession = dependencies.verifySession || verifyRockyIdentitySession;
+    // Bootstrap is a read path. Authenticate and authorize before considering
+    // the binding feature gate, so anonymous and non-granted callers fail with
+    // their real identity status and cannot infer or touch binding/health data.
+    const session = await verifySession(req);
+    if (!bindingReadEnabled) throw new HttpError(403, "HEALTHY_BINDING_READ_DISABLED");
     const needsDatabase = path === "/binding-code"
       ? !dependencies.createBindingCode
       : !dependencies.readBinding || !dependencies.readHealthyStore;
     const db = dependencies.db || (needsDatabase ? getDb() : null);
-    const session = await verifySession(req);
     if (path === "/binding-code") {
       const bindingCode = dependencies.createBindingCode
         ? await dependencies.createBindingCode(session.rockyUserId)

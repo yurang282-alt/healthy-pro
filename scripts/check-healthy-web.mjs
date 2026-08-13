@@ -176,6 +176,40 @@ const disabled = await invoke({ enabled: false, bindingReadEnabled: false });
 assert.equal(disabled.statusCode, 503);
 assert.equal(disabled.payload.code, "HEALTHY_WEB_NOT_ENABLED");
 
+let gatedRead = false;
+const anonymousWhenBindingDisabled = await invoke({
+  enabled: true,
+  bindingReadEnabled: false,
+  verifySession: async () => { throw new HttpError(401, "AUTH_REQUIRED"); },
+  readBinding: async () => { gatedRead = true; },
+  readHealthyStore: async () => { gatedRead = true; }
+});
+assert.equal(anonymousWhenBindingDisabled.statusCode, 401);
+assert.equal(anonymousWhenBindingDisabled.payload.code, "AUTH_REQUIRED");
+assert.equal(gatedRead, false);
+
+const noHealthyGrantWhenBindingDisabled = await invoke({
+  enabled: true,
+  bindingReadEnabled: false,
+  verifySession: async () => { throw new HttpError(403, "APP_ACCESS_DENIED"); },
+  readBinding: async () => { gatedRead = true; },
+  readHealthyStore: async () => { gatedRead = true; }
+});
+assert.equal(noHealthyGrantWhenBindingDisabled.statusCode, 403);
+assert.equal(noHealthyGrantWhenBindingDisabled.payload.code, "APP_ACCESS_DENIED");
+assert.equal(gatedRead, false);
+
+const bindingReadDisabled = await invoke({
+  enabled: true,
+  bindingReadEnabled: false,
+  verifySession: async () => ({ rockyUserId: "ru_eeeeeeeeeeeeeeee" }),
+  readBinding: async () => { gatedRead = true; },
+  readHealthyStore: async () => { gatedRead = true; }
+});
+assert.equal(bindingReadDisabled.statusCode, 403);
+assert.equal(bindingReadDisabled.payload.code, "HEALTHY_BINDING_READ_DISABLED");
+assert.equal(gatedRead, false);
+
 let untrustedMutationCalled = false;
 const untrustedMutation = await invoke({
   enabled: true,
