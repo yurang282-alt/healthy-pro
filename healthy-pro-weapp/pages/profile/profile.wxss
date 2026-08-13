@@ -382,6 +382,50 @@
   font-weight: 800;
 }
 
+.rocky-binding-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220rpx;
+  gap: 12rpx;
+  align-items: center;
+  margin-top: 18rpx;
+}
+
+.rocky-binding-form .secondary-button {
+  min-height: 72rpx;
+  margin-top: 0;
+  line-height: 72rpx;
+}
+
+.rocky-binding-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0;
+}
+
+.binding-status {
+  margin-top: 14rpx;
+  padding: 14rpx 16rpx;
+  border-radius: 12rpx;
+  font-size: 23rpx;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.binding-status.bound {
+  color: #0f6848;
+  background: #eaf4ef;
+}
+
+.binding-status.error {
+  color: #9c2f2f;
+  background: #fff1f1;
+}
+
+@media (max-width: 360px) {
+  .rocky-binding-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 .friend-code-card {
   display: flex;
   align-items: center;

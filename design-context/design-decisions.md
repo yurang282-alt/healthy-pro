@@ -1,5 +1,29 @@
 # Healthy Pro Design Decisions
 
+## 2026-08-12 LifeMap Healthy Web Companion
+
+### Decision 1: One Product, Two Deliberate Surfaces
+
+The Mini Program remains the gym execution cockpit. Healthy Web is a read-only plan and review desk. It does not duplicate assessment, plan editing, live exercise input, friends or feedback in its first release.
+
+### Decision 2: Lead With Training State
+
+The Web overview starts with the next workout and weekly rhythm, then moves into plan structure and history. It avoids a generic grid of equal-weight health KPI cards.
+
+### Decision 3: Identity Failure Replaces Content
+
+Unauthenticated, unauthorized, unbound, empty and backend-error states are explicit full-page gates. The interface never falls back to cached health data or another user's record.
+
+### Decision 4: Share Data, Not UI Complexity
+
+The Web reads the same CloudBase training record as the Mini Program through a server-side Rocky binding. Supabase parity and a second Web data model are intentionally retired.
+
+### Decision 5: Make Account Linking A Short Handoff
+
+When no binding exists, the Web owns the first step: generate one five-minute code. The Mini Program owns identity proof and confirmation under `我的 -> 设置与反馈`. The Web then performs an explicit reread; no background polling, silent matching, or automatic data merging occurs.
+
+The gate uses one dominant action, a visible code, three short steps, and clear privacy language. It remains a full-page state so no fixture, stale record, or another account's content appears underneath.
+
 ## 2026-07-13 Friends And Ranking Hierarchy
 
 Trigger: real-device feedback showed that the friends page exposed identity settings, sharing controls, adding friends, ranking, activity, and friend management with equal visual weight.
@@ -105,3 +129,38 @@ The Log page now defaults to current action, one key cue, status tags, input fie
 - A user opening Log should understand the current exercise and primary action within 3 seconds.
 - Plan should open on week structure and next workout, not management controls.
 - Home exercise previews should be scannable without reading full coaching sentences.
+
+## 2026-08-12 Healthy Web LifeMap Handoff
+
+### Decision 1: Make The Parent Product Visible
+
+Every Healthy Web state includes a real, keyboard-accessible `LifeMap` return link to `/apps/lifemap/`, while `Healthy Pro` remains the product signal. The app no longer links its brand to the CloudBase root directory.
+
+### Decision 2: Map The Existing Training Node
+
+LifeMap should change the existing `train` / `身体训练` registry item to `/apps/healthy/`. The separate `healthy` / `健康体检站` item is not this product and must not be overwritten.
+
+### Decision 3: Keep Review And Execution Separate
+
+The Web companion remains a calm, read-only plan and review desk. Assessment, plan editing, workout execution and record creation stay in the Mini Program. This avoids a second writer and keeps the Web first screen focused.
+
+## 2026-08-13 Cross-Platform Cockpit Contract
+
+### Decision 1: Share A Component Language, Not Write Capabilities
+
+The Mini Program and Healthy Web use the same six visual contracts: `CockpitPanel`, `MetricCell`, `StatusChip`, `PrimaryAction`, `WorkoutRow`, and `CoachNote`. Both surfaces use the same ink, green, mint, amber, border and radius tokens. The Mini Program remains the execution and write surface; Web remains read-only.
+
+### Decision 2: Give Every Core Web Page A Clear Operational Role
+
+- Overview: `训练驾驶舱`, with the next workout, three metrics, readiness and one plan action.
+- Plan: `计划控制台`, with the current week, next workout, cycle and training-day hierarchy.
+- History: `训练复盘台`, with the latest session summary and a chronological record timeline.
+- Data: `我的训练档案`, with source, ownership, sync state and folded privacy detail.
+
+### Decision 3: Preserve Prescription Detail
+
+Shared workout rows must expose equipment, sets, reps or duration, rest and suggested load. The Web may fold a workout or record, but it must not remove the prescription details needed to understand the plan.
+
+### Decision 4: Keep Secondary Explanations Folded
+
+Coach rationale and implementation-level privacy detail remain available in drawers. They must not compete with the current workout, current plan stage or recent training result in the first viewport.

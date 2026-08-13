@@ -297,6 +297,18 @@
       </view>
     </view>
 
+    <view wx:if="{{user}}" class="card rocky-binding-card">
+      <view class="eyebrow">Healthy Web</view>
+      <text class="card-title">关联 Rocky 账号</text>
+      <view class="muted">先在 rocky4ai.com 的 Healthy 页面生成 8 位绑定码，再在这里确认。关联只让 Web 读取本人训练档案，不会向 LifeMap 自动共享健康数据。</view>
+      <view wx:if="{{rockyBindingBound}}" class="binding-status bound">已关联当前 Rocky 账号</view>
+      <view wx:else class="rocky-binding-form">
+        <input class="text-input rocky-binding-input" maxlength="8" value="{{rockyBindingCode}}" bindinput="setRockyBindingCode" placeholder="输入 8 位绑定码" />
+        <button class="secondary-button" disabled="{{rockyBindingBusy}}" bindtap="submitRockyBinding">{{rockyBindingBusy ? '关联中' : '确认关联'}}</button>
+      </view>
+      <view wx:if="{{rockyBindingMessage}}" class="binding-status {{rockyBindingBound ? 'bound' : 'error'}}">{{rockyBindingMessage}}</view>
+    </view>
+
     <view wx:if="{{user}}" class="card">
       <view class="eyebrow">反馈</view>
       <text class="card-title">给我提建议</text>

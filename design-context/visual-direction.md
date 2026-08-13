@@ -26,6 +26,17 @@ Healthy Pro is a personal training assistant for gym planning and workout loggin
 - Plan: plan control console, week rhythm, training-day hierarchy.
 - Log: execution cockpit, current action, progress, training feedback, save path.
 
+## Healthy Web Companion
+
+- Role: plan and review desk inside Rocky LifeMap, not a browser clone of the gym execution flow.
+- First screen: next workout, weekly rhythm and one clear action to inspect the plan.
+- Desktop: persistent compact navigation with plan and history hierarchy; mobile: four-item bottom navigation.
+- Keep the same professional training language while allowing calmer review density than the Mini Program.
+- Authentication, unbound, empty and unavailable states must replace the full product surface and fail closed.
+- The unbound state should feel like a compact account handoff, not a setup wizard: one code, three steps, one confirmation action, and no health content behind the gate.
+- Cross-platform visual contract: core pages begin with a functional title and a dark status surface, followed by compact secondary panels. Shared components use the same ink, green, mint, amber, borders, radii and state meanings as the Mini Program.
+- Web actions remain read-only verbs such as `查看`, `展开` and `返回`; never copy Mini Program write verbs such as `开始`, `完成`, `保存` or `调整` into the Web companion.
+
 ## Avoid
 
 - Emoji-heavy feedback as the primary training language.

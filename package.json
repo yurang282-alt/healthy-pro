@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "python3 -m http.server 5173 --bind 127.0.0.1",
-    "dev:lan": "python3 -m http.server 5173 --bind 0.0.0.0",
-    "check": "node scripts/check-app.mjs && node scripts/check-weapp-training-execution.cjs && node scripts/check-weapp-data-rights.cjs && node scripts/check-weapp-data-deletion-fail-closed.cjs",
-    "build": "npm run check && node scripts/build-static.mjs"
+    "dev": "npm run build:web && python3 -m http.server 5173 --bind 127.0.0.1 --directory dist-cloudbase",
+    "dev:lan": "npm run build:web && python3 -m http.server 5173 --bind 0.0.0.0 --directory dist-cloudbase",
+    "check": "node scripts/check-healthy-web.mjs && node scripts/check-weapp-rocky-binding.cjs && node scripts/check-weapp-training-execution.cjs && node scripts/check-weapp-data-rights.cjs && node scripts/check-weapp-data-deletion-fail-closed.cjs",
+    "build": "npm run check && npm run build:web",
+    "build:web": "node scripts/build-static.mjs"
   },
   "engines": {
     "node": ">=20"

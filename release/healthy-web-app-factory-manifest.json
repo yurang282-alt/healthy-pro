@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "appId": "healthy",
+  "productName": "Healthy Pro",
+  "displayName": "身体训练",
+  "owner": "healthy-pro",
+  "canonicalPath": "/apps/healthy/",
+  "canonicalUrl": "https://rocky4ai.com/apps/healthy/",
+  "returnToLifeMap": "/apps/lifemap/",
+  "staticBuild": {
+    "source": "dist-cloudbase/apps/healthy",
+    "target": "/apps/healthy/",
+    "rootDeployAllowed": false
+  },
+  "api": {
+    "prefix": "/apps/healthy/api",
+    "functionSource": "healthy-pro-web-api",
+    "mode": "read-only"
+  },
+  "identity": {
+    "appId": "healthy",
+    "requiredScopes": [
+      "session:read",
+      "healthy:data:read"
+    ]
+  },
+  "cloudbase": {
+    "environmentId": "cloud1-d3g79qnvd808824c9",
+    "sourceCollection": "users",
+    "sourceDocumentPattern": "user_<openid>",
+    "webWriteMode": "none"
+  },
+  "miniProgram": {
+    "appId": "wx9f1d623ecc4ce4ae",
+    "bindingFunctionSource": "healthy-pro-weapp/cloudfunctions/rockyBinding"
+  },
+  "lifeMap": {
+    "registryKey": "train",
+    "existingName": "身体训练",
+    "kind": "web",
+    "statusOnRelease": "live",
+    "path": "/apps/healthy/",
+    "mustNotReplaceRegistryKey": "healthy"
+  },
+  "featureFlags": [
+    "HEALTHY_WEB_ENABLED",
+    "HEALTHY_WEB_BINDING_READ_ENABLED",
+    "HEALTHY_ROCKY_BINDING_ENABLED"
+  ],
+  "prohibited": [
+    "deploy to CloudBase root /",
+    "write health data from Healthy Web",
+    "submit openid or owner from the browser",
+    "sync or fall back to Supabase",
+    "overwrite the LifeMap healthy / 健康体检站 registry entry"
+  ],
+  "releaseGates": [
+    "central identity registers healthy with session:read and healthy:data:read",
+    "four binding collections use server-admin-only permissions",
+    "A/B isolation and binding negative tests pass with feature flags scoped to the canary cohort",
+    "same-origin high-sensitivity risk is accepted after a full-origin audit or Healthy uses an independent origin and app-specific session boundary",
+    "exact /apps/healthy/ URL passes desktop and mobile QA before the LifeMap train tile is activated"
+  ]
+}

@@ -1,6 +1,7 @@
 .tools/
 .vercel
 dist/
+dist-cloudbase/
 .DS_Store
 .env
 .env.*

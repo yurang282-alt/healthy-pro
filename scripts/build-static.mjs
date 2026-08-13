@@ -4,64 +4,54 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const outputDir = join(rootDir, "dist");
-const entries = ["index.html", "sw.js", "src", "public"];
-const versionEntries = [...entries, "scripts/build-static.mjs"];
+const outputDir = join(rootDir, "dist-cloudbase", "apps", "healthy");
 const buildVersionPlaceholder = "__HEALTHY_PRO_BUILD_VERSION__";
+const entries = [
+  ["index.html", "index.html"],
+  ["sw.js", "sw.js"],
+  ["src/web", "src/web"],
+  ["public/icon.svg", "public/icon.svg"],
+  ["public/manifest.webmanifest", "public/manifest.webmanifest"],
+  ["public/assets/equipment", "public/assets/equipment"],
+  ["public/assets/web", "public/assets/web"]
+];
 
-const runtimeConfig = {
-  supabaseUrl: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "",
-  supabaseKey:
-    process.env.SUPABASE_PUBLISHABLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    "",
-  supabaseAnonKey: process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ""
-};
-
-const buildVersion = createBuildVersion(runtimeConfig);
+const buildVersion = createBuildVersion();
 
 rmSync(outputDir, { recursive: true, force: true });
 mkdirSync(outputDir, { recursive: true });
 
-for (const entry of entries) {
-  cpSync(join(rootDir, entry), join(outputDir, entry), { recursive: true });
+for (const [source, destination] of entries) {
+  cpSync(join(rootDir, source), join(outputDir, destination), { recursive: true });
 }
 
+replaceBuildVersion(outputDir, buildVersion);
 writeFileSync(
-  join(outputDir, "src/runtime-config.js"),
-  `export const RUNTIME_CONFIG = ${JSON.stringify(runtimeConfig, null, 2)};\n`
+  join(outputDir, "build-meta.json"),
+  `${JSON.stringify({ app: "healthy", basePath: "/apps/healthy/", buildVersion }, null, 2)}\n`
 );
 
-replaceBuildVersion(outputDir, buildVersion);
+console.log(`Built Healthy Web companion at dist-cloudbase/apps/healthy (${buildVersion}).`);
 
-console.log(`Built static app in dist/ (${buildVersion}).`);
-
-function createBuildVersion(config) {
+function createBuildVersion() {
   const hash = createHash("sha256");
-  hash.update(JSON.stringify(config));
-  for (const file of collectFiles(versionEntries)) {
-    hash.update(file);
-    hash.update(readFileSync(join(rootDir, file)));
+  for (const [source] of entries) {
+    for (const file of collectFiles(source)) {
+      hash.update(file);
+      hash.update(readFileSync(join(rootDir, file)));
+    }
   }
+  hash.update(readFileSync(fileURLToPath(import.meta.url)));
   return hash.digest("hex").slice(0, 12);
 }
 
-function collectFiles(paths) {
-  const files = [];
-  for (const entry of paths) {
-    const absolutePath = join(rootDir, entry);
-    const stat = statSync(absolutePath);
-    if (stat.isDirectory()) {
-      for (const child of readdirSync(absolutePath)) {
-        files.push(...collectFiles([join(entry, child)]));
-      }
-    } else {
-      files.push(entry);
-    }
-  }
-  return files.sort();
+function collectFiles(entry) {
+  const absolutePath = join(rootDir, entry);
+  const stat = statSync(absolutePath);
+  if (!stat.isDirectory()) return [entry];
+  return readdirSync(absolutePath)
+    .flatMap((child) => collectFiles(join(entry, child)))
+    .sort();
 }
 
 function replaceBuildVersion(directory, version) {

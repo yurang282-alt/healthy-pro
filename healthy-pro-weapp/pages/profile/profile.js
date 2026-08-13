@@ -2,6 +2,15 @@ const { formatDateTime } = require("../../utils/format");
 
 const LOCAL_RELEASES = [
   {
+    id: "weapp-v0.5.9",
+    version: "v0.5.9",
+    title: "接入 Healthy Web",
+    summary: "训练数据可以通过本人确认的一次性关联码，在 LifeMap 的 Healthy Web 中只读查看。",
+    highlights: ["我的页新增 Rocky 账号关联入口", "Web 端只读展示计划、进度和历史，不修改小程序数据", "不会向 LifeMap 自动共享体重、体脂、训练重量或原始记录"],
+    releaseType: "feature",
+    publishedAt: "2026-08-13T12:00:00+08:00"
+  },
+  {
     id: "weapp-v0.5.8",
     version: "v0.5.8",
     title: "数据与隐私管理",
@@ -515,6 +524,15 @@ function getDataModeText(profile = {}) {
   return "本地数据";
 }
 
+function getRockyBindingMessage(code) {
+  if (code === "FEATURE_DISABLED") return "关联服务还在准备中，不影响小程序训练和云同步。";
+  if (code === "BINDING_CODE_INVALID_OR_EXPIRED") return "绑定码无效或已过期，请回到 Web 端重新生成。";
+  if (code === "ROCKY_ACCOUNT_ALREADY_BOUND") return "这个 Rocky 账号已经关联了其他微信档案。";
+  if (code === "WECHAT_ACCOUNT_ALREADY_BOUND") return "当前微信档案已经关联了其他 Rocky 账号。";
+  if (code === "ROCKY_ACCOUNT_UNAVAILABLE" || code === "HEALTHY_ACCESS_REVOKED") return "Rocky 账号或 Healthy 访问权限已失效，请回到 Web 端重新检查。";
+  return "暂时无法完成关联，请稍后再试。";
+}
+
 function buildProfileEntries(insights, socialView, releaseState) {
   return [
     {
@@ -582,11 +600,16 @@ Page({
     syncStatusText: "本地",
     dataModeText: "本地数据",
     releaseChipText: "已是最新",
-    lastSyncedLabel: ""
+    lastSyncedLabel: "",
+    rockyBindingCode: "",
+    rockyBindingBusy: false,
+    rockyBindingBound: false,
+    rockyBindingMessage: ""
   },
 
   onShow() {
     this.refresh();
+    this.refreshRockyBindingStatus();
   },
 
   refresh() {
@@ -660,6 +683,61 @@ Page({
 
   goPlan() {
     wx.switchTab({ url: "/pages/plan/plan" });
+  },
+
+  setRockyBindingCode(event) {
+    this.setData({
+      rockyBindingCode: String(event.detail.value || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 8),
+      rockyBindingMessage: ""
+    });
+  },
+
+  refreshRockyBindingStatus() {
+    wx.cloud.callFunction({ name: "rockyBinding", data: { action: "status" } })
+      .then((result) => {
+        const payload = result && result.result || {};
+        if (!payload.ok) {
+          this.setData({ rockyBindingBound: false });
+          return;
+        }
+        if (payload.ok && payload.data) {
+          this.setData({
+            rockyBindingBound: payload.data.bound === true,
+            rockyBindingMessage: payload.data.bound === true ? "" : this.data.rockyBindingMessage
+          });
+        }
+      })
+      .catch(() => {});
+  },
+
+  submitRockyBinding() {
+    const code = String(this.data.rockyBindingCode || "").trim().toUpperCase();
+    if (!/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
+      wx.showToast({ title: "请输入 8 位绑定码", icon: "none" });
+      return;
+    }
+    if (this.data.rockyBindingBusy) return;
+    this.setData({ rockyBindingBusy: true, rockyBindingMessage: "" });
+    wx.showLoading({ title: "关联中" });
+    wx.cloud.callFunction({ name: "rockyBinding", data: { action: "consume", code } })
+      .then((result) => {
+        const payload = result && result.result || {};
+        if (!payload.ok) throw new Error(payload.code || "BINDING_FAILED");
+        this.setData({
+          rockyBindingBusy: false,
+          rockyBindingBound: true,
+          rockyBindingCode: "",
+          rockyBindingMessage: "已关联。返回 Web 端点击“重新读取”即可看到同一份训练数据。"
+        });
+        wx.showToast({ title: "关联成功", icon: "success" });
+      })
+      .catch((error) => {
+        this.setData({
+          rockyBindingBusy: false,
+          rockyBindingMessage: getRockyBindingMessage(error && (error.message || error.errMsg))
+        });
+      })
+      .finally(() => wx.hideLoading());
   },
 
   setFeedbackText(event) {
