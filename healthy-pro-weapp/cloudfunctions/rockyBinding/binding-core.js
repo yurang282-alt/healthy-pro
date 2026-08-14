@@ -30,6 +30,12 @@ function bindingCodeOwnerId(rockyUserId) {
   return `rhbc_owner_${sha256(rockyUserId)}`;
 }
 
+function withoutDocumentId(record) {
+  if (!record || typeof record !== "object") return {};
+  const { _id: _documentId, ...data } = record;
+  return data;
+}
+
 function rockyGrantId(rockyUserId) {
   return `rag_${sha256(`${rockyUserId}:${ROCKY_APP_ID}`)}`;
 }
@@ -104,9 +110,19 @@ function buildBindingMutation({
     ownerDocument: binding,
     wechatId: wechatBindingId(openid),
     wechatDocument: binding,
-    codeDocument: { ...codeRecord, status: "consumed", consumedAt: timestamp, updatedAt: timestamp },
+    codeDocument: {
+      ...withoutDocumentId(codeRecord),
+      status: "consumed",
+      consumedAt: timestamp,
+      updatedAt: timestamp
+    },
     codeOwnerId: bindingCodeOwnerId(rockyUserId),
-    codeOwnerDocument: { ...codeOwner, status: "consumed", consumedAt: timestamp, updatedAt: timestamp }
+    codeOwnerDocument: {
+      ...withoutDocumentId(codeOwner),
+      status: "consumed",
+      consumedAt: timestamp,
+      updatedAt: timestamp
+    }
   };
 }
 

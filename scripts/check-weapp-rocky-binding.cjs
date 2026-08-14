@@ -17,6 +17,7 @@ const rockyUserId = "ru_aaaaaaaaaaaaaaaa";
 const openid = "openid_user_a_123";
 const appid = "wx9f1d623ecc4ce4ae";
 const codeRecord = {
+  _id: `rhbc_${sha256(code)}`,
   appId: "healthy",
   rockyUserId,
   codeHash: sha256(code),
@@ -41,6 +42,7 @@ const rockyGrant = {
   scopes: ["session:read", "healthy:data:read"]
 };
 const codeOwner = {
+  _id: bindingCodeOwnerId(rockyUserId),
   appId: "healthy",
   rockyUserId,
   codeHash: sha256(code),
@@ -66,8 +68,10 @@ assert.equal(mutation.ownerId, ownerBindingId(rockyUserId));
 assert.equal(mutation.wechatId, wechatBindingId(openid));
 assert.equal(mutation.ownerDocument.openid, openid);
 assert.equal(mutation.codeDocument.status, "consumed");
+assert.equal(Object.prototype.hasOwnProperty.call(mutation.codeDocument, "_id"), false);
 assert.equal(mutation.codeOwnerId, bindingCodeOwnerId(rockyUserId));
 assert.equal(mutation.codeOwnerDocument.status, "consumed");
+assert.equal(Object.prototype.hasOwnProperty.call(mutation.codeOwnerDocument, "_id"), false);
 assert.equal(codeDocumentId(code), `rhbc_${sha256(code)}`);
 assert.equal(rockyGrantId(rockyUserId), `rag_${sha256(`${rockyUserId}:healthy`)}`);
 
