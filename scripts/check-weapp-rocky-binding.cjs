@@ -109,8 +109,49 @@ assert.match(functionSource, /rocky_identity_allowlist/);
 assert.match(functionSource, /runTransaction/);
 assert.equal((consumeSource.match(/\.set\(\{ data:/g) || []).length, 4);
 assert.doesNotMatch(consumeSource, /Promise\.all/, "transaction reads must remain serialized");
+assert.doesNotMatch(
+  functionSource,
+  /Object\.keys\(event\)\.every/,
+  "platform-injected event metadata must not invalidate otherwise valid actions"
+);
 
-console.log("Healthy Rocky binding checks passed: one-time code, live allowlist/grant, replay and two-way ownership conflicts.");
+const originalModuleLoad = require("node:module")._load;
+require("node:module")._load = function loadWithMock(request, parent, isMain) {
+  if (request !== "wx-server-sdk") return originalModuleLoad(request, parent, isMain);
+  const emptyDocument = { get: async () => ({ data: null }) };
+  return {
+    DYNAMIC_CURRENT_ENV: Symbol("dynamic-current-env"),
+    init() {},
+    getWXContext() {
+      return { OPENID: openid, APPID: appid };
+    },
+    database() {
+      return {
+        collection() {
+          return { doc() { return emptyDocument; } };
+        }
+      };
+    }
+  };
+};
+
+const rockyBindingFunction = require("../healthy-pro-weapp/cloudfunctions/rockyBinding/index");
+process.env.HEALTHY_ROCKY_BINDING_ENABLED = "true";
+
+Promise.resolve()
+  .then(() => rockyBindingFunction.main({
+    action: "status",
+    userInfo: { appId: appid },
+    wxCloudContext: { source: "ide-runtime" }
+  }))
+  .then((result) => {
+    assert.deepEqual(result, { ok: true, data: { bound: false } });
+    console.log("Healthy Rocky binding checks passed: one-time code, live allowlist/grant, replay, two-way ownership conflicts, and platform metadata tolerance.");
+  })
+  .finally(() => {
+    require("node:module")._load = originalModuleLoad;
+    delete process.env.HEALTHY_ROCKY_BINDING_ENABLED;
+  });
 
 function expectCode(expected, overrides) {
   assert.throws(() => buildBindingMutation({

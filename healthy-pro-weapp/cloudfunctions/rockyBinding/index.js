@@ -122,10 +122,10 @@ exports.main = async (event = {}) => {
     }
     const identity = requireWechatContext();
     const action = String(event.action || "");
-    if (action === "status" && Object.keys(event).every((key) => key === "action" || key.startsWith("userInfo"))) {
+    if (action === "status") {
       return { ok: true, data: await getStatus(identity.openid) };
     }
-    if (action === "consume" && Object.keys(event).every((key) => ["action", "code"].includes(key) || key.startsWith("userInfo"))) {
+    if (action === "consume") {
       return { ok: true, data: await consumeCode(event.code, identity) };
     }
     return { ok: false, code: "INVALID_REQUEST" };
