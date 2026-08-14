@@ -77,15 +77,23 @@ async function consumeCode(code, identity) {
     const rockyAccount = rockyUserId
       ? await readDocument(transaction, COLLECTIONS.rockyAccounts, rockyUserId)
       : null;
-    const [codeOwner, rockyAllowlist, rockyGrant, ownerBinding, wechatBinding] = await Promise.all([
-      rockyUserId ? readDocument(transaction, COLLECTIONS.codeOwners, bindingCodeOwnerId(rockyUserId)) : null,
-      rockyAccount && rockyAccount.allowlistId
-        ? readDocument(transaction, COLLECTIONS.rockyAllowlist, rockyAccount.allowlistId)
-        : null,
-      rockyUserId ? readDocument(transaction, COLLECTIONS.rockyGrants, rockyGrantId(rockyUserId)) : null,
-      rockyUserId ? readDocument(transaction, COLLECTIONS.ownerBindings, ownerBindingId(rockyUserId)) : null,
-      readDocument(transaction, COLLECTIONS.wechatBindings, wechatBindingId(identity.openid))
-    ]);
+    const codeOwner = rockyUserId
+      ? await readDocument(transaction, COLLECTIONS.codeOwners, bindingCodeOwnerId(rockyUserId))
+      : null;
+    const rockyAllowlist = rockyAccount && rockyAccount.allowlistId
+      ? await readDocument(transaction, COLLECTIONS.rockyAllowlist, rockyAccount.allowlistId)
+      : null;
+    const rockyGrant = rockyUserId
+      ? await readDocument(transaction, COLLECTIONS.rockyGrants, rockyGrantId(rockyUserId))
+      : null;
+    const ownerBinding = rockyUserId
+      ? await readDocument(transaction, COLLECTIONS.ownerBindings, ownerBindingId(rockyUserId))
+      : null;
+    const wechatBinding = await readDocument(
+      transaction,
+      COLLECTIONS.wechatBindings,
+      wechatBindingId(identity.openid)
+    );
     const mutation = buildBindingMutation({
       code: normalizedCode,
       codeRecord,
@@ -98,10 +106,10 @@ async function consumeCode(code, identity) {
       openid: identity.openid,
       appid: identity.appid
     });
-    await transaction.collection(COLLECTIONS.ownerBindings).doc(mutation.ownerId).set(mutation.ownerDocument);
-    await transaction.collection(COLLECTIONS.wechatBindings).doc(mutation.wechatId).set(mutation.wechatDocument);
-    await transaction.collection(COLLECTIONS.codes).doc(codeId).set(mutation.codeDocument);
-    await transaction.collection(COLLECTIONS.codeOwners).doc(mutation.codeOwnerId).set(mutation.codeOwnerDocument);
+    await transaction.collection(COLLECTIONS.ownerBindings).doc(mutation.ownerId).set({ data: mutation.ownerDocument });
+    await transaction.collection(COLLECTIONS.wechatBindings).doc(mutation.wechatId).set({ data: mutation.wechatDocument });
+    await transaction.collection(COLLECTIONS.codes).doc(codeId).set({ data: mutation.codeDocument });
+    await transaction.collection(COLLECTIONS.codeOwners).doc(mutation.codeOwnerId).set({ data: mutation.codeOwnerDocument });
     return { bound: true };
   });
   return result && Object.prototype.hasOwnProperty.call(result, "result") ? result.result : result;

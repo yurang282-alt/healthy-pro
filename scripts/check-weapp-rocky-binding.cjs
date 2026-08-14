@@ -94,11 +94,17 @@ expectCode("WECHAT_ACCOUNT_ALREADY_BOUND", {
 expectCode("WECHAT_IDENTITY_INVALID", { appid: "wx_wrong_app" });
 
 const functionSource = fs.readFileSync(path.join(__dirname, "../healthy-pro-weapp/cloudfunctions/rockyBinding/index.js"), "utf8");
+const consumeSource = functionSource.slice(
+  functionSource.indexOf("async function consumeCode"),
+  functionSource.indexOf("exports.main")
+);
 assert.match(functionSource, /cloud\.getWXContext\(\)/);
 assert.doesNotMatch(functionSource, /event\.(?:openid|rockyUserId|ownerId)/);
 assert.match(functionSource, /HEALTHY_ROCKY_BINDING_ENABLED/);
 assert.match(functionSource, /rocky_identity_allowlist/);
 assert.match(functionSource, /runTransaction/);
+assert.equal((consumeSource.match(/\.set\(\{ data:/g) || []).length, 4);
+assert.doesNotMatch(consumeSource, /Promise\.all/, "transaction reads must remain serialized");
 
 console.log("Healthy Rocky binding checks passed: one-time code, live allowlist/grant, replay and two-way ownership conflicts.");
 

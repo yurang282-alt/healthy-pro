@@ -213,8 +213,8 @@ async function createBindingCode(db, rockyUserId) {
     consumedAt: null
   };
   await db.runTransaction(async (transaction) => {
-    await transaction.collection(COLLECTIONS.bindingCodes).doc(documentId).set(codeDocument);
-    await transaction.collection(COLLECTIONS.bindingCodeOwners).doc(bindingCodeOwnerId(rockyUserId)).set(ownerDocument);
+    await transaction.collection(COLLECTIONS.bindingCodes).doc(documentId).set({ data: codeDocument });
+    await transaction.collection(COLLECTIONS.bindingCodeOwners).doc(bindingCodeOwnerId(rockyUserId)).set({ data: ownerDocument });
   });
   return { code, expiresAt };
 }

@@ -253,7 +253,9 @@ const generatedCode = await createBindingCode({
         return {
           doc(id) {
             return {
-              async set(document) {
+              async set(options) {
+                assert.deepEqual(Object.keys(options), ["data"]);
+                const document = options.data;
                 storedBindingCode = storedBindingCode || {};
                 storedBindingCode[name] = { id, document };
               }
