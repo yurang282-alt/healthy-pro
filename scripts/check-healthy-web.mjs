@@ -12,8 +12,11 @@ const {
   bindingCodeOwnerId,
   bindingDocumentId,
   createBindingCode,
+  firstDocument,
   handleHttpRequest,
   normalizeRockyIdentitySession,
+  readBinding,
+  readHealthyStore,
   sanitizeHealthyRecord,
   sha256
 } = require("../healthy-pro-web-api/index.js");
@@ -268,6 +271,24 @@ assert.equal(storedBindingCode.rocky_healthy_binding_code_owners.id, bindingCode
 assert.equal(storedBindingCode.rocky_healthy_binding_code_owners.document.codeHash, sha256(generatedCode.code));
 assert.doesNotMatch(JSON.stringify(storedBindingCode), new RegExp(generatedCode.code));
 assert.equal(bindingDocumentId("ru_eeeeeeeeeeeeeeee"), `rhb_owner_${sha256("ru_eeeeeeeeeeeeeeee")}`);
+
+assert.equal(firstDocument({ data: [] }), null);
+assert.deepEqual(firstDocument({ data: [{ id: "first" }] }), { id: "first" });
+assert.deepEqual(firstDocument({ data: { id: "transaction-shape" } }), { id: "transaction-shape" });
+
+const missingBindingDb = {
+  collection() {
+    return { doc() { return { async get() { return { data: [] }; } }; } };
+  }
+};
+await assert.rejects(
+  () => readBinding(missingBindingDb, "ru_eeeeeeeeeeeeeeee"),
+  (error) => error?.statusCode === 428 && error?.code === "WECHAT_BINDING_REQUIRED"
+);
+await assert.rejects(
+  () => readHealthyStore(missingBindingDb, "openid_user_missing_123"),
+  (error) => error?.statusCode === 404 && error?.code === "HEALTHY_PROFILE_NOT_FOUND"
+);
 
 const build = spawnSync(process.execPath, [join(ROOT, "scripts/build-static.mjs")], {
   cwd: ROOT,

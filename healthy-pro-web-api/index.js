@@ -175,7 +175,7 @@ async function readBinding(db, rockyUserId) {
     }
     throw error;
   }
-  const binding = result?.data;
+  const binding = firstDocument(result);
   if (!binding) throw new HttpError(428, "WECHAT_BINDING_REQUIRED");
   if (
     binding.rockyUserId !== rockyUserId
@@ -229,11 +229,17 @@ async function readHealthyStore(db, openid) {
     }
     throw error;
   }
-  const record = result?.data;
+  const record = firstDocument(result);
   if (!record || record.appId !== HEALTHY_APP_ID || record.openid !== openid || !record.store) {
     throw new HttpError(404, "HEALTHY_PROFILE_NOT_FOUND");
   }
   return record;
+}
+
+function firstDocument(result) {
+  const data = result?.data;
+  if (Array.isArray(data)) return data[0] || null;
+  return data || null;
 }
 
 function sanitizeHealthyRecord(record) {
@@ -419,7 +425,10 @@ module.exports = {
   handleHttpRequest,
   main,
   createBindingCode,
+  firstDocument,
   normalizeRockyIdentitySession,
+  readBinding,
+  readHealthyStore,
   sha256,
   sanitizeHealthyRecord
 };
