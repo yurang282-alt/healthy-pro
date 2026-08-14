@@ -2,7 +2,7 @@
 
 ## 2026-08-14 controlled A/B production release
 
-- GitHub `main` and the task branch are aligned at `b502134edd51054769e29b9eb7c27a245c4baf76`.
+- Released product code is commit `b502134edd51054769e29b9eb7c27a245c4baf76`; later documentation-only commits do not change the deployed bytes.
 - Healthy Web is live at `https://rocky4ai.com/apps/healthy/` through `rockyFormalWeb` immutable v17 (`v17=100%`, `$LATEST=0`); v16 is the immediate rollback point.
 - `HEALTHY_WEB_ENABLED`, `HEALTHY_WEB_BINDING_READ_ENABLED`, and `HEALTHY_ROCKY_BINDING_ENABLED` are enabled only for the existing controlled A/B identity/grant cohort. Public registration and health-data writes remain out of scope.
 - `rockyBinding` is Active/Available and rejects requests without genuine Healthy WeChat context. No real binding or Healthy business-data read/write was created during release.
@@ -31,11 +31,11 @@ Healthy Pro is a gym training assistant with a WeChat Mini Program for assessmen
 
 ## Current Status
 
-- Stage: The WeChat Mini Program remains the validated training product. A new Healthy Web companion is locally complete under `/apps/healthy/` for plan/history review, has passed automated, 320 px browser and Design Director checks, and is not deployed yet.
-- Working version: Mini Program supports assessment, plan generation/edit/history/recovery, one-off workout override, training/body logs, equipment, friends, feedback, announcements, openid-scoped local storage and CloudBase sync. Healthy Web locally supports Rocky identity gates, secure one-time binding UI/runtime candidates, a read-only CloudBase BFF candidate, overview, plan, history and data/privacy views, plus a real `/apps/lifemap/` return route.
+- Stage: The WeChat Mini Program remains the validated training product. The read-only Healthy Web companion is live for the controlled A/B cohort under `/apps/healthy/` and is linked from LifeMap.
+- Working version: Mini Program supports assessment, plan generation/edit/history/recovery, one-off workout override, training/body logs, equipment, friends, feedback, announcements, openid-scoped local storage and CloudBase sync. Healthy Web provides Rocky identity gates, secure one-time binding UI/runtime, a read-only CloudBase BFF, overview, plan, history and data/privacy views, plus a real `/apps/lifemap/` return route.
 - Local state: `npm run dev` builds and serves `http://127.0.0.1:5173/apps/healthy/`; append `?fixture=1` for data UI or `?fixture=unbound` for the cross-device binding handoff.
-- GitHub state: task branch `codex/weapp-next-workout-override` is based at `7232cd9`; Healthy Web companion changes are local and uncommitted.
-- Deployment state: No Healthy Web static path or BFF is deployed. The Mini Program release state is independent and unchanged by this Web work.
+- GitHub state: the released Healthy Web product code is committed and pushed at `b502134edd51054769e29b9eb7c27a245c4baf76`; later documentation-only commits do not change that release.
+- Deployment state: Healthy Web and its read-only BFF are live through `rockyFormalWeb` v17. WeChat development build `0.5.9` is uploaded, but no experience, review or formal Mini Program release is claimed.
 - Legacy state: Supabase and Vercel resources remain frozen for history only. They are excluded from the official Web build and receive no new writes, migrations, deployments or feature-alignment work.
 - User validation evidence: The user confirmed on 2026-07-13 that changing an exercise's set count from 1 to 5 in the plan editor persists as 5 after reopening. On 2026-07-17, the user confirmed that the v0.5.7 experience-version validation, including the one-off workout override flow, was complete. The controlled known-friend trial can continue; this is not evidence of formal public release approval.
 
@@ -59,16 +59,16 @@ Healthy Pro is a gym training assistant with a WeChat Mini Program for assessmen
 ## Risks
 
 - Product risk: Plans may feel plausible but not become a repeated training habit unless real workouts validate them.
-- Technical risk: Rocky `healthy` grants, `rockyBinding`, the Web BFF route and four server-only binding collections are implemented only as local candidates, not connected in production. All three feature flags must remain disabled until deployment and A/B plus negative tests pass.
+- Technical risk: Rocky `healthy` grants, `rockyBinding`, the Web BFF route and four server-only binding collections are live only for the controlled A/B cohort. One genuine WeChat-to-Rocky binding is still required to validate the real-device isolation, replay and revocation path.
 - Data/privacy risk: Health and body records need private-by-default handling, CloudBase permission rules, clear ownership, export/backup expectations, and no accidental friend visibility.
 - Same-origin risk: `/apps/healthy/` shares the `rocky4ai.com` browser origin with sibling apps. Path routing does not isolate high-sensitivity health data from a sibling-app XSS. Wider activation requires a full-origin security audit with explicit CTO acceptance, or an independent origin/app-specific session boundary; controlled A/B remains the maximum before that gate.
 - Release risk: Local fixture, deployed static files, deployed BFF, enabled feature flags, LifeMap navigation, Mini Program experience version and formal releases are separate states and must not be mixed.
 
 ## Next Actions
 
-- Now: Local candidate is complete; automated checks, 320 px responsive/browser QA and Design Director review pass with no design blocker.
-- Later: Hand `release/healthy-web-app-factory-manifest.json` and `docs/healthy-lifemap-handoff.md` to the CTO-managed release sequence; LifeMap must update `train`, not the separate `healthy` entry. The first real canary must prove Rocky login -> code creation -> Mini Program code consumption -> Web re-read.
-- Blocked: Healthy Web production activation is blocked on central `healthy` scopes and the secure one-time Rocky-to-WeChat binding runtime. The Mini Program is not blocked by this work.
+- Now: Controlled A/B Web activation and the LifeMap `train` entry are complete and independently audited.
+- Later: Generate a WeChat preview QR only after explicit approval to transmit the local Mini Program source to WeChat, then prove Rocky login -> code creation -> Mini Program code consumption -> Web re-read with one genuine binding.
+- Blocked: Public or friend rollout remains out of scope until the genuine binding, isolation, replay and revocation checks pass. The current controlled Web release itself is not blocked.
 
 ## Useful Commands Or Links
 
@@ -77,7 +77,7 @@ Healthy Pro is a gym training assistant with a WeChat Mini Program for assessmen
 - Test/build: `npm run check`; `npm run build`
 - Healthy Web local URL: `http://127.0.0.1:5173/apps/healthy/?fixture=1`
 - Healthy Web binding preview: `http://127.0.0.1:5173/apps/healthy/?fixture=unbound`
-- Planned production URL: `https://rocky4ai.com/apps/healthy/` (not deployed yet)
+- Production URL: `https://rocky4ai.com/apps/healthy/` (live for the controlled A/B cohort)
 - Mini Program path: `/Users/bytedance/healthy-pro/healthy-pro-weapp`
 
 ## Rocky4AI 正式入口与发布边界
@@ -86,7 +86,7 @@ Healthy Pro is a gym training assistant with a WeChat Mini Program for assessmen
 - CloudBase 环境 ID 是 `cloud1-d3g79qnvd808824c9`。
 - CloudBase 根目录 `/` 的唯一 owner 是 `app-factory`，当前根入口进入 LifeMap；Healthy Pro 等普通 App 绝不能发布到根目录。
 - Healthy Pro / Exercise 当前用户可见产品入口仍是微信小程序 `Healthy Pro / AI4RockyHP`。
-- Healthy Web 已在本地实现为 `/apps/healthy/` 候选，但尚未部署、注册到 LifeMap 或成为正式入口；上线仍必须通过 CTO / `app-factory` 发布闸门。
+- Healthy Web 已正式部署到 `/apps/healthy/`，并由 LifeMap 的 `train` 地标链接；当前仅对既有受控 A/B 身份与 grant 开放。
 - CloudBase 默认域名、测试域名和 `localhost` 仅用于开发、检查或留存证据，不得作为交给用户的正式入口。
 - Web 项目内部跳转优先使用同源相对路径 `/apps/<app-name>/`；不得硬编码 CloudBase 测试域名，也不得自行创建 DNS 子域名。
 - 域名统一不代表账号、数据库或用户数据已经统一；不得据此自行接入统一身份、共享数据或跨 App 同步。
