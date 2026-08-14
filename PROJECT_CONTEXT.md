@@ -1,5 +1,16 @@
 # Project Context
 
+## 2026-08-14 controlled A/B production release
+
+- GitHub `main` and the task branch are aligned at `b502134edd51054769e29b9eb7c27a245c4baf76`.
+- Healthy Web is live at `https://rocky4ai.com/apps/healthy/` through `rockyFormalWeb` immutable v17 (`v17=100%`, `$LATEST=0`); v16 is the immediate rollback point.
+- `HEALTHY_WEB_ENABLED`, `HEALTHY_WEB_BINDING_READ_ENABLED`, and `HEALTHY_ROCKY_BINDING_ENABLED` are enabled only for the existing controlled A/B identity/grant cohort. Public registration and health-data writes remain out of scope.
+- `rockyBinding` is Active/Available and rejects requests without genuine Healthy WeChat context. No real binding or Healthy business-data read/write was created during release.
+- The official WeChat Developer Tools CLI uploaded development build `0.5.9`; it is not an experience version, not submitted for review, and not formally published.
+- LifeMap production now links the `train` landmark to `/apps/healthy/`; the separate Healthy WeChat entry remains unchanged.
+- Canonical evidence: `/Users/bytedance/Documents/Codex/release-audits/healthy-lifemap-final-cutover-20260814.json`.
+- Remaining acceptance gate: one genuine WeChat-to-Rocky binding followed by scoped isolation, replay and revocation verification. This does not require multiple human testers.
+
 ## One-Liner
 
 Healthy Pro is a gym training assistant with a WeChat Mini Program for assessment and workout execution plus a Rocky LifeMap Web companion for read-only plan and progress review, both using the same CloudBase training record.
